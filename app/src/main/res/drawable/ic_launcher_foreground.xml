@@ -3,7 +3,7 @@
     <item
         android:gravity="fill">
         <bitmap
-            android:src="@drawable/ic_wakesleuth_foreground"
+            android:src="@drawable/ic_wakelogs_new_foreground"
             android:gravity="fill"
             android:filter="true"
             android:antialias="true" />

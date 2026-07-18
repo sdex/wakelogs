@@ -1,0 +1,10 @@
+wakelogs analyzes when and why an Android device became active.
+
+The app records display wakeups, CPU and background activity, and
+evaluates periods of device rest. Events can be viewed as a list or
+timeline and exported as a technical report.
+
+Extended system diagnostics are provided through Shizuku.
+
+All collected information is processed locally on the device.
+wakelogs contains no advertising, analytics SDKs, or tracking.

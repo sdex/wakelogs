@@ -1,0 +1,42 @@
+*.iml
+.gradle/
+.idea/
+local.properties
+.DS_Store
+build/
+*/build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+*.before_*
+*.bak
+*.backup
+*.orig
+*~
+*_snapshot_*/
+
+# Lokale Sicherungen und Speicherabbilder
+*.before-*
+*.before_*
+*.hprof
+java_pid*.hprof
+.manual-backups/
+
+# Lokale WakeLogs-/WakeSleuth-Sicherungen
+.wakesleuth-backup-*/
+.wakesleuth-icon-backup-*/
+
+# Alte Quellstände und temporäre Reparaturdateien
+*.bak_*
+*.broken_*
+*before*
+
+# Alte, nicht mehr verwendete WakeSleuth-Assets
+app/src/main/res/drawable-nodpi/ic_wakesleuth_foreground.png

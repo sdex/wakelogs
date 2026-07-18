@@ -1528,7 +1528,7 @@ private fun HeaderCard(
 
                 Text(
                     text =
-                        "Version ${BuildConfig.VERSION_NAME}",
+                        "Version ${BuildConfig.VERSION_NAME} · dernikiausd",
                     color =
                         MaterialTheme.colorScheme
                             .onPrimary.copy(
@@ -6055,7 +6055,7 @@ private fun buildSessionExportText(
     session: ArchivedSession
 ): String {
     return buildString {
-        appendLine("wakelogs v${BuildConfig.VERSION_NAME}")
+        appendLine("wakelogs v${BuildConfig.VERSION_NAME} · dernikiausd")
         appendLine("Art des Exports: Sitzungszusammenfassung")
         appendLine()
 

@@ -1766,7 +1766,7 @@ object EventStore {
         )
 
         return buildString {
-            appendLine("wakelogs v${BuildConfig.VERSION_NAME}")
+            appendLine("wakelogs v${BuildConfig.VERSION_NAME} · dernikiausd")
             appendLine("Lokaler Ereignisexport")
             appendLine()
             appendLine(

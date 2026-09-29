@@ -51,8 +51,9 @@ object CauseAssessment {
             else -> NotificationCauseKind.POSSIBLE
         }
 
+    /** High only for a notification shortly before the screen-on; later ones cannot have caused it. */
     fun confidenceOf(cause: NotificationCause): CauseConfidenceLevel =
-        if (kotlin.math.abs(cause.offsetMs) <= HIGH_CONFIDENCE_WINDOW_MILLIS) {
+        if (kindOf(cause) == NotificationCauseKind.PROBABLE) {
             CauseConfidenceLevel.HIGH
         } else {
             CauseConfidenceLevel.MEDIUM

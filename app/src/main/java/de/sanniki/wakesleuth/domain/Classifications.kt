@@ -1,5 +1,7 @@
 package de.sanniki.wakesleuth.domain
 
+import java.util.Locale
+
 /*
  * Pure classification rules derived from raw system tokens. They used to
  * be applied once at write time and baked into stored text; now they are
@@ -290,6 +292,16 @@ enum class SnapshotClassification {
     ;
 
     companion object {
+        /**
+         * True for the doze states that mean "idle" (`IDLE`, `IDLE_MAINTENANCE`), not for the
+         * states on the way there (`IDLE_PENDING`, `PRE_IDLE`) or `WAITING_FOR_NETWORK`.
+         */
+        internal fun isIdleToken(state: String?): Boolean =
+            when (state?.trim()?.uppercase(Locale.ROOT)) {
+                "IDLE", "IDLE_MAINTENANCE" -> true
+                else -> false
+            }
+
         fun of(snapshot: SystemSnapshot): SnapshotClassification {
             val wake = snapshot.wakefulness.orEmpty()
 
@@ -299,12 +311,12 @@ enum class SnapshotClassification {
                 }
 
                 snapshot.deviceIdleMode == true ||
-                    snapshot.deepIdleState?.contains("IDLE", ignoreCase = true) == true -> {
+                    isIdleToken(snapshot.deepIdleState) -> {
                     DEEP_IDLE
                 }
 
                 snapshot.lightDeviceIdleMode == true ||
-                    snapshot.lightIdleState?.contains("IDLE", ignoreCase = true) == true -> {
+                    isIdleToken(snapshot.lightIdleState) -> {
                     LIGHT_IDLE
                 }
 

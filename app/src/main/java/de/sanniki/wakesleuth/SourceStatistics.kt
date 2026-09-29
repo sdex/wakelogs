@@ -356,21 +356,36 @@ private fun SourceCountLabel(
     )
 }
 
+/** Raw per-source counts of one analysis window, before labels are resolved. */
+internal data class SourceActivityCount(
+    val source: SourceRef,
+    /** Screen-ons the source is linked to as a possible cause; companion-only links are left out. */
+    val display: Int,
+    val cpu: Int,
+    val notifications: Int,
+    /** Notifications that are already counted as the [display] cause of a screen-on. */
+    val notificationsLinkedToDisplay: Int,
+) {
+    /** Every distinct occurrence once: a notification that woke the display is not counted twice. */
+    val total: Int
+        get() = display + cpu + notifications - notificationsLinkedToDisplay
+}
+
 /**
  * Counts, per source, the screen-ons, CPU wakeups and notifications it is
  * linked to within the window. Sources are merged by identity.
  */
-private fun buildSourceStatistics(
-    labels: SourceLabelResolver,
+internal fun countSourceActivity(
     events: List<RecordedEvent>,
     window: AnalysisWindow,
-): List<SourceStatisticsEntry> {
+): List<SourceActivityCount> {
     class Counts(
         val source: SourceRef,
     ) {
         var display = 0
         var cpu = 0
         var notifications = 0
+        var linked = 0
     }
 
     val counts = linkedMapOf<String, Counts>()
@@ -380,34 +395,62 @@ private fun buildSourceStatistics(
             Counts(source)
         }
 
-    events
-        .asSequence()
-        .filter { event ->
-            event.occurredAt in window
-        }.forEach { event ->
-            when (event) {
-                is ScreenOnEvent -> {
-                    event.sources().forEach { counts(it.source).display += 1 }
-                }
+    val inWindow = events.filter { it.occurredAt in window }
 
-                is CpuWakeupEvent -> {
-                    event.primarySource()?.let { counts(it).cpu += 1 }
-                }
+    val causeNotificationIds = inWindow
+        .filterIsInstance<ScreenOnEvent>()
+        .mapNotNull { it.notificationCause?.notificationEventId }
+        .toSet()
 
-                is NotificationEvent -> {
-                    counts(SourceClassifier.classify(event.packageName)).notifications += 1
-                }
-
-                else -> {}
+    inWindow.forEach { event ->
+        when (event) {
+            is ScreenOnEvent -> {
+                event
+                    .sources()
+                    .filterNot { it.companion }
+                    .forEach { counts(it.source).display += 1 }
             }
-        }
 
-    return counts.values
+            is CpuWakeupEvent -> {
+                event.primarySource()?.let { counts(it).cpu += 1 }
+            }
+
+            is NotificationEvent -> {
+                val item = counts(SourceClassifier.classify(event.packageName))
+
+                item.notifications += 1
+
+                if (event.id in causeNotificationIds) {
+                    item.linked += 1
+                }
+            }
+
+            else -> {}
+        }
+    }
+
+    return counts.values.map {
+        SourceActivityCount(
+            source = it.source,
+            display = it.display,
+            cpu = it.cpu,
+            notifications = it.notifications,
+            notificationsLinkedToDisplay = it.linked,
+        )
+    }
+}
+
+private fun buildSourceStatistics(
+    labels: SourceLabelResolver,
+    events: List<RecordedEvent>,
+    window: AnalysisWindow,
+): List<SourceStatisticsEntry> =
+    countSourceActivity(events, window)
         .map { item ->
             SourceStatisticsEntry(
                 source = item.source,
                 name = labels.label(item.source),
-                totalCount = item.display + item.cpu + item.notifications,
+                totalCount = item.total,
                 displayCount = item.display,
                 cpuCount = item.cpu,
                 notificationCount = item.notifications,
@@ -427,7 +470,6 @@ private fun buildSourceStatistics(
                 it.name.lowercase(Locale.ROOT)
             },
         )
-}
 
 private fun formatSourceStatisticsWindow(
     context: Context,

@@ -131,7 +131,7 @@ private fun readableIdleStateForUi(
     val light = snapshot.lightIdleState?.uppercase(Locale.ROOT)
 
     return when {
-        deep?.startsWith("IDLE") == true ||
+        SnapshotClassification.isIdleToken(deep) ||
             snapshot.deviceIdleMode == true -> {
             context.getString(R.string.main_idle_deep_doze)
         }
@@ -144,7 +144,7 @@ private fun readableIdleStateForUi(
             context.getString(R.string.main_idle_system_active)
         }
 
-        light?.startsWith("IDLE") == true -> {
+        SnapshotClassification.isIdleToken(light) -> {
             context.getString(R.string.main_idle_light_doze)
         }
 

@@ -194,17 +194,22 @@ object SourceClassifier {
                 bucket(SourceKind.PHONE_SERVICE)
             }
 
+            has("com.samsung.", "com.sec.") -> {
+                bucket(SourceKind.SAMSUNG_SYSTEM_SERVICE)
+            }
+
+            has("oplus", "oneplus", "athena") -> {
+                bucket(SourceKind.ONEPLUS_SYSTEM_SERVICE)
+            }
+
             has(
                 "ipa_client",
-                "rmnet",
                 "qrtr",
                 "ipcc_",
                 "qcom_rx",
                 "wlan_wake_irq",
                 "iwlan",
-                "cellular",
-                "radio",
-            ) -> {
+            ) || hasRadioToken(lower) -> {
                 bucket(SourceKind.RADIO_NETWORK)
             }
 
@@ -220,19 +225,23 @@ object SourceClassifier {
                 bucket(SourceKind.ANDROID_SYSTEM)
             }
 
-            has("com.samsung.", "com.sec.") -> {
-                bucket(SourceKind.SAMSUNG_SYSTEM_SERVICE)
-            }
-
-            has("oplus", "oneplus", "athena") -> {
-                bucket(SourceKind.ONEPLUS_SYSTEM_SERVICE)
-            }
-
             else -> {
                 bucket(SourceKind.UNKNOWN_SYSTEM)
             }
         }
     }
+
+    /**
+     * `radio`, `cellular` and `rmnet*` only count as whole words of the
+     * token (split at anything that is not a letter or digit), so names
+     * like "radioactive" or "cellularity" stay unclassified.
+     */
+    private fun hasRadioToken(lowerRawSource: String): Boolean =
+        lowerRawSource
+            .split(NON_ALPHANUMERIC)
+            .any { it == "radio" || it == "cellular" || it.startsWith("rmnet") }
+
+    private val NON_ALPHANUMERIC = Regex("[^a-z0-9]+")
 
     /**
      * Readable part of an unknown technical token (component before the

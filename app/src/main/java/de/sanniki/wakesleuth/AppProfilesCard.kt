@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import de.sanniki.wakesleuth.ui.common.formatBinaryBytes
 import java.util.Locale
 
 @Composable
@@ -312,28 +313,7 @@ private fun AppProfileValueRow(
     }
 }
 
-private fun formatAppProfileBytes(bytes: Long): String {
-    val safe = bytes.coerceAtLeast(0L)
-
-    return when {
-        safe >=
-            1024L * 1024L * 1024L -> {
-            String.format(Locale.getDefault(), "%.1f GB", safe / (1024.0 * 1024.0 * 1024.0))
-        }
-
-        safe >= 1024L * 1024L -> {
-            String.format(Locale.getDefault(), "%.1f MB", safe / (1024.0 * 1024.0))
-        }
-
-        safe >= 1024L -> {
-            String.format(Locale.getDefault(), "%.1f KB", safe / 1024.0)
-        }
-
-        else -> {
-            "$safe B"
-        }
-    }
-}
+private fun formatAppProfileBytes(bytes: Long): String = formatBinaryBytes(bytes)
 
 private fun formatAppProfileDuration(millis: Long): String {
     val safe = millis.coerceAtLeast(0L)

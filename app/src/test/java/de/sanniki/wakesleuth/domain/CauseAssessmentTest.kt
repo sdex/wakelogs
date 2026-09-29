@@ -61,7 +61,7 @@ class CauseAssessmentTest {
         assertEquals(NotificationCauseKind.PROBABLE, CauseAssessment.kindOf(cause(-2_000)))
         assertEquals(NotificationCauseKind.POSSIBLE, CauseAssessment.kindOf(cause(-7_000)))
         assertEquals(NotificationCauseKind.LATER_DETECTED, CauseAssessment.kindOf(cause(1_500)))
-        assertEquals(CauseConfidenceLevel.HIGH, CauseAssessment.confidenceOf(cause(1_500)))
+        assertEquals(CauseConfidenceLevel.MEDIUM, CauseAssessment.confidenceOf(cause(1_500)))
         assertEquals(CauseConfidenceLevel.MEDIUM, CauseAssessment.confidenceOf(cause(4_500)))
 
         assertEquals(ScreenOnVerdict.PROBABLE_NOTIFICATION, CauseAssessment.verdictOf(screenOn(cause = cause(-500))))

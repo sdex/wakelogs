@@ -78,8 +78,13 @@ class SourceLabelResolver(
         packageName?.takeIf { it.isNotBlank() }?.let(::appName)
             ?: uidLabel(uid)
 
-    fun uidLabel(uid: Int?): String =
-        context.getString(
+    fun uidLabel(uid: Int?): String {
+        if (uid != null && uid >= FIRST_APPLICATION_UID) {
+            // An app UID without a resolvable package is not a system service.
+            return context.getString(R.string.source_uid_app, uid)
+        }
+
+        return context.getString(
             when (uid) {
                 1000 -> R.string.source_android_system
                 1001 -> R.string.source_phone_service
@@ -92,6 +97,7 @@ class SourceLabelResolver(
                 else -> R.string.source_android_system_service
             },
         )
+    }
 
     /** A package that is not installed falls back to its technical token. */
     private fun technicalFallback(rawSource: String): String? {
@@ -148,6 +154,9 @@ class SourceLabelResolver(
         }
 
     companion object {
+        /** Android's `Process.FIRST_APPLICATION_UID`. */
+        private const val FIRST_APPLICATION_UID = 10_000
+
         private const val PLAY_STORE_NAME = "Google Play Store"
         private const val TIME_TICK_NAME = "Android TIME_TICK"
 

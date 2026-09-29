@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -33,15 +34,13 @@ import de.sanniki.wakesleuth.ui.render.EventTextRenderer
 import de.sanniki.wakesleuth.ui.render.rememberEventTextRenderer
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
-import kotlin.math.abs
 
 @Composable
 fun WakeTimeline(
     events: List<RecordedEvent>,
     detailLevel: DetailLevel,
 ) {
-    val timelineEvents = remember(events) { events.sortedByDescending { it.occurredAt } }
+    val timelineEvents = remember(events) { events.sortedWith(NEWEST_EVENT_FIRST) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -104,6 +103,10 @@ private fun TimelineEventRow(
     detailLevel: DetailLevel,
     showLine: Boolean,
 ) {
+    val locale = LocalLocale.current.platformLocale
+    val timeFormatter = remember(locale) { SimpleDateFormat("HH:mm:ss", locale) }
+    val dateFormatter = remember(locale) { SimpleDateFormat("dd.MM.", locale) }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top,
@@ -113,14 +116,14 @@ private fun TimelineEventRow(
             horizontalAlignment = Alignment.End,
         ) {
             Text(
-                text = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(event.occurredAt)),
+                text = timeFormatter.format(Date(event.occurredAt)),
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
             )
 
             Text(
-                text = SimpleDateFormat("dd.MM.", Locale.getDefault()).format(Date(event.occurredAt)),
+                text = dateFormatter.format(Date(event.occurredAt)),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall,
             )
@@ -214,8 +217,6 @@ private fun TimelineEventContent(
 
 @Composable
 private fun TimelineGap(durationMillis: Long) {
-    val safeDuration = abs(durationMillis)
-
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = 72.dp, top = 3.dp, bottom = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -225,7 +226,7 @@ private fun TimelineGap(durationMillis: Long) {
         Spacer(modifier = Modifier.width(10.dp))
 
         Text(
-            text = formatTimelineDuration(safeDuration),
+            text = formatTimelineDuration(durationMillis),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelSmall,
         )

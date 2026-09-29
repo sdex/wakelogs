@@ -8,6 +8,7 @@ import de.sanniki.wakesleuth.domain.SourceClassifier
 import de.sanniki.wakesleuth.domain.SourceRef
 import de.sanniki.wakesleuth.domain.saturatedSum
 import de.sanniki.wakesleuth.ui.render.SourceLabelResolver
+import java.util.Locale
 
 /** Traffic of one app over a session; [name] is resolved at read time. */
 data class ArchivedSessionApp(
@@ -61,6 +62,8 @@ object SessionArchive {
             .filter { it.finalizedAt != null }
             .map { session ->
                 val start = session.startedAt
+                // finalizedAt is when the recovery ran. For INTERRUPTED sessions SessionRepository.finalize
+                // stores the last recorded event in stopRequestedAt, so this is the last activity, not finalizedAt.
                 val end = (session.stopRequestedAt ?: session.finalizedAt ?: start).coerceAtLeast(start)
                 val apps = usageBySession[session.id].orEmpty()
 
@@ -112,7 +115,7 @@ object SessionArchive {
                         }.sortedWith(
                             compareByDescending<ArchivedSessionSource> {
                                 it.cpuCount + it.displayCount
-                            }.thenBy { it.name.lowercase() },
+                            }.thenBy { it.name.lowercase(Locale.ROOT) },
                         ),
                     note = session.note,
                 )

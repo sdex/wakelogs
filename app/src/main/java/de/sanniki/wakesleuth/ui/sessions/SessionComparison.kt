@@ -409,52 +409,67 @@ private fun buildSessionComparisonSummary(
     context: Context,
     latest: ArchivedSession,
     previous: ArchivedSession,
-): String {
-    val displayDelta = latest.displayWakeups -
-        previous.displayWakeups
+): String =
+    context.getString(
+        when (classifySessionComparison(latest, previous)) {
+            SessionComparisonVerdict.NO_WAKEUPS -> R.string.main_comparison_summary_no_wakeups
+            SessionComparisonVerdict.MUCH_CALMER -> R.string.main_comparison_summary_much_calmer
+            SessionComparisonVerdict.MORE_INTERRUPTIONS -> R.string.main_comparison_summary_more_interruptions
+            SessionComparisonVerdict.SLIGHTLY_CALMER -> R.string.main_comparison_summary_slightly_calmer
+            SessionComparisonVerdict.SLIGHTLY_MORE_ACTIVITY -> R.string.main_comparison_summary_slightly_more_activity
+            SessionComparisonVerdict.SIMILAR -> R.string.main_comparison_summary_similar
+        },
+    )
 
-    val cpuDelta = latest.cpuWakeups -
-        previous.cpuWakeups
+internal enum class SessionComparisonVerdict {
+    NO_WAKEUPS,
+    MUCH_CALMER,
+    MORE_INTERRUPTIONS,
+    SLIGHTLY_CALMER,
+    SLIGHTLY_MORE_ACTIVITY,
+    SIMILAR,
+}
 
-    val latestDurationHours = latest.durationMillis.coerceAtLeast(1L) /
-        3_600_000.0
+/** Shorter sessions give meaningless wakeups-per-hour rates; below this only the deltas are compared. */
+internal const val MIN_RATE_COMPARISON_DURATION_MILLIS = 60_000L
 
-    val previousDurationHours = previous.durationMillis.coerceAtLeast(1L) /
-        3_600_000.0
+internal fun classifySessionComparison(
+    latest: ArchivedSession,
+    previous: ArchivedSession,
+): SessionComparisonVerdict {
+    val displayDelta = latest.displayWakeups - previous.displayWakeups
 
-    val latestWakeRate = (latest.displayWakeups + latest.cpuWakeups) / latestDurationHours
+    val cpuDelta = latest.cpuWakeups - previous.cpuWakeups
 
-    val previousWakeRate = (previous.displayWakeups + previous.cpuWakeups) / previousDurationHours
+    val latestWakeups = latest.displayWakeups + latest.cpuWakeups
+
+    val previousWakeups = previous.displayWakeups + previous.cpuWakeups
+
+    if (latestWakeups == 0 && previousWakeups == 0) {
+        return SessionComparisonVerdict.NO_WAKEUPS
+    }
+
+    val comparableDurations = latest.durationMillis >= MIN_RATE_COMPARISON_DURATION_MILLIS &&
+        previous.durationMillis >= MIN_RATE_COMPARISON_DURATION_MILLIS
+
+    if (comparableDurations) {
+        val latestWakeRate = latestWakeups / (latest.durationMillis / 3_600_000.0)
+
+        val previousWakeRate = previousWakeups / (previous.durationMillis / 3_600_000.0)
+
+        if (latestWakeRate < previousWakeRate * 0.75) {
+            return SessionComparisonVerdict.MUCH_CALMER
+        }
+
+        if (latestWakeRate > previousWakeRate * 1.25) {
+            return SessionComparisonVerdict.MORE_INTERRUPTIONS
+        }
+    }
 
     return when {
-        latest.displayWakeups == 0 &&
-            latest.cpuWakeups == 0 &&
-            previous.displayWakeups == 0 &&
-            previous.cpuWakeups == 0 -> {
-            context.getString(R.string.main_comparison_summary_no_wakeups)
-        }
-
-        latestWakeRate <
-            previousWakeRate * 0.75 -> {
-            context.getString(R.string.main_comparison_summary_much_calmer)
-        }
-
-        latestWakeRate >
-            previousWakeRate * 1.25 -> {
-            context.getString(R.string.main_comparison_summary_more_interruptions)
-        }
-
-        displayDelta < 0 || cpuDelta < 0 -> {
-            context.getString(R.string.main_comparison_summary_slightly_calmer)
-        }
-
-        displayDelta > 0 || cpuDelta > 0 -> {
-            context.getString(R.string.main_comparison_summary_slightly_more_activity)
-        }
-
-        else -> {
-            context.getString(R.string.main_comparison_summary_similar)
-        }
+        displayDelta < 0 || cpuDelta < 0 -> SessionComparisonVerdict.SLIGHTLY_CALMER
+        displayDelta > 0 || cpuDelta > 0 -> SessionComparisonVerdict.SLIGHTLY_MORE_ACTIVITY
+        else -> SessionComparisonVerdict.SIMILAR
     }
 }
 

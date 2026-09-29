@@ -8,7 +8,17 @@ import de.sanniki.wakesleuth.ui.render.SourceLabelResolver
 sealed interface EventListItem {
     val stableKey: String
     val newestTimestamp: Long
+
+    /** Tiebreaker for items with the same [newestTimestamp]. */
+    val newestId: Long
 }
+
+/** Newest first; events with the same timestamp keep a stable order by id. */
+internal val NEWEST_EVENT_FIRST: Comparator<RecordedEvent> =
+    compareByDescending<RecordedEvent> { it.occurredAt }.thenByDescending { it.id }
+
+private val NEWEST_ITEM_FIRST: Comparator<EventListItem> =
+    compareByDescending<EventListItem> { it.newestTimestamp }.thenByDescending { it.newestId }
 
 data class SingleEventListItem(
     val event: RecordedEvent,
@@ -16,6 +26,8 @@ data class SingleEventListItem(
     override val stableKey: String = "event_${event.id}"
 
     override val newestTimestamp: Long = event.occurredAt
+
+    override val newestId: Long = event.id
 }
 
 data class GroupedCpuEventListItem(
@@ -29,6 +41,16 @@ data class GroupedCpuEventListItem(
     override val stableKey: String = "cpu_group_" + groupKey + "_" + events.joinToString("_") { it.id.toString() }
 
     override val newestTimestamp: Long = events.maxOf { it.occurredAt }
+
+    override val newestId: Long = events.maxOf { it.id }
+
+    /** Number of events that have a known duration; the divisor of [averageDurationMillis]. */
+    val durationCount: Int = events.count { it.awakeMs != null }
+
+    /** Average over the events with a known duration only, null when there is none. */
+    val averageDurationMillis: Long? = totalDurationMillis
+        ?.takeIf { durationCount > 0 }
+        ?.div(durationCount.toLong())
 }
 
 /**
@@ -71,9 +93,7 @@ fun buildGroupedEventList(
                     .primarySource()
                     ?.let(labels::label),
                 groupKey = groupKey,
-                events = groupedEvents.sortedByDescending {
-                    it.occurredAt
-                },
+                events = groupedEvents.sortedWith(NEWEST_EVENT_FIRST),
                 totalDurationMillis = durations
                     .takeIf {
                         it.isNotEmpty()
@@ -83,7 +103,7 @@ fun buildGroupedEventList(
         )
     }
 
-    return items.sortedByDescending { it.newestTimestamp }
+    return items.sortedWith(NEWEST_ITEM_FIRST)
 }
 
 private const val UNATTRIBUTED_KEY = "unattributed"

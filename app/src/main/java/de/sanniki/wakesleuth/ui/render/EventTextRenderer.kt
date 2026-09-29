@@ -49,6 +49,7 @@ import de.sanniki.wakesleuth.domain.WakeReasonCategory
 import de.sanniki.wakesleuth.domain.WakeReasonEvidence
 import de.sanniki.wakesleuth.domain.primarySource
 import de.sanniki.wakesleuth.domain.source
+import de.sanniki.wakesleuth.ui.common.formatBinaryBytes
 import java.util.Locale
 
 /**
@@ -756,7 +757,11 @@ class EventTextRenderer(
         }
 
         return buildList {
-            add(string(R.string.service_network_duration, sessionDuration(measurement.durationMs ?: 0L)))
+            add(
+                measurement.durationMs
+                    ?.let { string(R.string.service_network_duration, sessionDuration(it)) }
+                    ?: string(R.string.service_network_duration_unknown),
+            )
             add(string(R.string.service_network_apps_with_traffic, measurement.usage.size))
             add(
                 string(
@@ -865,27 +870,7 @@ class EventTextRenderer(
 
     // ---------------- formatting ----------------
 
-    fun bytes(value: Long): String {
-        val safe = value.coerceAtLeast(0L)
-
-        return when {
-            safe >= 1024L * 1024L * 1024L -> {
-                String.format(Locale.getDefault(), "%.1f GB", safe / (1024.0 * 1024.0 * 1024.0))
-            }
-
-            safe >= 1024L * 1024L -> {
-                String.format(Locale.getDefault(), "%.1f MB", safe / (1024.0 * 1024.0))
-            }
-
-            safe >= 1024L -> {
-                String.format(Locale.getDefault(), "%.1f KB", safe / 1024.0)
-            }
-
-            else -> {
-                "$safe B"
-            }
-        }
-    }
+    fun bytes(value: Long): String = formatBinaryBytes(value)
 
     fun sessionDuration(milliseconds: Long): String {
         val totalSeconds = milliseconds.coerceAtLeast(0L) / 1_000L

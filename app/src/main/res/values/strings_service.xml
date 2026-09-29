@@ -49,6 +49,7 @@
     <string name="service_network_no_baseline">No baseline measurement available. Monitoring itself ended normally.</string>
     <string name="service_network_end_failed">Final measurement failed: %1$s</string>
     <string name="service_network_duration">Measurement duration: %1$s</string>
+    <string name="service_network_duration_unknown">Measurement duration: not determinable</string>
     <string name="service_network_apps_with_traffic">Apps with data traffic: %1$d</string>
     <string name="service_network_total">Total: %1$s · Received: %2$s · Sent: %3$s</string>
     <string name="service_network_no_traffic">No app with measurable data traffic in this session.</string>

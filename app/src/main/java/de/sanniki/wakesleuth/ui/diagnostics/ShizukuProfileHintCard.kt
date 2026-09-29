@@ -51,7 +51,7 @@ internal fun ShizukuProfileHintCard(
     val profileIdentity = (
         deviceProfile.profileLabel + " " + deviceProfile.platformLabel + " " + deviceProfile.manufacturer
     ).lowercase(
-        Locale.getDefault(),
+        Locale.ROOT,
     )
 
     val isSamsungProfile = profileIdentity.contains("samsung")

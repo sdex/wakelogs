@@ -1,6 +1,7 @@
 package de.sanniki.wakesleuth
 
 import de.sanniki.wakesleuth.domain.SourceRef
+import java.util.Locale
 
 enum class AppProfileTrend {
     MORE_ACTIVE,
@@ -113,7 +114,7 @@ fun buildAppProfiles(sessions: List<ArchivedSession>): List<AppProfileData> {
             }.thenByDescending {
                 it.networkTotalBytes
             }.thenBy {
-                it.name
+                it.name.lowercase(Locale.ROOT)
             },
         )
 }

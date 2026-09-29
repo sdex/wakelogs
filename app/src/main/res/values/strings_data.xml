@@ -10,6 +10,7 @@
     <string name="source_drm_system_service">DRM system service</string>
     <string name="source_android_network_service">Android network service</string>
     <string name="source_android_system_service">Android system service</string>
+    <string name="source_uid_app">UID %1$d</string>
     <string name="source_samsung_telephony_sim_service">Samsung phone/SIM service</string>
     <string name="source_samsung_offline_finding">Samsung Offline Finding</string>
     <string name="source_oneplus_screen_gestures">OnePlus screen gestures</string>

@@ -30,6 +30,8 @@ data class AnalysisWindow(
                 endMillis = if (running) {
                     now
                 } else {
+                    // stopRequestedAt holds the last recorded activity of interrupted sessions (see
+                    // SessionRepository.finalize); finalizedAt is only the fallback for legacy rows.
                     (session.stopRequestedAt ?: session.finalizedAt ?: session.startedAt)
                         .coerceAtLeast(session.startedAt)
                 },

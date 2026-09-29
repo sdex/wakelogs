@@ -49,6 +49,7 @@
     <string name="service_network_no_baseline">Keine Ausgangsmessung verfügbar. Die Überwachung selbst wurde normal beendet.</string>
     <string name="service_network_end_failed">Endmessung fehlgeschlagen: %1$s</string>
     <string name="service_network_duration">Messdauer: %1$s</string>
+    <string name="service_network_duration_unknown">Messdauer: nicht ermittelbar</string>
     <string name="service_network_apps_with_traffic">Apps mit Datenverkehr: %1$d</string>
     <string name="service_network_total">Gesamt: %1$s · Empfangen: %2$s · Gesendet: %3$s</string>
     <string name="service_network_no_traffic">Keine App mit messbarem Datenverkehr in dieser Sitzung.</string>

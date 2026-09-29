@@ -122,12 +122,7 @@ internal fun GroupedCpuEventCard(
                     )
                 }
 
-            val averageDurationMillis = group.totalDurationMillis
-                ?.takeIf {
-                    group.events.isNotEmpty()
-                }?.div(
-                    group.events.size.toLong(),
-                )
+            val averageDurationMillis = group.averageDurationMillis
 
             averageDurationMillis
                 ?.let { duration ->

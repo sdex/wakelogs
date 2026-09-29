@@ -1,0 +1,3 @@
+#!/bin/sh
+# Strip Co-Authored-By trailers from the commit message.
+sed -i '/^[Cc]o-[Aa]uthored-[Bb]y:/d' "$1"

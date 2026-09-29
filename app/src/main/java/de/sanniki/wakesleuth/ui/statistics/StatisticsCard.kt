@@ -22,8 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.sanniki.wakesleuth.R
-import de.sanniki.wakesleuth.ui.ScreenOnStatistics
 import de.sanniki.wakesleuth.ui.common.PreviewSurface
+import de.sanniki.wakesleuth.ui.statistics.ScreenOnStatistics
 import java.util.Calendar
 
 internal fun startOfTodayMillis(): Long =

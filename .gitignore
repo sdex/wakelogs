@@ -21,6 +21,7 @@ captures/
 *.orig
 *~
 *_snapshot_*/
+.kotlin
 
 # Lokale Sicherungen und Speicherabbilder
 *.before-*

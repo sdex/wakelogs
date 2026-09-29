@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- SourceDisplayName -->
+    <string name="source_android_system">Android system</string>
+    <string name="source_phone_service">Phone service</string>
+    <string name="source_bluetooth_system_service">Bluetooth system service</string>
+    <string name="source_wifi_system_service">Wi-Fi system service</string>
+    <string name="source_media_service">Media service</string>
+    <string name="source_vpn_system_service">VPN system service</string>
+    <string name="source_drm_system_service">DRM system service</string>
+    <string name="source_android_network_service">Android network service</string>
+    <string name="source_android_system_service">Android system service</string>
+    <string name="source_system_service">System service</string>
+    <string name="source_samsung_telephony_sim_service">Samsung phone/SIM service</string>
+    <string name="source_samsung_offline_finding">Samsung Offline Finding</string>
+    <string name="source_oneplus_screen_gestures">OnePlus screen gestures</string>
+    <string name="source_android_phone_service">Android phone service</string>
+    <string name="source_google_play_services">Google Play services</string>
+    <string name="source_android_system_ui">Android System UI</string>
+    <string name="source_android_contacts">Android Contacts</string>
+    <string name="source_android_calendar">Android Calendar</string>
+    <string name="source_samsung_system_service">Samsung system service</string>
+    <string name="source_oneplus_system_service">OnePlus system service</string>
+    <string name="source_android_mms_cellular_service">Android MMS/cellular service</string>
+    <string name="source_android_telephony_storage">Android telephony storage</string>
+    <string name="source_google_cellular_ims_service">Google cellular/IMS service</string>
+    <string name="source_android_bluetooth_service">Android Bluetooth service</string>
+    <string name="source_android_networkstack_service">Android network service</string>
+    <string name="source_unknown_system_source">Unknown system source</string>
+
+    <!-- EventGrouping -->
+    <string name="grouping_source_ambiguous">Not clearly attributable</string>
+
+    <!-- DeviceProfile -->
+    <string name="device_unknown_manufacturer">Unknown</string>
+    <string name="device_unknown_model">Unknown model</string>
+    <string name="device_profile_oneplus">OnePlus profile</string>
+    <string name="device_profile_samsung">Samsung profile</string>
+    <string name="device_profile_generic">General Android profile</string>
+    <string name="device_coverage_high">high</string>
+    <string name="device_coverage_good">good</string>
+    <string name="device_coverage_good_to_medium">good to medium</string>
+    <string name="device_coverage_medium">medium</string>
+    <string name="device_coverage_basic">basic</string>
+    <string name="device_coverage_limited">limited</string>
+    <string name="device_coverage_device_dependent">device-dependent</string>
+    <string name="device_summary_oneplus">Analysis optimized for OnePlus and OxygenOS.</string>
+    <string name="device_summary_samsung">Analysis adapted for Samsung One UI; direct power button detection depends on the device.</string>
+    <string name="device_summary_generic">Basic functions available; data quality depends on the manufacturer.</string>
+
+    <!-- SourceStatistics -->
+    <string name="stats_title">Most active sources</string>
+    <plurals name="stats_source_count">
+        <item quantity="one">%1$d source</item>
+        <item quantity="other">%1$d sources</item>
+    </plurals>
+    <string name="stats_strongest_source">Top source: %1$s</string>
+    <string name="stats_show_details">Show details</string>
+    <string name="stats_hide_details">Hide details</string>
+    <string name="stats_empty">No app or system source has been matched to an event in time yet.</string>
+    <string name="stats_ranking_disclaimer">The ranking shows activity that matches in time. A match does not prove that the app alone was responsible for the wake-up.</string>
+    <string name="stats_label_display">Screen</string>
+    <string name="stats_label_notifications">Notifications</string>
+    <string name="stats_window_ongoing">%1$s · running</string>
+    <string name="stats_value_not_determined">not determined</string>
+    <string name="stats_notification">Notification</string>
+</resources>

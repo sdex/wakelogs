@@ -1,5 +1,6 @@
 package de.sanniki.wakesleuth
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.text.SimpleDateFormat
@@ -61,7 +65,7 @@ fun WakeTimeline(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Zeitstrahl",
+                        text = stringResource(R.string.timeline_title),
                         style =
                             MaterialTheme.typography
                                 .titleMedium,
@@ -70,7 +74,7 @@ fun WakeTimeline(
 
                     Text(
                         text =
-                            "Neueste Ereignisse zuerst",
+                            stringResource(R.string.timeline_subtitle),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -82,7 +86,11 @@ fun WakeTimeline(
 
                 Text(
                     text =
-                        "${timelineEvents.size} Ereignisse",
+                        pluralStringResource(
+                            R.plurals.timeline_event_count,
+                            timelineEvents.size,
+                            timelineEvents.size
+                        ),
                     color =
                         MaterialTheme.colorScheme.primary,
                     style =
@@ -228,6 +236,9 @@ private fun TimelineEventContent(
     detailLevel: DetailLevel,
     modifier: Modifier = Modifier
 ) {
+    val context =
+        LocalContext.current
+
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(13.dp),
@@ -273,6 +284,7 @@ private fun TimelineEventContent(
                     detailLevel
                 ) {
                     timelineSummary(
+                        context = context,
                         event = event,
                         detailLevel =
                             detailLevel
@@ -414,6 +426,7 @@ private fun timelineLineHeight(
     }
 
 private fun timelineSummary(
+    context: Context,
     event: WakeEvent,
     detailLevel: DetailLevel
 ): String {
@@ -430,17 +443,22 @@ private fun timelineSummary(
 
     val preferredPrefixes =
         listOf(
-            "Direkter Aufweckgrund:",
-            "Wahrscheinliche Ursache:",
-            "Mögliche Ursache:",
-            "Nachträglich erkannte Ursache:",
-            "Mögliche Quelle:",
-            "Systemgrund:",
-            "CPU-Wachzeit:",
-            "Quelle:",
-            "Art:",
-            "Ursache:"
-        )
+            R.string.timeline_prefix_direct_wake_reason,
+            R.string.timeline_prefix_likely_cause,
+            R.string.timeline_prefix_possible_cause,
+            R.string.timeline_prefix_later_detected_cause,
+            R.string.timeline_prefix_possible_source,
+            R.string.timeline_prefix_system_reason,
+            R.string.timeline_prefix_cpu_awake_time,
+            R.string.timeline_prefix_source,
+            R.string.timeline_prefix_kind,
+            R.string.timeline_prefix_cause
+        ).flatMap {
+            LocalizedText.variants(
+                context,
+                it
+            )
+        }
 
     val usefulLines =
         event.details
@@ -482,39 +500,40 @@ private fun timelineSummary(
         )
 }
 
+@Composable
 private fun timelineEventTypeLabel(
     type: String
 ): String {
     return when (type) {
         "MONITOR_START" ->
-            "ÜBERWACHUNG GESTARTET"
+            stringResource(R.string.timeline_type_monitor_start)
 
         "MONITOR_STOP" ->
-            "ÜBERWACHUNG GESTOPPT"
+            stringResource(R.string.timeline_type_monitor_stop)
 
         "SCREEN_ON" ->
-            "DISPLAY AN"
+            stringResource(R.string.timeline_type_screen_on)
 
         "SCREEN_OFF" ->
-            "DISPLAY AUS"
+            stringResource(R.string.timeline_type_screen_off)
 
         "CPU_WAKEUP" ->
-            "CPU-WAKEUP"
+            stringResource(R.string.timeline_type_cpu_wakeup)
 
         "NOTIFICATION" ->
-            "HINWEIS"
+            stringResource(R.string.timeline_type_notification)
 
         "POWER_CONNECTED" ->
-            "STROM VERBUNDEN"
+            stringResource(R.string.timeline_type_power_connected)
 
         "POWER_DISCONNECTED" ->
-            "STROM GETRENNT"
+            stringResource(R.string.timeline_type_power_disconnected)
 
         "USB_ATTACHED" ->
-            "USB VERBUNDEN"
+            stringResource(R.string.timeline_type_usb_attached)
 
         "USB_DETACHED" ->
-            "USB GETRENNT"
+            stringResource(R.string.timeline_type_usb_detached)
 
         else ->
             type.replace(
@@ -524,6 +543,7 @@ private fun timelineEventTypeLabel(
     }
 }
 
+@Composable
 private fun formatTimelineDuration(
     millis: Long
 ): String {
@@ -548,21 +568,39 @@ private fun formatTimelineDuration(
 
     return when {
         days > 0L ->
-            "${days} T ${hours} Std später"
+            stringResource(
+                R.string.timeline_gap_days_hours,
+                days,
+                hours
+            )
 
         hours > 0L ->
-            "${hours} Std ${minutes} Min später"
+            stringResource(
+                R.string.timeline_gap_hours_minutes,
+                hours,
+                minutes
+            )
 
         minutes > 0L ->
-            "${minutes} Min ${seconds} Sek später"
+            stringResource(
+                R.string.timeline_gap_minutes_seconds,
+                minutes,
+                seconds
+            )
 
         totalSeconds > 0L ->
-            "${totalSeconds} Sek später"
+            stringResource(
+                R.string.timeline_gap_seconds,
+                totalSeconds
+            )
 
         millis > 0L ->
-            "${millis} ms später"
+            stringResource(
+                R.string.timeline_gap_millis,
+                millis
+            )
 
         else ->
-            "zeitgleich"
+            stringResource(R.string.timeline_gap_simultaneous)
     }
 }

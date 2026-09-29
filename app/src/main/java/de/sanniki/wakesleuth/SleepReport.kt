@@ -1,5 +1,7 @@
 package de.sanniki.wakesleuth
 
+import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,6 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -84,16 +89,16 @@ private data class NetworkSessionSummary(
 )
 
 private enum class SuspicionLevel(
-    val label: String
+    @StringRes val labelRes: Int
 ) {
     LIKELY_INVOLVED(
-        "Wahrscheinlich beteiligt"
+        R.string.sleep_level_likely_involved
     ),
     TEMPORALLY_NOTICEABLE(
-        "Zeitlich auffällig"
+        R.string.sleep_level_temporally_noticeable
     ),
     COMPANION_ACTIVITY(
-        "Aktiv · kein Wakeup-Bezug"
+        R.string.sleep_level_companion_activity
     )
 }
 
@@ -134,12 +139,16 @@ fun SleepReportCard(
     monitoring: Boolean,
     detailLevel: DetailLevel
 ) {
+    val context =
+        LocalContext.current
+
     val analysis =
         remember(
             events,
             monitoring
         ) {
             buildSleepAnalysis(
+                context = context,
                 events = events,
                 monitoring = monitoring
             )
@@ -208,18 +217,29 @@ fun SleepReportCard(
                         )
 
                         SleepDetailSectionButton(
-                            title = "Netzwerk",
+                            title =
+                                stringResource(
+                                    R.string.sleep_section_network
+                                ),
                             summary =
                                 buildString {
                                     append(
                                         networkSession.total
-                                            ?: "Keine Verkehrsdaten"
+                                            ?: stringResource(
+                                                R.string.sleep_no_traffic_data
+                                            )
                                     )
 
                                     networkSession.activeApps
                                         ?.let { count ->
+                                            append(" · ")
+
                                             append(
-                                                " · $count Apps"
+                                                pluralStringResource(
+                                                    R.plurals.sleep_app_count,
+                                                    count,
+                                                    count
+                                                )
                                             )
                                         }
                                 },
@@ -269,9 +289,15 @@ fun SleepReportCard(
 
                     SleepDetailSectionButton(
                         title =
-                            "Aktivitäts-Einordnung",
+                            stringResource(
+                                R.string.sleep_section_activity_classification
+                            ),
                         summary =
-                            "${analysis.suspicionCandidates.size} aktive Quellen eingeordnet",
+                            pluralStringResource(
+                                R.plurals.sleep_active_sources_classified,
+                                analysis.suspicionCandidates.size,
+                                analysis.suspicionCandidates.size
+                            ),
                         expanded =
                             expandedDetailSection.value ==
                                 "activity",
@@ -318,16 +344,22 @@ fun SleepReportCard(
 
                     SleepDetailSectionButton(
                         title =
-                            "Ruhephasen und Verlauf",
+                            stringResource(
+                                R.string.sleep_section_quiet_phases_history
+                            ),
                         summary =
                             analysis.longestQuietPhase
                                 ?.let { phase ->
-                                    "Längste Ruhe: " +
+                                    stringResource(
+                                        R.string.sleep_longest_rest_summary,
                                         formatDurationCompact(
                                             phase.durationMillis
                                         )
+                                    )
                                 }
-                                ?: "Noch nicht ermittelbar",
+                                ?: stringResource(
+                                    R.string.sleep_not_determinable
+                                ),
                         expanded =
                             expandedDetailSection.value ==
                                 "quiet",
@@ -387,9 +419,15 @@ fun SleepReportCard(
 
                     SleepDetailSectionButton(
                         title =
-                            "Technische Kennzahlen",
+                            stringResource(
+                                R.string.sleep_technical_metrics
+                            ),
                         summary =
-                            "${analysis.totalWakeups} Aktivitäten insgesamt",
+                            pluralStringResource(
+                                R.plurals.sleep_total_activities,
+                                analysis.totalWakeups,
+                                analysis.totalWakeups
+                            ),
                         expanded =
                             expandedDetailSection.value ==
                                 "technical",
@@ -443,9 +481,15 @@ fun SleepReportCard(
 
                     SleepDetailSectionButton(
                         title =
-                            "Hinweise und Einordnung",
+                            stringResource(
+                                R.string.sleep_section_hints
+                            ),
                         summary =
-                            "${visibleHints.size} Hinweise",
+                            pluralStringResource(
+                                R.plurals.sleep_hint_count,
+                                visibleHints.size,
+                                visibleHints.size
+                            ),
                         expanded =
                             expandedDetailSection.value ==
                                 "hints",
@@ -484,7 +528,9 @@ fun SleepReportCard(
 
                 Text(
                     text =
-                        "Der Ruhe-Score bewertet ausschließlich die technische Geräteaktivität und nicht deinen persönlichen Schlaf.",
+                        stringResource(
+                            R.string.sleep_score_disclaimer
+                        ),
                     color =
                         MaterialTheme.colorScheme
                             .onSurfaceVariant,
@@ -616,13 +662,19 @@ private fun SleepAnalysisPendingCard(
                 text =
                     when {
                         monitoring ->
-                            "Analyse wird vorbereitet"
+                            stringResource(
+                                R.string.sleep_pending_preparing
+                            )
 
                         hasRecordedEvents ->
-                            "Analyse noch zu kurz"
+                            stringResource(
+                                R.string.sleep_pending_too_short
+                            )
 
                         else ->
-                            "Noch keine Analyse vorhanden"
+                            stringResource(
+                                R.string.sleep_no_analysis_yet
+                            )
                     },
                 style =
                     MaterialTheme.typography
@@ -638,13 +690,19 @@ private fun SleepAnalysisPendingCard(
                 text =
                     when {
                         monitoring ->
-                            "Für erste Ergebnisse mindestens 1 Minute aufzeichnen."
+                            stringResource(
+                                R.string.sleep_pending_preparing_hint
+                            )
 
                         hasRecordedEvents ->
-                            "Der aufgezeichnete Zeitraum reicht noch nicht für eine Auswertung aus."
+                            stringResource(
+                                R.string.sleep_pending_too_short_hint
+                            )
 
                         else ->
-                            "Starte eine Analyse, um die Geräteaktivität auszuwerten."
+                            stringResource(
+                                R.string.sleep_pending_start_hint
+                            )
                     },
                 color =
                     MaterialTheme.colorScheme
@@ -690,7 +748,10 @@ private fun SleepAnalysisHeader(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = "Geräteruhe-Analyse",
+                text =
+                    stringResource(
+                        R.string.sleep_header_title
+                    ),
                 style =
                     MaterialTheme.typography
                         .titleMedium,
@@ -772,7 +833,10 @@ private fun SleepScoreCard(
                     Text(
                         text =
                             if (provisional) {
-                                "Vorläufig · $rating"
+                                stringResource(
+                                    R.string.sleep_provisional_rating,
+                                    rating
+                                )
                             } else {
                                 rating
                             },
@@ -792,8 +856,10 @@ private fun SleepScoreCard(
                     Text(
                         text =
                             if (provisional) {
-                                "Kurze Messung: " +
+                                stringResource(
+                                    R.string.sleep_short_measurement_summary,
                                     summary
+                                )
                             } else {
                                 summary
                             },
@@ -833,9 +899,13 @@ private fun SleepScoreCard(
                     Text(
                         text =
                             if (provisional) {
-                                "vorläufig"
+                                stringResource(
+                                    R.string.sleep_provisional
+                                )
                             } else {
-                                "von 100"
+                                stringResource(
+                                    R.string.sleep_score_of_100
+                                )
                             },
                         color =
                             MaterialTheme.colorScheme
@@ -911,7 +981,10 @@ private fun SleepPrimaryValues(
                 value =
                     analysis.displayWakeups
                         .toString(),
-                label = "Display an",
+                label =
+                    stringResource(
+                        R.string.sleep_metric_screen_on
+                    ),
                 modifier = Modifier.weight(1f)
             )
 
@@ -919,7 +992,10 @@ private fun SleepPrimaryValues(
                 value =
                     analysis.cpuWakeups
                         .toString(),
-                label = "CPU-Wakes",
+                label =
+                    stringResource(
+                        R.string.sleep_metric_cpu_wakes
+                    ),
                 modifier = Modifier.weight(1f)
             )
 
@@ -935,13 +1011,17 @@ private fun SleepPrimaryValues(
                     },
                 label =
                     if (shortSession) {
-                        "in " +
+                        stringResource(
+                            R.string.sleep_metric_in_duration,
                             formatDurationPrecise(
                                 analysis.window
                                     .durationMillis
                             )
+                        )
                     } else {
-                        "pro Stunde"
+                        stringResource(
+                            R.string.sleep_metric_per_hour
+                        )
                     },
                 modifier = Modifier.weight(1f)
             )
@@ -954,7 +1034,9 @@ private fun SleepPrimaryValues(
 
             Text(
                 text =
-                    "Stundenwert ab 15 Minuten Messdauer.",
+                    stringResource(
+                        R.string.sleep_hourly_value_note
+                    ),
                 modifier = Modifier.fillMaxWidth(),
                 color =
                     MaterialTheme.colorScheme
@@ -1039,7 +1121,9 @@ private fun NetworkSessionSection(
         ) {
             Text(
                 text =
-                    "Netzwerk während der Sitzung",
+                    stringResource(
+                        R.string.sleep_network_during_session
+                    ),
                 style =
                     MaterialTheme.typography
                         .titleSmall,
@@ -1053,7 +1137,10 @@ private fun NetworkSessionSection(
             summary.total
                 ?.let { total ->
                     SleepValueRow(
-                        label = "Datenverkehr",
+                        label =
+                            stringResource(
+                                R.string.sleep_data_traffic
+                            ),
                         value = total
                     )
                 }
@@ -1061,7 +1148,10 @@ private fun NetworkSessionSection(
             summary.activeApps
                 ?.let { activeApps ->
                     SleepValueRow(
-                        label = "Aktive Apps",
+                        label =
+                            stringResource(
+                                R.string.sleep_active_apps
+                            ),
                         value =
                             activeApps.toString()
                     )
@@ -1074,7 +1164,10 @@ private fun NetworkSessionSection(
                 summary.received
                     ?.let { received ->
                         SleepValueRow(
-                            label = "Empfangen",
+                            label =
+                                stringResource(
+                                    R.string.sleep_received
+                                ),
                             value = received
                         )
                     }
@@ -1082,7 +1175,10 @@ private fun NetworkSessionSection(
                 summary.sent
                     ?.let { sent ->
                         SleepValueRow(
-                            label = "Gesendet",
+                            label =
+                                stringResource(
+                                    R.string.sleep_sent
+                                ),
                             value = sent
                         )
                     }
@@ -1090,7 +1186,10 @@ private fun NetworkSessionSection(
                 summary.duration
                     ?.let { duration ->
                         SleepValueRow(
-                            label = "Messdauer",
+                            label =
+                                stringResource(
+                                    R.string.sleep_measurement_duration
+                                ),
                             value = duration
                         )
                     }
@@ -1115,13 +1214,10 @@ private fun NetworkSessionSection(
 
                 Text(
                     text =
-                        if (
-                            visibleApps.size == 1
-                        ) {
-                            "Aktivste App"
-                        } else {
-                            "Aktivste Apps"
-                        },
+                        pluralStringResource(
+                            R.plurals.sleep_most_active_apps,
+                            visibleApps.size
+                        ),
                     color =
                         MaterialTheme.colorScheme
                             .onSurfaceVariant,
@@ -1146,6 +1242,7 @@ private fun NetworkSessionSection(
                         Text(
                             text =
                                 sourceDisplayName(
+                                    LocalContext.current,
                                     app.name
                                 ),
                             modifier =
@@ -1196,7 +1293,10 @@ private fun NetworkSessionSection(
                                 app.received
                                     ?.let {
                                         append(
-                                            "Empfangen: $it"
+                                            stringResource(
+                                                R.string.sleep_received_value,
+                                                it
+                                            )
                                         )
                                     }
 
@@ -1210,7 +1310,10 @@ private fun NetworkSessionSection(
                                 app.sent
                                     ?.let {
                                         append(
-                                            "Gesendet: $it"
+                                            stringResource(
+                                                R.string.sleep_sent_value,
+                                                it
+                                            )
                                         )
                                     }
                             },
@@ -1259,7 +1362,9 @@ private fun NetworkSessionSection(
 
             Text(
                 text =
-                    "Datenverkehr zeigt App-Aktivität, beweist aber keinen direkten Zusammenhang mit einem Wakeup.",
+                    stringResource(
+                        R.string.sleep_network_traffic_disclaimer
+                    ),
                 color =
                     MaterialTheme.colorScheme
                         .onSurfaceVariant,
@@ -1312,7 +1417,10 @@ private fun SuspicionRatingSection(
             modifier = Modifier.padding(14.dp)
         ) {
             Text(
-                text = "Aktivitäts-Einordnung",
+                text =
+                    stringResource(
+                        R.string.sleep_section_activity_classification
+                    ),
                 style =
                     MaterialTheme.typography
                         .titleSmall,
@@ -1325,7 +1433,9 @@ private fun SuspicionRatingSection(
 
             Text(
                 text =
-                    "Einordnung aus CPU-Wakeups und Netzwerkaktivität derselben Sitzung.",
+                    stringResource(
+                        R.string.sleep_activity_classification_intro
+                    ),
                 color =
                     MaterialTheme.colorScheme
                         .onSurfaceVariant,
@@ -1366,7 +1476,9 @@ private fun SuspicionRatingSection(
 
                     Text(
                         text =
-                            candidate.level.label,
+                            stringResource(
+                                candidate.level.labelRes
+                            ),
                         modifier =
                             Modifier.fillMaxWidth(),
                         color =
@@ -1411,9 +1523,11 @@ private fun SuspicionRatingSection(
                                     0
                                 ) {
                                     append(
-                                        "CPU-Zuordnungen: " +
+                                        stringResource(
+                                            R.string.sleep_cpu_attributions,
                                             candidate
                                                 .cpuOccurrences
+                                        )
                                     )
                                 }
 
@@ -1425,8 +1539,10 @@ private fun SuspicionRatingSection(
                                         }
 
                                         append(
-                                            "Netzwerk: " +
+                                            stringResource(
+                                                R.string.sleep_network_value,
                                                 traffic
+                                            )
                                         )
                                     }
                             }
@@ -1493,9 +1609,15 @@ private fun SuspicionRatingSection(
                         Text(
                             text =
                                 if (showAllSources.value) {
-                                    "Weniger anzeigen"
+                                    stringResource(
+                                        R.string.sleep_show_less
+                                    )
                                 } else {
-                                    "Weitere $hiddenCount anzeigen"
+                                    pluralStringResource(
+                                        R.plurals.sleep_show_more,
+                                        hiddenCount,
+                                        hiddenCount
+                                    )
                                 }
                         )
                     }
@@ -1507,7 +1629,9 @@ private fun SuspicionRatingSection(
 
             Text(
                 text =
-                    "Netzwerkaktivität zeigt Nutzung oder Hintergrundverkehr. Ein Wakeup-Bezug wird nur bei passenden CPU-Hinweisen angenommen.",
+                    stringResource(
+                        R.string.sleep_activity_classification_disclaimer
+                    ),
                 color =
                     MaterialTheme.colorScheme
                         .onSurfaceVariant,
@@ -1524,7 +1648,10 @@ private fun QuietPhaseSection(
     analysis: SleepAnalysisData
 ) {
     Text(
-        text = "Ruhephasen",
+        text =
+            stringResource(
+                R.string.sleep_quiet_phases
+            ),
         style =
             MaterialTheme.typography
                 .titleSmall,
@@ -1536,7 +1663,10 @@ private fun QuietPhaseSection(
     )
 
     SleepValueRow(
-        label = "Längste Ruhephase",
+        label =
+            stringResource(
+                R.string.sleep_longest_quiet_phase
+            ),
         value =
             analysis.longestQuietPhase
                 ?.let {
@@ -1544,14 +1674,18 @@ private fun QuietPhaseSection(
                         it.durationMillis
                     )
                 }
-                ?: "Noch nicht ermittelbar"
+                ?: stringResource(
+                    R.string.sleep_not_determinable
+                )
     )
 
     analysis.secondLongestQuietPhase
         ?.let { phase ->
             SleepValueRow(
                 label =
-                    "Zweitlängste Ruhephase",
+                    stringResource(
+                        R.string.sleep_second_longest_quiet_phase
+                    ),
                 value =
                     formatDurationCompact(
                         phase.durationMillis
@@ -1560,7 +1694,10 @@ private fun QuietPhaseSection(
         }
 
     SleepValueRow(
-        label = "Durchschnittliche Ruhephase",
+        label =
+            stringResource(
+                R.string.sleep_average_quiet_phase
+            ),
         value =
             if (
                 analysis.averageQuietMillis >
@@ -1570,7 +1707,9 @@ private fun QuietPhaseSection(
                     analysis.averageQuietMillis
                 )
             } else {
-                "Noch nicht ermittelbar"
+                stringResource(
+                    R.string.sleep_not_determinable
+                )
             }
     )
 
@@ -1582,14 +1721,15 @@ private fun QuietPhaseSection(
 
             Text(
                 text =
-                    "Längste Phase: " +
+                    stringResource(
+                        R.string.sleep_longest_phase_range,
                         formatTime(
                             phase.startMillis
-                        ) +
-                        " – " +
+                        ),
                         formatTime(
                             phase.endMillis
-                        ),
+                        )
+                    ),
                 color =
                     MaterialTheme.colorScheme
                         .onSurfaceVariant,
@@ -1605,7 +1745,10 @@ private fun HourlyActivityChart(
     activity: List<HourActivity>
 ) {
     Text(
-        text = "Aktivität im Verlauf",
+        text =
+            stringResource(
+                R.string.sleep_activity_history
+            ),
         style =
             MaterialTheme.typography
                 .titleSmall,
@@ -1618,7 +1761,9 @@ private fun HourlyActivityChart(
 
     Text(
         text =
-            "Höhere Balken bedeuten mehr Display- oder CPU-Aktivität.",
+            stringResource(
+                R.string.sleep_activity_history_hint
+            ),
         color =
             MaterialTheme.colorScheme
                 .onSurfaceVariant,
@@ -1634,7 +1779,9 @@ private fun HourlyActivityChart(
     if (activity.isEmpty()) {
         Text(
             text =
-                "Für die grafische Auswertung sind noch keine Aktivitäten vorhanden.",
+                stringResource(
+                    R.string.sleep_activity_history_empty
+                ),
             color =
                 MaterialTheme.colorScheme
                     .onSurfaceVariant,
@@ -1762,7 +1909,10 @@ private fun ExpertMetricsSection(
     analysis: SleepAnalysisData
 ) {
     Text(
-        text = "Technische Kennzahlen",
+        text =
+            stringResource(
+                R.string.sleep_technical_metrics
+            ),
         style =
             MaterialTheme.typography
                 .titleSmall,
@@ -1774,7 +1924,10 @@ private fun ExpertMetricsSection(
     )
 
     SleepValueRow(
-        label = "Zugeordnete Display-Wakeups",
+        label =
+            stringResource(
+                R.string.sleep_attributed_display_wakeups
+            ),
         value =
             analysis
                 .explainedDisplayWakeups
@@ -1782,7 +1935,10 @@ private fun ExpertMetricsSection(
     )
 
     SleepValueRow(
-        label = "Ungeklärte Display-Wakeups",
+        label =
+            stringResource(
+                R.string.sleep_unexplained_display_wakeups
+            ),
         value =
             analysis
                 .unexplainedDisplayWakeups
@@ -1790,7 +1946,10 @@ private fun ExpertMetricsSection(
     )
 
     SleepValueRow(
-        label = "Aktivitäten insgesamt",
+        label =
+            stringResource(
+                R.string.sleep_total_activities_label
+            ),
         value =
             analysis.totalWakeups
                 .toString()
@@ -1798,13 +1957,17 @@ private fun ExpertMetricsSection(
 
     SleepValueRow(
         label =
-            "Mittlerer Abstand zwischen Aktivitäten",
+            stringResource(
+                R.string.sleep_average_activity_distance
+            ),
         value =
             analysis.averageWakeDistanceMillis
                 ?.let {
                     formatDurationCompact(it)
                 }
-                ?: "Noch nicht ermittelbar"
+                ?: stringResource(
+                    R.string.sleep_not_determinable
+                )
     )
 
     if (
@@ -1812,29 +1975,39 @@ private fun ExpertMetricsSection(
         15L * 60L * 1_000L
     ) {
         SleepValueRow(
-            label = "Kurzer Messzeitraum",
+            label =
+                stringResource(
+                    R.string.sleep_short_measurement_period
+                ),
             value =
-                analysis.totalWakeups
-                    .toString() +
-                    " Ereignisse in " +
+                pluralStringResource(
+                    R.plurals.sleep_events_in_duration,
+                    analysis.totalWakeups,
+                    analysis.totalWakeups,
                     formatDurationPrecise(
                         analysis.window
                             .durationMillis
                     )
+                )
         )
     } else {
         analysis.busiestHour
             ?.let { hour ->
                 SleepValueRow(
-                    label = "Aktivste Stunde",
+                    label =
+                        stringResource(
+                            R.string.sleep_busiest_hour
+                        ),
                     value =
-                        hour.hour
-                            .toString()
-                            .padStart(
-                                2,
-                                '0'
-                            ) +
-                            ":00–" +
+                        pluralStringResource(
+                            R.plurals.sleep_busiest_hour_value,
+                            hour.total,
+                            hour.hour
+                                .toString()
+                                .padStart(
+                                    2,
+                                    '0'
+                                ),
                             (
                                 (hour.hour + 1) % 24
                             )
@@ -1842,10 +2015,9 @@ private fun ExpertMetricsSection(
                                 .padStart(
                                     2,
                                     '0'
-                                ) +
-                            ":00 · " +
-                            hour.total +
-                            " Ereignisse"
+                                ),
+                            hour.total
+                        )
                 )
             }
     }
@@ -1856,7 +2028,10 @@ private fun SleepHintsSection(
     hints: List<String>
 ) {
     Text(
-        text = "Einordnung",
+        text =
+            stringResource(
+                R.string.sleep_classification
+            ),
         style =
             MaterialTheme.typography
                 .titleSmall,
@@ -1941,11 +2116,13 @@ private fun SleepValueRow(
 }
 
 private fun buildSleepAnalysis(
+    context: Context,
     events: List<WakeEvent>,
     monitoring: Boolean
 ): SleepAnalysisData {
     val window =
         calculateSleepAnalysisWindow(
+            context = context,
             events = events,
             monitoring = monitoring
         )
@@ -1988,12 +2165,14 @@ private fun buildSleepAnalysis(
             }
             ?.let {
                 parseNetworkSessionSummary(
+                    context,
                     it.details
                 )
             }
 
     val suspicionCandidates =
         buildSuspicionCandidates(
+            context = context,
             relevantEvents =
                 relevantEvents,
             networkSession =
@@ -2002,12 +2181,18 @@ private fun buildSleepAnalysis(
 
     val explainedDisplay =
         displayEvents.count {
-            hasTechnicalExplanation(it)
+            hasTechnicalExplanation(
+                context,
+                it
+            )
         }
 
     val unexplainedDisplay =
         displayEvents.count {
-            isTechnicallyUnexplained(it)
+            isTechnicallyUnexplained(
+                context,
+                it
+            )
         }
 
     val quietPhases =
@@ -2109,11 +2294,13 @@ private fun buildSleepAnalysis(
 
     val rating =
         sleepScoreRating(
+            context,
             score
         )
 
     val summary =
         sleepScoreSummary(
+            context = context,
             score = score,
             totalWakeups = totalWakeups,
             displayWakeups =
@@ -2122,6 +2309,7 @@ private fun buildSleepAnalysis(
 
     val hints =
         buildSleepHints(
+            context = context,
             window = window,
             displayWakeups =
                 displayEvents.size,
@@ -2180,6 +2368,7 @@ private fun buildSleepAnalysis(
 }
 
 private fun buildSuspicionCandidates(
+    context: Context,
     relevantEvents: List<WakeEvent>,
     networkSession: NetworkSessionSummary?
 ): List<SuspicionCandidate> {
@@ -2190,18 +2379,29 @@ private fun buildSuspicionCandidates(
             }
             .mapNotNull { event ->
                 extractCpuPossibleSource(
+                    context,
                     event
                 )
             }
             .map {
-                normalizeSuspicionSource(it)
+                normalizeSuspicionSource(
+                    context,
+                    it
+                )
             }
-            .filter {
-                it.isNotBlank() &&
-                    !it.equals(
-                        "Nicht eindeutig zuordenbar",
-                        ignoreCase = true
-                    )
+            .filter { source ->
+                source.isNotBlank() &&
+                    LocalizedText
+                        .variants(
+                            context,
+                            R.string.bg_possible_source_ambiguous
+                        )
+                        .none {
+                            source.equals(
+                                it,
+                                ignoreCase = true
+                            )
+                        }
             }
 
     val cpuCounts =
@@ -2223,6 +2423,7 @@ private fun buildSuspicionCandidates(
         val matchingNetwork =
             networkApps.firstOrNull {
                 sourcesLikelyMatch(
+                    context,
                     cpuSource,
                     it.name
                 )
@@ -2247,16 +2448,24 @@ private fun buildSuspicionCandidates(
             when {
                 cpuCount >= 2 &&
                     matchingNetwork != null ->
-                    "Die Quelle wurde mehrfach bei CPU-Wakeups erkannt und verursachte zusätzlich Datenverkehr."
+                    context.getString(
+                        R.string.sleep_explanation_cpu_repeated_network
+                    )
 
                 cpuCount >= 2 ->
-                    "Die Quelle wurde in dieser Sitzung mehrfach zeitlich einem CPU-Wakeup zugeordnet."
+                    context.getString(
+                        R.string.sleep_explanation_cpu_repeated
+                    )
 
                 matchingNetwork != null ->
-                    "Die Quelle wurde einem CPU-Wakeup zugeordnet und war außerdem im Netzwerk aktiv."
+                    context.getString(
+                        R.string.sleep_explanation_cpu_network
+                    )
 
                 else ->
-                    "Die Quelle wurde einmal im kurzen Zeitfenster eines CPU-Wakeups erkannt."
+                    context.getString(
+                        R.string.sleep_explanation_cpu_once
+                    )
             }
 
         result.add(
@@ -2276,6 +2485,7 @@ private fun buildSuspicionCandidates(
         val alreadyIncluded =
             result.any { candidate ->
                 sourcesLikelyMatch(
+                    context,
                     candidate.name,
                     app.name
                 )
@@ -2286,13 +2496,16 @@ private fun buildSuspicionCandidates(
                 SuspicionCandidate(
                     name =
                         sourceDisplayName(
+                            context,
                             app.name
                         ),
                     level =
                         SuspicionLevel
                             .COMPANION_ACTIVITY,
                     explanation =
-                        "Die App war während der Sitzung aktiv, wurde aber keinem CPU-Wakeup zugeordnet.",
+                        context.getString(
+                            R.string.sleep_explanation_network_only
+                        ),
                     cpuOccurrences = 0,
                     networkTraffic =
                         app.total
@@ -2304,6 +2517,7 @@ private fun buildSuspicionCandidates(
     return result
         .distinctBy {
             normalizeComparisonSource(
+                context,
                 it.name
             )
         }
@@ -2329,6 +2543,7 @@ private fun buildSuspicionCandidates(
 }
 
 private fun extractCpuPossibleSource(
+    context: Context,
     event: WakeEvent
 ): String? {
     return event.details
@@ -2337,8 +2552,10 @@ private fun extractCpuPossibleSource(
             it.trim()
         }
         .firstOrNull {
-            it.startsWith(
-                "Mögliche Quelle:"
+            LocalizedText.startsWithAny(
+                it,
+                context,
+                R.string.sleep_label_possible_source
             )
         }
         ?.substringAfter(":")
@@ -2347,16 +2564,20 @@ private fun extractCpuPossibleSource(
 }
 
 private fun normalizeSuspicionSource(
+    context: Context,
     source: String
 ): String {
     val cleaned =
-        source
-            .trim()
-            .trimStart('*')
-            .trimEnd('*')
-            .removePrefix(
-                "CPU-Wakeup · "
+        LocalizedText
+            .removeAnyPrefix(
+                source
+                    .trim()
+                    .trimStart('*')
+                    .trimEnd('*'),
+                context,
+                R.string.sleep_label_cpu_wakeup_prefix
             )
+            .trimStart()
             .removePrefix(
                 "Wakeup-Alarm: "
             )
@@ -2378,8 +2599,10 @@ private fun normalizeSuspicionSource(
 
     return when {
         uidMatch != null ->
-            "Systemdienst · UID " +
+            context.getString(
+                R.string.sleep_system_service_uid,
                 uidMatch.groupValues[1]
+            )
 
         lower.contains(
             "com.google.android.gms"
@@ -2396,7 +2619,9 @@ private fun normalizeSuspicionSource(
             lower.contains(
                 "gms"
             ) ->
-            "Google-Dienste"
+            context.getString(
+                R.string.sleep_google_services
+            )
 
         lower.contains("whatsapp") ->
             "WhatsApp"
@@ -2404,7 +2629,9 @@ private fun normalizeSuspicionSource(
         lower.contains("oplus") ||
             lower.contains("oneplus") ||
             lower.contains("athena") ->
-            "OnePlus-System"
+            context.getString(
+                R.string.sleep_oneplus_system
+            )
 
         lower.contains("samsung browser") ||
             lower.contains(
@@ -2431,14 +2658,21 @@ private fun normalizeSuspicionSource(
 }
 
 private fun sourcesLikelyMatch(
+    context: Context,
     first: String,
     second: String
 ): Boolean {
     val a =
-        normalizeComparisonSource(first)
+        normalizeComparisonSource(
+            context,
+            first
+        )
 
     val b =
-        normalizeComparisonSource(second)
+        normalizeComparisonSource(
+            context,
+            second
+        )
 
     if (
         a.isBlank() ||
@@ -2461,9 +2695,13 @@ private fun sourcesLikelyMatch(
 }
 
 private fun normalizeComparisonSource(
+    context: Context,
     value: String
 ): String {
-    return normalizeSuspicionSource(value)
+    return normalizeSuspicionSource(
+        context,
+        value
+    )
         .lowercase(
             Locale.getDefault()
         )
@@ -2474,6 +2712,7 @@ private fun normalizeComparisonSource(
 }
 
 private fun parseNetworkSessionSummary(
+    context: Context,
     details: String
 ): NetworkSessionSummary {
     val lines =
@@ -2483,19 +2722,31 @@ private fun parseNetworkSessionSummary(
             }
 
     fun valueAfter(
-        prefix: String
+        @StringRes prefixRes: Int
     ): String? {
         return lines
             .firstOrNull {
-                it.startsWith(prefix)
+                LocalizedText.startsWithAny(
+                    it,
+                    context,
+                    prefixRes
+                )
             }
-            ?.substringAfter(prefix)
+            ?.let {
+                LocalizedText.removeAnyPrefix(
+                    it,
+                    context,
+                    prefixRes
+                )
+            }
             ?.trim()
             ?.ifBlank { null }
     }
 
     val trafficLine =
-        valueAfter("Gesamt:")
+        valueAfter(
+            R.string.sleep_label_total
+        )
 
     val total =
         trafficLine
@@ -2505,26 +2756,34 @@ private fun parseNetworkSessionSummary(
 
     val received =
         trafficLine
-            ?.substringAfter(
-                "Empfangen:",
-                ""
-            )
+            ?.let {
+                LocalizedText.substringAfterAny(
+                    it,
+                    context,
+                    R.string.sleep_label_received,
+                    missing = ""
+                )
+            }
             ?.substringBefore("·")
             ?.trim()
             ?.ifBlank { null }
 
     val sent =
         trafficLine
-            ?.substringAfter(
-                "Gesendet:",
-                ""
-            )
+            ?.let {
+                LocalizedText.substringAfterAny(
+                    it,
+                    context,
+                    R.string.sleep_label_sent,
+                    missing = ""
+                )
+            }
             ?.trim()
             ?.ifBlank { null }
 
     val activeApps =
         valueAfter(
-            "Apps mit Datenverkehr:"
+            R.string.sleep_label_apps_with_traffic
         )?.toIntOrNull()
 
     val topApps =
@@ -2571,13 +2830,19 @@ private fun parseNetworkSessionSummary(
                 val appReceived =
                     transferLine
                         .takeIf {
-                            it.startsWith(
-                                "Empfangen:"
+                            LocalizedText.startsWithAny(
+                                it,
+                                context,
+                                R.string.sleep_label_received
                             )
                         }
-                        ?.substringAfter(
-                            "Empfangen:"
-                        )
+                        ?.let {
+                            LocalizedText.substringAfterAny(
+                                it,
+                                context,
+                                R.string.sleep_label_received
+                            )
+                        }
                         ?.substringBefore("·")
                         ?.trim()
                         ?.ifBlank { null }
@@ -2585,13 +2850,19 @@ private fun parseNetworkSessionSummary(
                 val appSent =
                     transferLine
                         .takeIf {
-                            it.contains(
-                                "Gesendet:"
+                            LocalizedText.containsAny(
+                                it,
+                                context,
+                                R.string.sleep_label_sent
                             )
                         }
-                        ?.substringAfter(
-                            "Gesendet:"
-                        )
+                        ?.let {
+                            LocalizedText.substringAfterAny(
+                                it,
+                                context,
+                                R.string.sleep_label_sent
+                            )
+                        }
                         ?.trim()
                         ?.ifBlank { null }
 
@@ -2614,28 +2885,40 @@ private fun parseNetworkSessionSummary(
 
     val message =
         when {
-            details.contains(
-                "Keine Ausgangsmessung verfügbar",
+            LocalizedText.containsAny(
+                details,
+                context,
+                R.string.sleep_marker_no_baseline,
                 ignoreCase = true
             ) ->
-                "Für diese Sitzung war keine Ausgangsmessung verfügbar."
+                context.getString(
+                    R.string.sleep_network_no_baseline_message
+                )
 
-            details.contains(
-                "Endmessung fehlgeschlagen",
+            LocalizedText.containsAny(
+                details,
+                context,
+                R.string.sleep_marker_end_measurement_failed,
                 ignoreCase = true
             ) ->
                 lines.firstOrNull {
-                    it.contains(
-                        "Endmessung fehlgeschlagen",
+                    LocalizedText.containsAny(
+                        it,
+                        context,
+                        R.string.sleep_marker_end_measurement_failed,
                         ignoreCase = true
                     )
                 }
 
-            details.contains(
-                "Keine App mit messbarem Datenverkehr",
+            LocalizedText.containsAny(
+                details,
+                context,
+                R.string.sleep_marker_no_app_traffic,
                 ignoreCase = true
             ) ->
-                "Keine App verursachte messbaren Datenverkehr."
+                context.getString(
+                    R.string.sleep_network_no_app_traffic_message
+                )
 
             else ->
                 null
@@ -2643,7 +2926,9 @@ private fun parseNetworkSessionSummary(
 
     return NetworkSessionSummary(
         duration =
-            valueAfter("Messdauer:"),
+            valueAfter(
+                R.string.sleep_label_measurement_duration
+            ),
         activeApps =
             activeApps,
         total = total,
@@ -2655,6 +2940,7 @@ private fun parseNetworkSessionSummary(
 }
 
 private fun calculateSleepAnalysisWindow(
+    context: Context,
     events: List<WakeEvent>,
     monitoring: Boolean
 ): SleepAnalysisWindow {
@@ -2679,7 +2965,9 @@ private fun calculateSleepAnalysisWindow(
                 endMillis = now,
                 ongoing = true,
                 title =
-                    "Laufende Geräteruhe-Analyse"
+                    context.getString(
+                        R.string.sleep_window_running_analysis
+                    )
             )
         }
 
@@ -2707,7 +2995,9 @@ private fun calculateSleepAnalysisWindow(
                     ?: latestStart.timestamp,
             ongoing = false,
             title =
-                "Letzte Geräteruhe-Analyse"
+                context.getString(
+                    R.string.sleep_window_last_analysis
+                )
         )
     }
 
@@ -2719,7 +3009,9 @@ private fun calculateSleepAnalysisWindow(
                 sorted.last().timestamp,
             ongoing = false,
             title =
-                "Aufgezeichneter Zeitraum"
+                context.getString(
+                    R.string.sleep_window_recorded_period
+                )
         )
     }
 
@@ -2728,7 +3020,9 @@ private fun calculateSleepAnalysisWindow(
         endMillis = now,
         ongoing = false,
         title =
-            "Noch keine Analyse vorhanden"
+            context.getString(
+                R.string.sleep_no_analysis_yet
+            )
     )
 }
 
@@ -2959,60 +3253,89 @@ private fun calculateTechnicalSleepScore(
 }
 
 private fun sleepScoreRating(
+    context: Context,
     score: Int
 ): String {
     return when {
         score >= 97 ->
-            "Ausgezeichnet ruhig"
+            context.getString(
+                R.string.sleep_rating_excellent
+            )
 
         score >= 90 ->
-            "Sehr ruhig"
+            context.getString(
+                R.string.sleep_rating_very_quiet
+            )
 
         score >= 80 ->
-            "Ruhig"
+            context.getString(
+                R.string.sleep_rating_quiet
+            )
 
         score >= 65 ->
-            "Normal aktiv"
+            context.getString(
+                R.string.sleep_rating_normal
+            )
 
         score >= 50 ->
-            "Unruhig"
+            context.getString(
+                R.string.sleep_rating_restless
+            )
 
         else ->
-            "Stark unterbrochen"
+            context.getString(
+                R.string.sleep_rating_heavily_interrupted
+            )
     }
 }
 
 private fun sleepScoreSummary(
+    context: Context,
     score: Int,
     totalWakeups: Int,
     displayWakeups: Int
 ): String {
     return when {
         totalWakeups == 0 ->
-            "Im ausgewerteten Zeitraum wurde keine relevante Aktivität erfasst."
+            context.getString(
+                R.string.sleep_summary_no_activity
+            )
 
         score >= 90 ->
-            "Das Gerät blieb über weite Strecken ruhig."
+            context.getString(
+                R.string.sleep_summary_quiet
+            )
 
         score >= 80 ->
-            "Nur wenige stärkere Unterbrechungen wurden erkannt."
+            context.getString(
+                R.string.sleep_summary_few_interruptions
+            )
 
         score >= 65 ->
-            "Die Aktivität liegt in einem unauffälligen Bereich."
+            context.getString(
+                R.string.sleep_summary_unremarkable
+            )
 
         score >= 50 &&
             displayWakeups == 0 ->
-            "Mehrere Hintergrundaktivitäten unterbrachen die Ruhephasen."
+            context.getString(
+                R.string.sleep_summary_background
+            )
 
         score >= 50 ->
-            "Mehrere Display- und Hintergrundaktivitäten wurden erkannt."
+            context.getString(
+                R.string.sleep_summary_display_background
+            )
 
         else ->
-            "Der Zeitraum enthielt viele oder dicht aufeinanderfolgende Aktivitäten."
+            context.getString(
+                R.string.sleep_summary_dense
+            )
     }
 }
 
 private fun buildSleepHints(
+    context: Context,
     window: SleepAnalysisWindow,
     displayWakeups: Int,
     cpuWakeups: Int,
@@ -3033,7 +3356,9 @@ private fun buildSleepHints(
         30L * 60L * 1_000L
     ) {
         hints.add(
-            "Für eine belastbarere Einordnung sollte die Überwachung länger als 30 Minuten laufen."
+            context.getString(
+                R.string.sleep_hint_run_longer
+            )
         )
     }
 
@@ -3041,17 +3366,23 @@ private fun buildSleepHints(
         displayWakeups == 0
     ) {
         hints.add(
-            "Das Display blieb während des ausgewerteten Zeitraums ausgeschaltet."
+            context.getString(
+                R.string.sleep_hint_display_off
+            )
         )
     } else if (
         displayWakeups <= 2
     ) {
         hints.add(
-            "Es wurden nur wenige Display-Aktivierungen erkannt."
+            context.getString(
+                R.string.sleep_hint_few_display
+            )
         )
     } else {
         hints.add(
-            "Mehrere Display-Aktivierungen unterbrachen die Geräte-Ruhe."
+            context.getString(
+                R.string.sleep_hint_many_display
+            )
         )
     }
 
@@ -3059,7 +3390,11 @@ private fun buildSleepHints(
         unexplainedDisplayWakeups > 0
     ) {
         hints.add(
-            "$unexplainedDisplayWakeups Display-Aktivierungen sind noch nicht eindeutig zugeordnet."
+            context.resources.getQuantityString(
+                R.plurals.sleep_hint_unexplained_display,
+                unexplainedDisplayWakeups,
+                unexplainedDisplayWakeups
+            )
         )
     }
 
@@ -3067,29 +3402,39 @@ private fun buildSleepHints(
         cpuWakeups == 0
     ) {
         hints.add(
-            "Keine CPU-Hintergrund-Wakeups wurden erfasst."
+            context.getString(
+                R.string.sleep_hint_no_cpu
+            )
         )
     } else if (shortSession) {
         hints.add(
-            "In der kurzen Messung wurden " +
-                cpuWakeups +
-                " CPU-Aktivitäten erfasst."
+            context.resources.getQuantityString(
+                R.plurals.sleep_hint_short_cpu,
+                cpuWakeups,
+                cpuWakeups
+            )
         )
     } else if (
         wakeupsPerHour <= 3.0
     ) {
         hints.add(
-            "Die Hintergrundaktivität war insgesamt gering."
+            context.getString(
+                R.string.sleep_hint_low_background
+            )
         )
     } else if (
         wakeupsPerHour <= 8.0
     ) {
         hints.add(
-            "Mehrere kurze Hintergrundaktivitäten wurden erkannt."
+            context.getString(
+                R.string.sleep_hint_several_background
+            )
         )
     } else {
         hints.add(
-            "Die CPU wurde im Durchschnitt häufig aus dem Ruhezustand geholt."
+            context.getString(
+                R.string.sleep_hint_frequent_cpu
+            )
         )
     }
 
@@ -3098,7 +3443,9 @@ private fun buildSleepHints(
         2L * 60L * 60L * 1_000L
     ) {
         hints.add(
-            "Es gab mindestens eine längere ununterbrochene Ruhephase."
+            context.getString(
+                R.string.sleep_hint_long_quiet
+            )
         )
     }
 
@@ -3127,7 +3474,11 @@ private fun buildSleepHints(
                     )
 
             hints.add(
-                "Die meiste Aktivität trat zwischen $start:00 und $end:00 Uhr auf."
+                context.getString(
+                    R.string.sleep_hint_busiest_hours,
+                    start,
+                    end
+                )
             )
         }
 
@@ -3135,6 +3486,7 @@ private fun buildSleepHints(
 }
 
 private fun hasTechnicalExplanation(
+    context: Context,
     event: WakeEvent
 ): Boolean {
     if (
@@ -3147,40 +3499,41 @@ private fun hasTechnicalExplanation(
     val details =
         event.details
 
-    return details.contains(
-        "Direkter Aufweckgrund:"
-    ) ||
-        details.contains(
-            "Wahrscheinliche Ursache:"
-        ) ||
-        details.contains(
-            "Mögliche Ursache:"
-        ) ||
-        details.contains(
-            "Nachträglich erkannte Ursache:"
-        ) ||
-        details.contains(
-            "Systemhinweis:"
-        ) ||
-        details.contains(
-            "Wakeup-Alarm-Hinweis:"
-        ) ||
-        details.contains(
-            "Hintergrundjob-Hinweis:"
+    return listOf(
+        R.string.sleep_label_direct_wake_reason,
+        R.string.sleep_label_likely_cause,
+        R.string.sleep_label_possible_cause,
+        R.string.sleep_label_later_detected_cause,
+        R.string.sleep_label_system_hint,
+        R.string.sleep_label_wakeup_alarm_hint,
+        R.string.sleep_label_background_job_hint
+    ).any {
+        LocalizedText.containsAny(
+            details,
+            context,
+            it
         )
+    }
 }
 
 private fun isTechnicallyUnexplained(
+    context: Context,
     event: WakeEvent
 ): Boolean {
     return event.type ==
         "SCREEN_ON" &&
-        event.details.contains(
-            "Ursache: noch unbekannt"
+        LocalizedText.containsAny(
+            event.details,
+            context,
+            R.string.sleep_marker_cause_unknown
         ) &&
-        !hasTechnicalExplanation(event)
+        !hasTechnicalExplanation(
+            context,
+            event
+        )
 }
 
+@Composable
 private fun formatSleepWindow(
     window: SleepAnalysisWindow
 ): String {
@@ -3190,29 +3543,35 @@ private fun formatSleepWindow(
             Locale.getDefault()
         )
 
-    return buildString {
-        append(
-            formatter.format(
-                Date(window.startMillis)
-            )
-        )
-
-        if (
-            window.startMillis !=
-            window.endMillis
-        ) {
-            append(" – ")
-
+    val range =
+        buildString {
             append(
                 formatter.format(
-                    Date(window.endMillis)
+                    Date(window.startMillis)
                 )
             )
+
+            if (
+                window.startMillis !=
+                window.endMillis
+            ) {
+                append(" – ")
+
+                append(
+                    formatter.format(
+                        Date(window.endMillis)
+                    )
+                )
+            }
         }
 
-        if (window.ongoing) {
-            append(" · läuft")
-        }
+    return if (window.ongoing) {
+        stringResource(
+            R.string.sleep_window_running,
+            range
+        )
+    } else {
+        range
     }
 }
 
@@ -3227,6 +3586,7 @@ private fun formatTime(
     )
 }
 
+@Composable
 private fun formatDurationPrecise(
     millis: Long
 ): String {
@@ -3245,16 +3605,27 @@ private fun formatDurationPrecise(
     return when {
         minutes > 0L &&
             seconds > 0L ->
-            "${minutes} Min ${seconds} Sek"
+            stringResource(
+                R.string.sleep_duration_minutes_seconds,
+                minutes,
+                seconds
+            )
 
         minutes > 0L ->
-            "${minutes} Min"
+            stringResource(
+                R.string.sleep_duration_minutes,
+                minutes
+            )
 
         else ->
-            "${seconds} Sek"
+            stringResource(
+                R.string.sleep_duration_seconds,
+                seconds
+            )
     }
 }
 
+@Composable
 private fun formatDurationCompact(
     millis: Long
 ): String {
@@ -3282,19 +3653,36 @@ private fun formatDurationCompact(
 
     return when {
         days > 0L ->
-            "${days} T ${hours} Std"
+            stringResource(
+                R.string.sleep_duration_days_hours,
+                days,
+                hours
+            )
 
         hours > 0L ->
-            "${hours} Std ${minutes} Min"
+            stringResource(
+                R.string.sleep_duration_hours_minutes,
+                hours,
+                minutes
+            )
 
         totalMinutes > 0L ->
-            "${totalMinutes} Min"
+            stringResource(
+                R.string.sleep_duration_minutes,
+                totalMinutes
+            )
 
         safeMillis >= 1_000L ->
-            "${safeMillis / 1_000L} Sek"
+            stringResource(
+                R.string.sleep_duration_seconds,
+                safeMillis / 1_000L
+            )
 
         else ->
-            "0 Sek"
+            stringResource(
+                R.string.sleep_duration_seconds,
+                0L
+            )
     }
 }
 

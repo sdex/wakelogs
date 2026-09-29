@@ -34,7 +34,7 @@ class WakeMonitorService : Service(), SensorEventListener {
 
     private lateinit var sensorManager: SensorManager
     private var proximitySensor: Sensor? = null
-    private var proximityState = "nicht verfügbar"
+    private var proximityState = ""
     private var receiverRegistered = false
     private var explicitStop = false
     private var stopInProgress = false
@@ -58,42 +58,42 @@ class WakeMonitorService : Service(), SensorEventListener {
                     val causeText = when {
                         recent == null || ageMillis == null ||
                             ageMillis < 0L || ageMillis > 10_000L -> {
-                            "Ursache: noch unbekannt"
+                            getString(R.string.sleep_marker_cause_unknown)
                         }
 
                         ageMillis <= 3_000L -> {
                             buildString {
-                                appendLine("Wahrscheinliche Ursache: ${recent.appName}")
-                                appendLine("Sicherheit: hoch")
-                                append("Zeitabstand: ${formatAge(ageMillis)}")
+                                appendLine(getString(R.string.service_cause_probable, recent.appName))
+                                appendLine(getString(R.string.service_confidence_high))
+                                append(getString(R.string.service_time_offset, formatAge(ageMillis)))
                             }
                         }
 
                         else -> {
                             buildString {
-                                appendLine("Mögliche Ursache: ${recent.appName}")
-                                appendLine("Sicherheit: mittel")
-                                append("Zeitabstand: ${formatAge(ageMillis)}")
+                                appendLine(getString(R.string.service_cause_possible, recent.appName))
+                                appendLine(getString(R.string.service_confidence_medium))
+                                append(getString(R.string.service_time_offset, formatAge(ageMillis)))
                             }
                         }
                     }
 
                     logEvent(
                         type = "SCREEN_ON",
-                        title = "Display eingeschaltet",
+                        title = getString(R.string.service_event_screen_on),
                         details = buildString {
-                            appendLine("Näherungssensor: $proximityState")
+                            appendLine(getString(R.string.service_proximity_line, proximityState))
                             append(causeText)
                         }
                     )
 
         captureLightSystemSnapshot(
-            reason = "Snapshot nach Display an",
+            reason = getString(R.string.service_snapshot_reason_after_screen_on),
             delayMillis = 0L
         )
 
         captureCompactExpertSnapshot(
-            reason = "Display an",
+            reason = getString(R.string.service_snapshot_reason_screen_on),
             delayMillis = 700L
         )
 
@@ -106,12 +106,12 @@ class WakeMonitorService : Service(), SensorEventListener {
                 Intent.ACTION_SCREEN_OFF -> {
                     logEvent(
                         type = "SCREEN_OFF",
-                        title = "Display ausgeschaltet",
-                        details = "Näherungssensor: $proximityState"
+                        title = getString(R.string.service_event_screen_off),
+                        details = getString(R.string.service_proximity_line, proximityState)
                     )
 
         captureLightSystemSnapshot(
-            reason = "Snapshot nach Display aus",
+            reason = getString(R.string.service_snapshot_reason_after_screen_off),
             delayMillis = 2_000L
         )
 
@@ -120,16 +120,16 @@ class WakeMonitorService : Service(), SensorEventListener {
                 Intent.ACTION_POWER_CONNECTED -> {
                     logEvent(
                         type = "POWER_CONNECTED",
-                        title = "Stromversorgung verbunden",
-                        details = "Ein Lade- oder Stromereignis wurde erkannt."
+                        title = getString(R.string.service_event_power_connected),
+                        details = getString(R.string.service_event_power_connected_details)
                     )
                 }
 
                 Intent.ACTION_POWER_DISCONNECTED -> {
                     logEvent(
                         type = "POWER_DISCONNECTED",
-                        title = "Stromversorgung getrennt",
-                        details = "Die externe Stromversorgung wurde entfernt."
+                        title = getString(R.string.service_event_power_disconnected),
+                        details = getString(R.string.service_event_power_disconnected_details)
                     )
                 }
 
@@ -138,7 +138,7 @@ class WakeMonitorService : Service(), SensorEventListener {
 
                     logEvent(
                         type = "USB_ATTACHED",
-                        title = "USB-Gerät verbunden",
+                        title = getString(R.string.service_event_usb_attached),
                         details = usbDescription(device)
                     )
                 }
@@ -148,7 +148,7 @@ class WakeMonitorService : Service(), SensorEventListener {
 
                     logEvent(
                         type = "USB_DETACHED",
-                        title = "USB-Gerät getrennt",
+                        title = getString(R.string.service_event_usb_detached),
                         details = usbDescription(device)
                     )
                 }
@@ -158,6 +158,8 @@ class WakeMonitorService : Service(), SensorEventListener {
 
     override fun onCreate() {
         super.onCreate()
+
+        proximityState = getString(R.string.service_proximity_not_available)
 
         isRunning = true
         EventStore.setMonitoring(this, true)
@@ -170,11 +172,11 @@ class WakeMonitorService : Service(), SensorEventListener {
 
         logEvent(
             type = "MONITOR_START",
-            title = "Überwachung gestartet",
-            details = buildString {
-                append("Display-, Strom- und USB-Ereignisse werden protokolliert. ")
-                append("Näherungssensor: $proximityState")
-            }
+            title = getString(R.string.service_event_monitor_start),
+            details = getString(
+                R.string.service_event_monitor_start_details,
+                proximityState
+            )
         )
 
         captureNetworkSessionBaseline()
@@ -205,13 +207,13 @@ class WakeMonitorService : Service(), SensorEventListener {
 
                 Toast.makeText(
                     applicationContext,
-                    "Messung wird abgeschlossen …",
+                    getString(R.string.service_toast_finishing),
                     Toast.LENGTH_LONG
                 ).show()
 
                 updateForegroundStatus(
                     text =
-                        "Messung wird abgeschlossen…",
+                        getString(R.string.service_notification_finishing),
                     includeStopAction = false
                 )
 
@@ -245,15 +247,16 @@ class WakeMonitorService : Service(), SensorEventListener {
                         timestamp =
                             stopRequestedAtMillis,
                         type = "MONITOR_STOP",
-                        title = "Überwachung gestoppt",
+                        title = getString(R.string.service_event_monitor_stop),
                         details =
                             if (finalPollCompleted) {
-                                "Die Aufzeichnung wurde manuell beendet. " +
-                                    "Letzte Systemereignisse wurden übernommen."
+                                getString(
+                                    R.string.service_event_monitor_stop_details_complete
+                                )
                             } else {
-                                "Die Aufzeichnung wurde manuell beendet. " +
-                                    "Die abschließende Systemprüfung konnte " +
-                                    "nicht vollständig beendet werden."
+                                getString(
+                                    R.string.service_event_monitor_stop_details_incomplete
+                                )
                             }
                     )
 
@@ -330,11 +333,9 @@ class WakeMonitorService : Service(), SensorEventListener {
             logEvent(
                 type = "NETWORK_SESSION",
                 title =
-                    "Netzwerkaktivität der Sitzung",
+                    getString(R.string.service_event_network_session),
                 details =
-                    "Keine Ausgangsmessung verfügbar. " +
-                        "Die Überwachung selbst wurde " +
-                        "normal beendet."
+                    getString(R.string.service_network_no_baseline)
             )
 
             EventStore.clearNetworkSessionBaseline(
@@ -353,10 +354,12 @@ class WakeMonitorService : Service(), SensorEventListener {
             logEvent(
                 type = "NETWORK_SESSION",
                 title =
-                    "Netzwerkaktivität der Sitzung",
+                    getString(R.string.service_event_network_session),
                 details =
-                    "Endmessung fehlgeschlagen: " +
+                    getString(
+                        R.string.service_network_end_failed,
                         endSnapshot.error
+                    )
             )
 
             EventStore.clearNetworkSessionBaseline(
@@ -472,41 +475,48 @@ class WakeMonitorService : Service(), SensorEventListener {
         val details =
             buildString {
                 appendLine(
-                    "Messdauer: " +
+                    getString(
+                        R.string.service_network_duration,
                         formatSessionDuration(
                             durationMillis
                         )
+                    )
                 )
 
                 appendLine(
-                    "Apps mit Datenverkehr: " +
+                    getString(
+                        R.string.service_network_apps_with_traffic,
                         deltas.size
+                    )
                 )
 
                 appendLine(
-                    "Gesamt: " +
+                    getString(
+                        R.string.service_network_total,
                         formatSessionBytes(
                             totalTraffic
-                        ) +
-                        " · Empfangen: " +
+                        ),
                         formatSessionBytes(
                             totalRx
-                        ) +
-                        " · Gesendet: " +
+                        ),
                         formatSessionBytes(
                             totalTx
                         )
+                    )
                 )
 
                 if (deltas.isEmpty()) {
                     append(
-                        "Keine App mit messbarem " +
-                            "Datenverkehr in dieser Sitzung."
+                        getString(
+                            R.string.service_network_no_traffic
+                        )
                     )
                 } else {
                     appendLine()
                     appendLine(
-                        "Aktivste Apps:"
+                        getString(
+                            R.string.service_network_top_apps
+                        )
                     )
 
                     deltas.take(15)
@@ -516,6 +526,8 @@ class WakeMonitorService : Service(), SensorEventListener {
 
                             val displayName =
                                 sourceDisplayName(
+                                    context =
+                                        this@WakeMonitorService,
                                     appLabel =
                                         entry.appLabel,
                                     packageName =
@@ -533,19 +545,22 @@ class WakeMonitorService : Service(), SensorEventListener {
                             )
 
                             appendLine(
-                                "  Empfangen: " +
-                                    formatSessionBytes(
-                                        entry.rxBytes
-                                    ) +
-                                    " · Gesendet: " +
-                                    formatSessionBytes(
-                                        entry.txBytes
+                                "  " +
+                                    getString(
+                                        R.string.service_network_app_transfer,
+                                        formatSessionBytes(
+                                            entry.rxBytes
+                                        ),
+                                        formatSessionBytes(
+                                            entry.txBytes
+                                        )
                                     )
                             )
 
                             append(
-                                "  Paket/UID: " +
-                                    (
+                                "  " +
+                                    getString(
+                                        R.string.service_network_app_package,
                                         entry.packageName
                                             ?: "UID ${entry.uid}"
                                     )
@@ -566,7 +581,7 @@ class WakeMonitorService : Service(), SensorEventListener {
         logEvent(
             type = "NETWORK_SESSION",
             title =
-                "Netzwerkaktivität der Sitzung",
+                getString(R.string.service_event_network_session),
             details = details
         )
 
@@ -681,9 +696,9 @@ class WakeMonitorService : Service(), SensorEventListener {
         val near = measuredValue < currentEvent.sensor.maximumRange
 
         proximityState = if (near) {
-            "belegt / vermutlich abgedeckt"
+            getString(R.string.service_proximity_covered)
         } else {
-            "frei"
+            getString(R.string.service_proximity_clear)
         }
     }
 
@@ -718,11 +733,11 @@ class WakeMonitorService : Service(), SensorEventListener {
         val sensor = proximitySensor
 
         if (sensor == null) {
-            proximityState = "nicht vorhanden"
+            proximityState = getString(R.string.service_proximity_not_present)
             return
         }
 
-        proximityState = "noch kein Messwert"
+        proximityState = getString(R.string.service_proximity_no_reading)
 
         val registered = sensorManager.registerListener(
             this,
@@ -731,7 +746,7 @@ class WakeMonitorService : Service(), SensorEventListener {
         )
 
         if (!registered) {
-            proximityState = "Registrierung fehlgeschlagen"
+            proximityState = getString(R.string.service_proximity_registration_failed)
         }
     }
 
@@ -834,16 +849,18 @@ class WakeMonitorService : Service(), SensorEventListener {
                         applicationContext
                     )
                 }.getOrElse { error ->
-                    "Diagnosefehler: " +
-                        (error.message ?: error.javaClass.simpleName)
+                    getString(
+                        R.string.service_diagnostic_error,
+                        error.message ?: error.javaClass.simpleName
+                    )
                 }
 
             logEvent(
                 type = "EXPERT_SNAPSHOT",
-                title = "Erweiterte Systemprüfung",
+                title = getString(R.string.service_event_expert_snapshot),
                 details =
-                    "Auslöser: $reason\n" +
-                        "Datenquelle: Shizuku Kompaktdiagnose\n\n" +
+                    getString(R.string.service_snapshot_trigger, reason) + "\n" +
+                        getString(R.string.service_snapshot_source_compact) + "\n\n" +
                         details
             )
         }
@@ -864,11 +881,11 @@ class WakeMonitorService : Service(), SensorEventListener {
             ) {
                 logEvent(
                     type = "SYSTEM_SNAPSHOT",
-                    title = "Systemprüfung",
+                    title = getString(R.string.service_event_system_snapshot),
                     details =
-                        "Auslöser: $reason\n" +
-                            "Status: Shizuku nicht verfügbar oder Berechtigung fehlt\n" +
-                            "Datenquelle: Shizuku Hintergrunddiagnose"
+                        getString(R.string.service_snapshot_trigger, reason) + "\n" +
+                            getString(R.string.service_snapshot_status_shizuku_unavailable) + "\n" +
+                            getString(R.string.service_snapshot_source_background)
                 )
                 return@launch
             }
@@ -896,16 +913,17 @@ class WakeMonitorService : Service(), SensorEventListener {
             if (!outputResult.isSuccess) {
                 logEvent(
                     type = "SYSTEM_SNAPSHOT",
-                    title = "Systemprüfung",
+                    title = getString(R.string.service_event_system_snapshot),
                     details =
-                        "Auslöser: $reason\n" +
-                            "Status: Diagnosefehler\n" +
-                            "Fehler: " +
-                            (
+                        getString(R.string.service_snapshot_trigger, reason) + "\n" +
+                            getString(R.string.service_snapshot_status_error) + "\n" +
+                            getString(
+                                R.string.service_snapshot_error,
                                 outputResult.exceptionOrNull()?.message
-                                    ?: "unbekannt"
+                                    ?: getString(R.string.service_unknown)
                             ) +
-                            "\nDatenquelle: Shizuku Hintergrunddiagnose"
+                            "\n" +
+                            getString(R.string.service_snapshot_source_background)
                 )
                 return@launch
             }
@@ -913,18 +931,18 @@ class WakeMonitorService : Service(), SensorEventListener {
             if (output.isNullOrBlank()) {
                 logEvent(
                     type = "SYSTEM_SNAPSHOT",
-                    title = "Systemprüfung",
+                    title = getString(R.string.service_event_system_snapshot),
                     details =
-                        "Auslöser: $reason\n" +
-                            "Status: nicht verfügbar oder Zeitlimit erreicht\n" +
-                            "Datenquelle: Shizuku Hintergrunddiagnose"
+                        getString(R.string.service_snapshot_trigger, reason) + "\n" +
+                            getString(R.string.service_snapshot_status_timeout) + "\n" +
+                            getString(R.string.service_snapshot_source_background)
                 )
                 return@launch
             }
 
             logEvent(
                 type = "SYSTEM_SNAPSHOT",
-                title = "Systemprüfung",
+                title = getString(R.string.service_event_system_snapshot),
                 details =
                     buildLightSystemSnapshotDetails(
                         reason = reason,
@@ -1010,7 +1028,7 @@ class WakeMonitorService : Service(), SensorEventListener {
             )
 
         return buildString {
-            appendLine("Auslöser: $reason")
+            appendLine(getString(R.string.service_snapshot_trigger, reason))
 
             appendLine(
                 "Power: " +
@@ -1025,7 +1043,7 @@ class WakeMonitorService : Service(), SensorEventListener {
                             "PowerSave=$it"
                         }
                     ).ifEmpty {
-                        listOf("keine kompakten Werte")
+                        listOf(getString(R.string.service_snapshot_no_compact_values))
                     }.joinToString(", ")
             )
 
@@ -1045,12 +1063,13 @@ class WakeMonitorService : Service(), SensorEventListener {
                             "LightMode=$it"
                         }
                     ).ifEmpty {
-                        listOf("keine kompakten Werte")
+                        listOf(getString(R.string.service_snapshot_no_compact_values))
                     }.joinToString(", ")
             )
 
             appendLine(
-                "Rahmenzustand: " +
+                getString(
+                    R.string.service_snapshot_conditions,
                     listOfNotNull(
                         screenOn?.let {
                             "ScreenOn=$it"
@@ -1062,12 +1081,14 @@ class WakeMonitorService : Service(), SensorEventListener {
                             "ForceIdle=$it"
                         }
                     ).ifEmpty {
-                        listOf("keine kompakten Werte")
+                        listOf(getString(R.string.service_snapshot_no_compact_values))
                     }.joinToString(", ")
+                )
             )
 
             appendLine(
-                "Einordnung: " +
+                getString(
+                    R.string.service_snapshot_classification,
                     classifyLightSystemSnapshot(
                         wakefulness = wakefulness,
                         interactive = interactive,
@@ -1076,9 +1097,10 @@ class WakeMonitorService : Service(), SensorEventListener {
                         deepState = deepState,
                         lightState = lightState
                     )
+                )
             )
 
-            appendLine("Datenquelle: Shizuku Hintergrunddiagnose")
+            appendLine(getString(R.string.service_snapshot_source_background))
         }.trim()
     }
 
@@ -1122,7 +1144,7 @@ class WakeMonitorService : Service(), SensorEventListener {
                 )
 
         if (active) {
-            return "Gerät war aktiv oder interaktiv."
+            return getString(R.string.service_classify_active)
         }
 
         if (
@@ -1132,7 +1154,7 @@ class WakeMonitorService : Service(), SensorEventListener {
                 ignoreCase = true
             ) == true
         ) {
-            return "Gerät war im tiefen Idle-/Doze-Bereich."
+            return getString(R.string.service_classify_deep_idle)
         }
 
         if (
@@ -1142,7 +1164,7 @@ class WakeMonitorService : Service(), SensorEventListener {
                 ignoreCase = true
             ) == true
         ) {
-            return "Gerät war im leichten Idle-/Doze-Bereich."
+            return getString(R.string.service_classify_light_idle)
         }
 
         if (
@@ -1155,15 +1177,15 @@ class WakeMonitorService : Service(), SensorEventListener {
                 ignoreCase = true
             )
         ) {
-            return "Gerät war nicht aktiv, Idle-Zustand aber herstellerspezifisch."
+            return getString(R.string.service_classify_vendor_specific)
         }
 
-        return "Ruhezustand nicht eindeutig klassifizierbar."
+        return getString(R.string.service_classify_unclear)
     }
 
     private fun startBackgroundWakeMonitoring() {
         captureLightSystemSnapshot(
-            reason = "Startprobe nach 5 Sekunden",
+            reason = getString(R.string.service_snapshot_reason_start_probe),
             delayMillis = 5_000L
         )
 
@@ -1198,7 +1220,7 @@ class WakeMonitorService : Service(), SensorEventListener {
     }
 
     private fun createNotification(
-        contentText: String = "Analyse läuft…",
+        contentText: String = getString(R.string.service_notification_running),
         includeStopAction: Boolean = true
     ): Notification {
         val openIntent = PendingIntent.getActivity(
@@ -1242,7 +1264,7 @@ class WakeMonitorService : Service(), SensorEventListener {
         if (includeStopAction) {
             builder.addAction(
                 R.drawable.ic_stat_wakesleuth,
-                "Stopp",
+                getString(R.string.service_notification_stop_action),
                 stopIntent
             )
         }
@@ -1273,11 +1295,11 @@ class WakeMonitorService : Service(), SensorEventListener {
 
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "wakelogs-Überwachung",
+            getString(R.string.service_channel_name),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             description =
-                "Zeigt an, dass wakelogs Geräteereignisse protokolliert."
+                getString(R.string.service_channel_description)
             setShowBadge(false)
         }
 
@@ -1286,9 +1308,8 @@ class WakeMonitorService : Service(), SensorEventListener {
     }
 
     private fun formatAge(milliseconds: Long): String {
-        return String.format(
-            java.util.Locale.getDefault(),
-            "%.1f Sekunden",
+        return getString(
+            R.string.bg_duration_seconds,
             milliseconds / 1000.0
         )
     }
@@ -1320,14 +1341,15 @@ class WakeMonitorService : Service(), SensorEventListener {
 
     private fun usbDescription(device: UsbDevice?): String {
         if (device == null) {
-            return "USB-Gerät ohne auslesbare Geräteinformationen."
+            return getString(R.string.service_usb_no_info)
         }
 
-        return buildString {
-            appendLine("Geräte-ID: ${device.deviceId}")
-            appendLine("Hersteller-ID: ${device.vendorId}")
-            append("Produkt-ID: ${device.productId}")
-        }
+        return getString(
+            R.string.service_usb_details,
+            device.deviceId,
+            device.vendorId,
+            device.productId
+        )
     }
 
     companion object {

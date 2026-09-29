@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Detail line labels (written into stored events and parsed back) -->
+    <string name="event_label_proximity_sensor">Proximity sensor:</string>
+    <string name="event_label_direct_wake_reason">Direct wake reason:</string>
+    <string name="event_label_confidence">Confidence:</string>
+    <string name="event_label_time_offset">Time offset:</string>
+    <string name="event_label_technical_reason">Technical reason:</string>
+    <string name="event_label_technical_tag">Technical tag:</string>
+    <string name="event_label_details">Details:</string>
+    <string name="event_label_source">Source:</string>
+    <string name="event_label_kind">Type:</string>
+    <string name="event_label_cause_detected_later">Cause detected later:</string>
+    <string name="event_label_title">Title:</string>
+    <string name="event_label_system_hint">System hint:</string>
+    <string name="event_label_wakeup_alarm_hint">Wakeup alarm hint:</string>
+    <string name="event_label_background_job_hint">Background job hint:</string>
+    <string name="event_label_companion_activity">Accompanying activity:</string>
+    <string name="event_label_alarm_wakeups_since_stats_start">Alarm wakeups since stats start:</string>
+    <string name="event_label_start_type">Start type:</string>
+    <string name="event_label_service">Service:</string>
+
+    <!-- Section header lines (written into stored events and parsed back) -->
+    <string name="event_section_system_hint_possible_trigger">System hint: possible trigger</string>
+    <string name="event_section_wakeup_alarm_possible_trigger">Wakeup alarm hint: possible trigger</string>
+    <string name="event_section_wakeup_alarm_companion">Wakeup alarm hint: accompanying activity</string>
+    <string name="event_section_wakeup_alarm_simultaneous">Wakeup alarm hint: simultaneous system event</string>
+    <string name="event_section_wakeup_alarm_close_relation">Wakeup alarm hint: close temporal relation</string>
+    <string name="event_section_companion_wakelock">Accompanying activity: wakelock</string>
+    <string name="event_section_companion_wakeup_alarm">Accompanying activity: wakeup alarm</string>
+    <string name="event_section_companion_background_job">Accompanying activity: background job</string>
+    <string name="event_section_background_job_time_relation">Background job hint: temporal relation</string>
+
+    <!-- Detail values -->
+    <string name="event_unknown">unknown</string>
+    <string name="event_none">none</string>
+    <string name="event_confidence_high">high</string>
+    <string name="event_confidence_medium">medium</string>
+    <string name="event_confidence_samsung_batterystats">direct from Samsung BatteryStats</string>
+    <string name="event_confidence_power_manager">direct from PowerManager</string>
+    <string name="event_confidence_system_wakelock">direct system wakelock</string>
+    <string name="event_power_button">Power button</string>
+    <string name="event_notification_arrived_after_screen_on">Notification arrived %1$s after screen on</string>
+    <string name="event_time_before_screen_on">%1$s before screen on</string>
+    <string name="event_time_after_screen_on">%1$s after screen on</string>
+    <string name="event_time_simultaneous_with_screen_on">simultaneous with screen on</string>
+    <string name="event_start_type_prioritized">prioritized</string>
+    <string name="event_start_type_regular">regular</string>
+    <string name="event_age_seconds">%1$.1f seconds</string>
+    <string name="event_seconds_word">second</string>
+    <string name="event_minutes_word">min</string>
+    <string name="event_unknown_source">unknown source</string>
+    <string name="event_not_clearly">not clearly</string>
+    <string name="event_unknown_event">Unknown event</string>
+
+    <!-- Wakelock relationship -->
+    <string name="event_relation_likely_follow_up">likely follow-up event</string>
+    <string name="event_relation_possible_trigger">possible trigger</string>
+    <string name="event_relation_close">close temporal relation</string>
+
+    <!-- Wakelock kinds -->
+    <string name="event_kind_user_presence">Response to user presence</string>
+    <string name="event_kind_network_stats">Network statistics</string>
+    <string name="event_kind_notification_processing">Notification processing</string>
+    <string name="event_kind_alarm">Alarm</string>
+    <string name="event_kind_background_job">Background job</string>
+    <string name="event_kind_app_launch">App launch</string>
+    <string name="event_kind_audio">Audio playback or recording</string>
+    <string name="event_kind_sync">Sync</string>
+    <string name="event_kind_search_indexing">Search or content indexing</string>
+    <string name="event_kind_scheduled_background_action">Scheduled background action</string>
+    <string name="event_kind_partial_wakelock">Partial wakelock</string>
+
+    <!-- Wake reasons -->
+    <string name="event_wake_reason_double_tap">Double tap on the screen while off</string>
+    <string name="event_wake_reason_gesture">Screen gesture</string>
+    <string name="event_wake_reason_lift">Device lifted</string>
+    <string name="event_wake_reason_plugged_in">Power connected</string>
+    <string name="event_wake_reason_wake_key">Wake key</string>
+    <string name="event_wake_reason_motion">Motion or sensor signal</string>
+    <string name="event_wake_reason_application">App or system function</string>
+
+    <!-- Export source groups -->
+    <string name="event_source_radio_network">Radio/network</string>
+    <string name="event_source_google_services">Google services</string>
+    <string name="event_source_oneplus_system">OnePlus system</string>
+
+    <!-- Event type labels in the export -->
+    <string name="event_type_monitor">MONITOR</string>
+    <string name="event_type_network_session">NETWORK SESSION</string>
+    <string name="event_type_screen_on">SCREEN ON</string>
+    <string name="event_type_screen_off">SCREEN OFF</string>
+    <string name="event_type_power_connected">POWER CONNECTED</string>
+    <string name="event_type_power_disconnected">POWER DISCONNECTED</string>
+    <string name="event_type_usb_attached">USB CONNECTED</string>
+    <string name="event_type_usb_detached">USB DISCONNECTED</string>
+    <string name="event_type_notification">NOTIFICATION</string>
+    <string name="event_type_cpu_wakeup">CPU BACKGROUND WAKEUP</string>
+
+    <!-- Export -->
+    <string name="event_export_title">Local event export</string>
+    <string name="event_export_created">Export created: %1$s</string>
+    <string name="event_export_monitoring">Monitoring: %1$s</string>
+    <string name="event_export_monitoring_active">active</string>
+    <string name="event_export_monitoring_stopped">stopped</string>
+    <string name="event_export_stored_events">Stored events: %1$d</string>
+    <string name="event_export_summary_heading">Summary</string>
+    <string name="event_export_highlights_heading">Notable findings</string>
+    <string name="event_export_parser_diagnostics_heading">Background parser diagnostics</string>
+    <string name="event_export_batterystats_lines">BatteryStats lines: %1$d</string>
+    <string name="event_export_wake_reasons">Wake reasons: %1$d</string>
+    <string name="event_export_cpu_starts">CPU starts (+running): %1$d</string>
+    <string name="event_export_wakelocks">Wakelocks: %1$d</string>
+    <string name="event_export_jobs">Jobs: %1$d</string>
+    <string name="event_export_syncs">Syncs: %1$d</string>
+    <string name="event_export_candidates_last_poll">Candidates detected in last poll: %1$d</string>
+    <string name="event_export_cpu_wakeups_last_poll">CPU wakeups created in last poll: %1$d</string>
+    <string name="event_export_last_parser_run">Last parser run: %1$s</string>
+    <string name="event_export_raw_data_heading">Background raw data</string>
+    <string name="event_export_no_new_raw_data">No new raw data in the last parser run.</string>
+    <string name="event_export_no_raw_lines">No matching BatteryStats raw lines stored.</string>
+    <string name="event_export_no_events">No events stored yet.</string>
+
+    <!-- Export: condensed expert snapshot -->
+    <string name="event_expert_no_notable_hints">no notable hints</string>
+    <string name="event_expert_context_heading">Expert context summary:</string>
+    <string name="event_expert_location_line">• Location / motion: %1$s</string>
+    <string name="event_expert_sensors_line">• Sensors: %1$s</string>
+    <string name="event_expert_network_line">• Radio / network: %1$s</string>
+    <string name="event_expert_export_note">Note: Expert raw data is deliberately condensed in the export; location coordinates are not exported.</string>
+
+    <!-- Export: summary -->
+    <string name="event_summary_no_screen_wakeups">No screen wakeups were stored in this export.</string>
+    <string name="event_summary_not_woken_by_apps">The screen was not suspiciously woken by apps during this run.</string>
+    <string name="event_summary_some_power_button">Some screen wakeups were clearly identified as the power button.</string>
+    <string name="event_summary_no_clear_power_button">There were screen wakeups without clear power button detection.</string>
+    <string name="event_summary_all_power_button">All screen wakeups were identified as the power button.</string>
+    <string name="event_summary_much_radio_network">There was a lot of radio/network activity in the background.</string>
+    <string name="event_summary_recurring_technical">Recurring technical activity was detected in the background.</string>
+    <string name="event_summary_most_notable_cpu_wakeup">Most notable longer CPU wakeup: %1$s.</string>
+    <plurals name="event_summary_lockglow_wakeups">
+        <item quantity="one">One screen wakeup was triggered by LockGlow.</item>
+        <item quantity="other">%1$d screen wakeups were triggered by LockGlow.</item>
+    </plurals>
+    <string name="event_summary_notifications_not_main_trigger">Notifications were recorded but not automatically treated as the main trigger.</string>
+    <string name="event_no_special_patterns">No special patterns detected in the stored events.</string>
+
+    <!-- Export: highlights -->
+    <string name="event_highlight_longest_cpu_wakeup_label">Longest CPU wakeup:</string>
+    <string name="event_highlight_longest_cpu_wakeup">Longest CPU wakeup: %1$s · %2$s</string>
+    <string name="event_highlight_frequent_sources_label">Frequent technical sources:</string>
+    <string name="event_highlight_frequent_sources">Frequent technical sources: %1$s</string>
+    <string name="event_highlight_screen_wakeups_all_power_button">Screen wakeups: all %1$d identified as power button</string>
+    <string name="event_highlight_screen_wakeups_some_power_button">Screen wakeups: %1$d of %2$d identified as power button</string>
+    <string name="event_highlight_screen_wakeups_no_power_button">Screen wakeups: %1$d detected, without a clear power button</string>
+    <string name="event_highlight_notifications">Notifications: %1$d detected, but not automatically treated as the main trigger</string>
+    <string name="event_highlight_unattributed_cpu_wakeups">Unattributed CPU wakeups: %1$d</string>
+</resources>

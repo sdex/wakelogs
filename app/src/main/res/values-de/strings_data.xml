@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- SourceDisplayName -->
+    <string name="source_android_system">Android-System</string>
+    <string name="source_phone_service">Telefoniedienst</string>
+    <string name="source_bluetooth_system_service">Bluetooth-Systemdienst</string>
+    <string name="source_wifi_system_service">WLAN-Systemdienst</string>
+    <string name="source_media_service">Mediendienst</string>
+    <string name="source_vpn_system_service">VPN-Systemdienst</string>
+    <string name="source_drm_system_service">DRM-Systemdienst</string>
+    <string name="source_android_network_service">Android-Netzwerkdienst</string>
+    <string name="source_android_system_service">Android-Systemdienst</string>
+    <string name="source_system_service">Systemdienst</string>
+    <string name="source_samsung_telephony_sim_service">Samsung Telefonie-/SIM-Dienst</string>
+    <string name="source_samsung_offline_finding">Samsung Offline-Suche</string>
+    <string name="source_oneplus_screen_gestures">OnePlus Bildschirmgesten</string>
+    <string name="source_android_phone_service">Android Telefoniedienst</string>
+    <string name="source_google_play_services">Google Play-Dienste</string>
+    <string name="source_android_system_ui">Android Systemoberfläche</string>
+    <string name="source_android_contacts">Android Kontakte</string>
+    <string name="source_android_calendar">Android Kalender</string>
+    <string name="source_samsung_system_service">Samsung-Systemdienst</string>
+    <string name="source_oneplus_system_service">OnePlus-Systemdienst</string>
+    <string name="source_android_mms_cellular_service">Android MMS-/Mobilfunkdienst</string>
+    <string name="source_android_telephony_storage">Android Telefonie-Datenspeicher</string>
+    <string name="source_google_cellular_ims_service">Google Mobilfunk-/IMS-Dienst</string>
+    <string name="source_android_bluetooth_service">Android Bluetooth-Dienst</string>
+    <string name="source_android_networkstack_service">Android Netzwerkdienst</string>
+    <string name="source_unknown_system_source">Unbekannte Systemquelle</string>
+
+    <!-- EventGrouping -->
+    <string name="grouping_source_ambiguous">Nicht eindeutig zuordenbar</string>
+
+    <!-- DeviceProfile -->
+    <string name="device_unknown_manufacturer">Unbekannt</string>
+    <string name="device_unknown_model">Unbekanntes Modell</string>
+    <string name="device_profile_oneplus">OnePlus-Profil</string>
+    <string name="device_profile_samsung">Samsung-Profil</string>
+    <string name="device_profile_generic">Allgemeines Android-Profil</string>
+    <string name="device_coverage_high">hoch</string>
+    <string name="device_coverage_good">gut</string>
+    <string name="device_coverage_good_to_medium">gut bis mittel</string>
+    <string name="device_coverage_medium">mittel</string>
+    <string name="device_coverage_basic">grundlegend</string>
+    <string name="device_coverage_limited">eingeschränkt</string>
+    <string name="device_coverage_device_dependent">geräteabhängig</string>
+    <string name="device_summary_oneplus">Für OnePlus und OxygenOS optimierte Auswertung.</string>
+    <string name="device_summary_samsung">Für Samsung One UI angepasste Auswertung; direkte Power-Tasten-Erkennung bleibt geräteabhängig.</string>
+    <string name="device_summary_generic">Grundfunktionen verfügbar; die Datenqualität hängt vom Hersteller ab.</string>
+
+    <!-- SourceStatistics -->
+    <string name="stats_title">Aktivste Quellen</string>
+    <plurals name="stats_source_count">
+        <item quantity="one">%1$d Quelle</item>
+        <item quantity="other">%1$d Quellen</item>
+    </plurals>
+    <string name="stats_strongest_source">Stärkste Quelle: %1$s</string>
+    <string name="stats_show_details">Details anzeigen</string>
+    <string name="stats_hide_details">Details ausblenden</string>
+    <string name="stats_empty">Noch keine App oder Systemquelle konnte einem Ereignis zeitlich zugeordnet werden.</string>
+    <string name="stats_ranking_disclaimer">Die Rangliste zeigt zeitlich passende Aktivitäten. Eine Zuordnung beweist nicht, dass die jeweilige App allein für das Aufwecken verantwortlich war.</string>
+    <string name="stats_label_display">Display</string>
+    <string name="stats_label_notifications">Hinweise</string>
+    <string name="stats_window_ongoing">%1$s · läuft</string>
+    <string name="stats_value_not_determined">nicht ermittelt</string>
+    <string name="stats_notification">Benachrichtigung</string>
+</resources>

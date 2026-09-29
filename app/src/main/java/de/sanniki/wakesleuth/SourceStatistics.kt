@@ -1,5 +1,6 @@
 package de.sanniki.wakesleuth
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,6 +55,9 @@ fun SourceStatisticsCard(
     monitoring: Boolean,
     detailLevel: DetailLevel
 ) {
+    val context =
+        LocalContext.current
+
     val window =
         remember(
             events,
@@ -68,6 +75,7 @@ fun SourceStatisticsCard(
             window
         ) {
             buildSourceStatistics(
+                context = context,
                 events = events,
                 window = window
             )
@@ -112,7 +120,10 @@ fun SourceStatisticsCard(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Aktivste Quellen",
+                        text =
+                            stringResource(
+                                R.string.stats_title
+                            ),
                         style =
                             MaterialTheme.typography
                                 .titleMedium,
@@ -126,6 +137,7 @@ fun SourceStatisticsCard(
                     Text(
                         text =
                             formatSourceStatisticsWindow(
+                                context,
                                 window
                             ),
                         color =
@@ -139,7 +151,11 @@ fun SourceStatisticsCard(
 
                 Text(
                     text =
-                        "${entries.size} Quellen",
+                        pluralStringResource(
+                            R.plurals.stats_source_count,
+                            entries.size,
+                            entries.size
+                        ),
                     color =
                         MaterialTheme.colorScheme.primary,
                     style =
@@ -156,10 +172,13 @@ fun SourceStatisticsCard(
             if (entries.isNotEmpty()) {
                 Text(
                     text =
-                        "Stärkste Quelle: " +
+                        stringResource(
+                            R.string.stats_strongest_source,
                             sourceDisplayName(
+                                context,
                                 entries.first().source
-                            ),
+                            )
+                        ),
                     color =
                         MaterialTheme.colorScheme
                             .onSurfaceVariant,
@@ -192,9 +211,13 @@ fun SourceStatisticsCard(
             ) {
                 Text(
                     if (detailsExpanded.value) {
-                        "Details ausblenden"
+                        stringResource(
+                            R.string.stats_hide_details
+                        )
                     } else {
-                        "Details anzeigen"
+                        stringResource(
+                            R.string.stats_show_details
+                        )
                     }
                 )
             }
@@ -207,7 +230,9 @@ fun SourceStatisticsCard(
                 if (visibleEntries.isEmpty()) {
                     Text(
                         text =
-                            "Noch keine App oder Systemquelle konnte einem Ereignis zeitlich zugeordnet werden.",
+                            stringResource(
+                                R.string.stats_empty
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -263,7 +288,9 @@ fun SourceStatisticsCard(
 
                     Text(
                         text =
-                            "Die Rangliste zeigt zeitlich passende Aktivitäten. Eine Zuordnung beweist nicht, dass die jeweilige App allein für das Aufwecken verantwortlich war.",
+                            stringResource(
+                                R.string.stats_ranking_disclaimer
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -317,6 +344,7 @@ private fun SourceStatisticsRow(
             ) {
                 val displayName =
                     sourceDisplayName(
+                        LocalContext.current,
                         entry.source
                     )
 
@@ -416,7 +444,10 @@ private fun SourceStatisticsRow(
                     Arrangement.spacedBy(12.dp)
             ) {
                 SourceCountLabel(
-                    label = "Display",
+                    label =
+                        stringResource(
+                            R.string.stats_label_display
+                        ),
                     value = entry.displayCount
                 )
 
@@ -430,7 +461,10 @@ private fun SourceStatisticsRow(
                     DetailLevel.EXPERT
                 ) {
                     SourceCountLabel(
-                        label = "Hinweise",
+                        label =
+                            stringResource(
+                                R.string.stats_label_notifications
+                            ),
                         value =
                             entry.notificationCount
                     )
@@ -457,6 +491,7 @@ private fun SourceCountLabel(
 }
 
 private fun buildSourceStatistics(
+    context: Context,
     events: List<WakeEvent>,
     window: SourceStatisticsWindow
 ): List<SourceStatisticsEntry> {
@@ -480,6 +515,7 @@ private fun buildSourceStatistics(
         .forEach { event ->
             val sources =
                 extractStatisticsSources(
+                    context,
                     event
                 )
 
@@ -539,24 +575,41 @@ private fun buildSourceStatistics(
 }
 
 private fun extractStatisticsSources(
+    context: Context,
     event: WakeEvent
 ): Set<String> {
     val acceptedPrefixes =
         listOf(
-            "Wahrscheinliche Ursache:",
-            "Mögliche Ursache:",
-            "Nachträglich erkannte Ursache:",
-            "Mögliche Quelle:",
-            "Quelle:"
-        )
+            R.string.timeline_prefix_likely_cause,
+            R.string.timeline_prefix_possible_cause,
+            R.string.timeline_prefix_later_detected_cause,
+            R.string.timeline_prefix_possible_source,
+            R.string.timeline_prefix_source
+        ).flatMap {
+            LocalizedText.variants(
+                context,
+                it
+            )
+        }
 
     val ignoredValues =
-        setOf(
-            "nicht eindeutig zuordenbar",
-            "unbekannt",
-            "keine",
-            "nicht ermittelt",
-            "nicht näher bezeichnet"
+        listOf(
+            R.string.bg_possible_source_ambiguous,
+            R.string.event_unknown,
+            R.string.event_none,
+            R.string.stats_value_not_determined,
+            R.string.bg_unspecified
+        ).flatMap {
+            LocalizedText.variants(
+                context,
+                it
+            )
+        }.toSet()
+
+    val notificationTitles =
+        LocalizedText.variants(
+            context,
+            R.string.stats_notification
         )
 
     val sources =
@@ -617,12 +670,14 @@ private fun extractStatisticsSources(
                 event.title
             )
             .trim()
-            .takeIf {
-                it.isNotBlank() &&
-                    !it.equals(
-                        "Benachrichtigung",
-                        ignoreCase = true
-                    )
+            .takeIf { title ->
+                title.isNotBlank() &&
+                    notificationTitles.none {
+                        title.equals(
+                            it,
+                            ignoreCase = true
+                        )
+                    }
             }
             ?.let(::normalizeStatisticsSource)
             ?.let {
@@ -717,6 +772,7 @@ private fun calculateSourceStatisticsWindow(
 }
 
 private fun formatSourceStatisticsWindow(
+    context: Context,
     window: SourceStatisticsWindow
 ): String {
     val formatter =
@@ -725,23 +781,29 @@ private fun formatSourceStatisticsWindow(
             Locale.getDefault()
         )
 
-    return buildString {
-        append(
-            formatter.format(
-                Date(window.startMillis)
+    val range =
+        buildString {
+            append(
+                formatter.format(
+                    Date(window.startMillis)
+                )
             )
-        )
 
-        append(" – ")
+            append(" – ")
 
-        append(
-            formatter.format(
-                Date(window.endMillis)
+            append(
+                formatter.format(
+                    Date(window.endMillis)
+                )
             )
-        )
-
-        if (window.ongoing) {
-            append(" · läuft")
         }
+
+    return if (window.ongoing) {
+        context.getString(
+            R.string.stats_window_ongoing,
+            range
+        )
+    } else {
+        range
     }
 }

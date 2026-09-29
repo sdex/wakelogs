@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- SleepReport: card and sections -->
+    <string name="sleep_section_network">Netzwerk</string>
+    <string name="sleep_no_traffic_data">Keine Verkehrsdaten</string>
+    <plurals name="sleep_app_count">
+        <item quantity="one">%d Apps</item>
+        <item quantity="other">%d Apps</item>
+    </plurals>
+    <string name="sleep_section_activity_classification">Aktivitäts-Einordnung</string>
+    <plurals name="sleep_active_sources_classified">
+        <item quantity="one">%d aktive Quellen eingeordnet</item>
+        <item quantity="other">%d aktive Quellen eingeordnet</item>
+    </plurals>
+    <string name="sleep_section_quiet_phases_history">Ruhephasen und Verlauf</string>
+    <string name="sleep_longest_rest_summary">Längste Ruhe: %1$s</string>
+    <string name="sleep_not_determinable">Noch nicht ermittelbar</string>
+    <string name="sleep_technical_metrics">Technische Kennzahlen</string>
+    <plurals name="sleep_total_activities">
+        <item quantity="one">%d Aktivitäten insgesamt</item>
+        <item quantity="other">%d Aktivitäten insgesamt</item>
+    </plurals>
+    <string name="sleep_section_hints">Hinweise und Einordnung</string>
+    <plurals name="sleep_hint_count">
+        <item quantity="one">%d Hinweise</item>
+        <item quantity="other">%d Hinweise</item>
+    </plurals>
+    <string name="sleep_score_disclaimer">Der Ruhe-Score bewertet ausschließlich die technische Geräteaktivität und nicht deinen persönlichen Schlaf.</string>
+
+    <!-- SleepReport: pending state -->
+    <string name="sleep_pending_preparing">Analyse wird vorbereitet</string>
+    <string name="sleep_pending_too_short">Analyse noch zu kurz</string>
+    <string name="sleep_no_analysis_yet">Noch keine Analyse vorhanden</string>
+    <string name="sleep_pending_preparing_hint">Für erste Ergebnisse mindestens 1 Minute aufzeichnen.</string>
+    <string name="sleep_pending_too_short_hint">Der aufgezeichnete Zeitraum reicht noch nicht für eine Auswertung aus.</string>
+    <string name="sleep_pending_start_hint">Starte eine Analyse, um die Geräteaktivität auszuwerten.</string>
+
+    <!-- SleepReport: header, score and metrics -->
+    <string name="sleep_header_title">Geräteruhe-Analyse</string>
+    <string name="sleep_provisional_rating">Vorläufig · %1$s</string>
+    <string name="sleep_short_measurement_summary">Kurze Messung: %1$s</string>
+    <string name="sleep_provisional">vorläufig</string>
+    <string name="sleep_score_of_100">von 100</string>
+    <string name="sleep_metric_screen_on">Display an</string>
+    <string name="sleep_metric_cpu_wakes">CPU-Wakes</string>
+    <string name="sleep_metric_in_duration">in %1$s</string>
+    <string name="sleep_metric_per_hour">pro Stunde</string>
+    <string name="sleep_hourly_value_note">Stundenwert ab 15 Minuten Messdauer.</string>
+
+    <!-- SleepReport: network section -->
+    <string name="sleep_network_during_session">Netzwerk während der Sitzung</string>
+    <string name="sleep_data_traffic">Datenverkehr</string>
+    <string name="sleep_active_apps">Aktive Apps</string>
+    <string name="sleep_received">Empfangen</string>
+    <string name="sleep_sent">Gesendet</string>
+    <string name="sleep_measurement_duration">Messdauer</string>
+    <plurals name="sleep_most_active_apps">
+        <item quantity="one">Aktivste App</item>
+        <item quantity="other">Aktivste Apps</item>
+    </plurals>
+    <string name="sleep_received_value">Empfangen: %1$s</string>
+    <string name="sleep_sent_value">Gesendet: %1$s</string>
+    <string name="sleep_network_traffic_disclaimer">Datenverkehr zeigt App-Aktivität, beweist aber keinen direkten Zusammenhang mit einem Wakeup.</string>
+
+    <!-- SleepReport: activity classification -->
+    <string name="sleep_activity_classification_intro">Einordnung aus CPU-Wakeups und Netzwerkaktivität derselben Sitzung.</string>
+    <string name="sleep_cpu_attributions">CPU-Zuordnungen: %1$d</string>
+    <string name="sleep_network_value">Netzwerk: %1$s</string>
+    <string name="sleep_show_less">Weniger anzeigen</string>
+    <plurals name="sleep_show_more">
+        <item quantity="one">Weitere %d anzeigen</item>
+        <item quantity="other">Weitere %d anzeigen</item>
+    </plurals>
+    <string name="sleep_activity_classification_disclaimer">Netzwerkaktivität zeigt Nutzung oder Hintergrundverkehr. Ein Wakeup-Bezug wird nur bei passenden CPU-Hinweisen angenommen.</string>
+    <string name="sleep_level_likely_involved">Wahrscheinlich beteiligt</string>
+    <string name="sleep_level_temporally_noticeable">Zeitlich auffällig</string>
+    <string name="sleep_level_companion_activity">Aktiv · kein Wakeup-Bezug</string>
+    <string name="sleep_explanation_cpu_repeated_network">Die Quelle wurde mehrfach bei CPU-Wakeups erkannt und verursachte zusätzlich Datenverkehr.</string>
+    <string name="sleep_explanation_cpu_repeated">Die Quelle wurde in dieser Sitzung mehrfach zeitlich einem CPU-Wakeup zugeordnet.</string>
+    <string name="sleep_explanation_cpu_network">Die Quelle wurde einem CPU-Wakeup zugeordnet und war außerdem im Netzwerk aktiv.</string>
+    <string name="sleep_explanation_cpu_once">Die Quelle wurde einmal im kurzen Zeitfenster eines CPU-Wakeups erkannt.</string>
+    <string name="sleep_explanation_network_only">Die App war während der Sitzung aktiv, wurde aber keinem CPU-Wakeup zugeordnet.</string>
+
+    <!-- SleepReport: rest periods and history -->
+    <string name="sleep_quiet_phases">Ruhephasen</string>
+    <string name="sleep_longest_quiet_phase">Längste Ruhephase</string>
+    <string name="sleep_second_longest_quiet_phase">Zweitlängste Ruhephase</string>
+    <string name="sleep_average_quiet_phase">Durchschnittliche Ruhephase</string>
+    <string name="sleep_longest_phase_range">Längste Phase: %1$s – %2$s</string>
+    <string name="sleep_activity_history">Aktivität im Verlauf</string>
+    <string name="sleep_activity_history_hint">Höhere Balken bedeuten mehr Display- oder CPU-Aktivität.</string>
+    <string name="sleep_activity_history_empty">Für die grafische Auswertung sind noch keine Aktivitäten vorhanden.</string>
+
+    <!-- SleepReport: technical metrics -->
+    <string name="sleep_attributed_display_wakeups">Zugeordnete Display-Wakeups</string>
+    <string name="sleep_unexplained_display_wakeups">Ungeklärte Display-Wakeups</string>
+    <string name="sleep_total_activities_label">Aktivitäten insgesamt</string>
+    <string name="sleep_average_activity_distance">Mittlerer Abstand zwischen Aktivitäten</string>
+    <string name="sleep_short_measurement_period">Kurzer Messzeitraum</string>
+    <plurals name="sleep_events_in_duration">
+        <item quantity="one">%1$d Ereignisse in %2$s</item>
+        <item quantity="other">%1$d Ereignisse in %2$s</item>
+    </plurals>
+    <string name="sleep_busiest_hour">Aktivste Stunde</string>
+    <plurals name="sleep_busiest_hour_value">
+        <item quantity="one">%1$s:00–%2$s:00 · %3$d Ereignisse</item>
+        <item quantity="other">%1$s:00–%2$s:00 · %3$d Ereignisse</item>
+    </plurals>
+    <string name="sleep_classification">Einordnung</string>
+
+    <!-- SleepReport: analysis window -->
+    <string name="sleep_window_running_analysis">Laufende Geräteruhe-Analyse</string>
+    <string name="sleep_window_last_analysis">Letzte Geräteruhe-Analyse</string>
+    <string name="sleep_window_recorded_period">Aufgezeichneter Zeitraum</string>
+    <string name="sleep_window_running">%1$s · läuft</string>
+
+    <!-- SleepReport: rating and summary -->
+    <string name="sleep_rating_excellent">Ausgezeichnet ruhig</string>
+    <string name="sleep_rating_very_quiet">Sehr ruhig</string>
+    <string name="sleep_rating_quiet">Ruhig</string>
+    <string name="sleep_rating_normal">Normal aktiv</string>
+    <string name="sleep_rating_restless">Unruhig</string>
+    <string name="sleep_rating_heavily_interrupted">Stark unterbrochen</string>
+    <string name="sleep_summary_no_activity">Im ausgewerteten Zeitraum wurde keine relevante Aktivität erfasst.</string>
+    <string name="sleep_summary_quiet">Das Gerät blieb über weite Strecken ruhig.</string>
+    <string name="sleep_summary_few_interruptions">Nur wenige stärkere Unterbrechungen wurden erkannt.</string>
+    <string name="sleep_summary_unremarkable">Die Aktivität liegt in einem unauffälligen Bereich.</string>
+    <string name="sleep_summary_background">Mehrere Hintergrundaktivitäten unterbrachen die Ruhephasen.</string>
+    <string name="sleep_summary_display_background">Mehrere Display- und Hintergrundaktivitäten wurden erkannt.</string>
+    <string name="sleep_summary_dense">Der Zeitraum enthielt viele oder dicht aufeinanderfolgende Aktivitäten.</string>
+
+    <!-- SleepReport: hints -->
+    <string name="sleep_hint_run_longer">Für eine belastbarere Einordnung sollte die Überwachung länger als 30 Minuten laufen.</string>
+    <string name="sleep_hint_display_off">Das Display blieb während des ausgewerteten Zeitraums ausgeschaltet.</string>
+    <string name="sleep_hint_few_display">Es wurden nur wenige Display-Aktivierungen erkannt.</string>
+    <string name="sleep_hint_many_display">Mehrere Display-Aktivierungen unterbrachen die Geräte-Ruhe.</string>
+    <plurals name="sleep_hint_unexplained_display">
+        <item quantity="one">%d Display-Aktivierungen sind noch nicht eindeutig zugeordnet.</item>
+        <item quantity="other">%d Display-Aktivierungen sind noch nicht eindeutig zugeordnet.</item>
+    </plurals>
+    <string name="sleep_hint_no_cpu">Keine CPU-Hintergrund-Wakeups wurden erfasst.</string>
+    <plurals name="sleep_hint_short_cpu">
+        <item quantity="one">In der kurzen Messung wurden %d CPU-Aktivitäten erfasst.</item>
+        <item quantity="other">In der kurzen Messung wurden %d CPU-Aktivitäten erfasst.</item>
+    </plurals>
+    <string name="sleep_hint_low_background">Die Hintergrundaktivität war insgesamt gering.</string>
+    <string name="sleep_hint_several_background">Mehrere kurze Hintergrundaktivitäten wurden erkannt.</string>
+    <string name="sleep_hint_frequent_cpu">Die CPU wurde im Durchschnitt häufig aus dem Ruhezustand geholt.</string>
+    <string name="sleep_hint_long_quiet">Es gab mindestens eine längere ununterbrochene Ruhephase.</string>
+    <string name="sleep_hint_busiest_hours">Die meiste Aktivität trat zwischen %1$s:00 und %2$s:00 Uhr auf.</string>
+
+    <!-- SleepReport: source names -->
+    <string name="sleep_system_service_uid">Systemdienst · UID %1$s</string>
+    <string name="sleep_google_services">Google-Dienste</string>
+    <string name="sleep_oneplus_system">OnePlus-System</string>
+
+    <!-- SleepReport: labels parsed from stored event details -->
+    <string name="sleep_label_possible_source">Mögliche Quelle:</string>
+    <string name="sleep_label_cpu_wakeup_prefix">CPU-Wakeup ·</string>
+    <string name="sleep_label_total">Gesamt:</string>
+    <string name="sleep_label_received">Empfangen:</string>
+    <string name="sleep_label_sent">Gesendet:</string>
+    <string name="sleep_label_apps_with_traffic">Apps mit Datenverkehr:</string>
+    <string name="sleep_label_measurement_duration">Messdauer:</string>
+    <string name="sleep_marker_no_baseline">Keine Ausgangsmessung verfügbar</string>
+    <string name="sleep_marker_end_measurement_failed">Endmessung fehlgeschlagen</string>
+    <string name="sleep_marker_no_app_traffic">Keine App mit messbarem Datenverkehr</string>
+    <string name="sleep_network_no_baseline_message">Für diese Sitzung war keine Ausgangsmessung verfügbar.</string>
+    <string name="sleep_network_no_app_traffic_message">Keine App verursachte messbaren Datenverkehr.</string>
+    <string name="sleep_label_direct_wake_reason">Direkter Aufweckgrund:</string>
+    <string name="sleep_label_likely_cause">Wahrscheinliche Ursache:</string>
+    <string name="sleep_label_possible_cause">Mögliche Ursache:</string>
+    <string name="sleep_label_later_detected_cause">Nachträglich erkannte Ursache:</string>
+    <string name="sleep_label_system_hint">Systemhinweis:</string>
+    <string name="sleep_label_wakeup_alarm_hint">Wakeup-Alarm-Hinweis:</string>
+    <string name="sleep_label_background_job_hint">Hintergrundjob-Hinweis:</string>
+    <string name="sleep_marker_cause_unknown">Ursache: noch unbekannt</string>
+
+    <!-- SleepReport: durations -->
+    <string name="sleep_duration_days_hours">%1$d T %2$d Std</string>
+    <string name="sleep_duration_hours_minutes">%1$d Std %2$d Min</string>
+    <string name="sleep_duration_minutes">%1$d Min</string>
+    <string name="sleep_duration_seconds">%1$d Sek</string>
+    <string name="sleep_duration_minutes_seconds">%1$d Min %2$d Sek</string>
+</resources>

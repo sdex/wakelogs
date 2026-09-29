@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.IBinder
+import androidx.annotation.StringRes
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -208,7 +209,9 @@ object ShizukuDiagnostics {
                 ShizukuState.NOT_RUNNING
             ) {
                 return@withContext errorResult(
-                    "Shizuku läuft nicht."
+                    context.getString(
+                        R.string.shizuku_error_not_running
+                    )
                 )
             }
 
@@ -217,7 +220,9 @@ object ShizukuDiagnostics {
                 ShizukuState.RUNNING_GRANTED
             ) {
                 return@withContext errorResult(
-                    "Shizuku-Berechtigung fehlt."
+                    context.getString(
+                        R.string.shizuku_error_permission_missing
+                    )
                 )
             }
 
@@ -231,6 +236,7 @@ object ShizukuDiagnostics {
                     )
 
                 parsePowerDump(
+                    context = context,
                     output = output,
                     ownPackageName = context.packageName,
                     referenceTimestamp =
@@ -240,8 +246,12 @@ object ShizukuDiagnostics {
                 remoteService = null
 
                 errorResult(
-                    throwable.message
-                        ?: "Unbekannter Shizuku-Fehler"
+                    failureMessage(
+                        context = context,
+                        throwable = throwable,
+                        fallback =
+                            R.string.shizuku_error_unknown
+                    )
                 )
             }
         }
@@ -256,7 +266,9 @@ object ShizukuDiagnostics {
                 ShizukuState.NOT_RUNNING
             ) {
                 return@withContext alarmErrorResult(
-                    "Shizuku läuft nicht."
+                    context.getString(
+                        R.string.shizuku_error_not_running
+                    )
                 )
             }
 
@@ -265,7 +277,9 @@ object ShizukuDiagnostics {
                 ShizukuState.RUNNING_GRANTED
             ) {
                 return@withContext alarmErrorResult(
-                    "Shizuku-Berechtigung fehlt."
+                    context.getString(
+                        R.string.shizuku_error_permission_missing
+                    )
                 )
             }
 
@@ -279,6 +293,7 @@ object ShizukuDiagnostics {
                     )
 
                 parseAlarmDump(
+                    context = context,
                     output = output,
                     ownPackageName =
                         context.packageName
@@ -287,8 +302,12 @@ object ShizukuDiagnostics {
                 remoteService = null
 
                 alarmErrorResult(
-                    throwable.message
-                        ?: "Unbekannter Alarm-Diagnosefehler"
+                    failureMessage(
+                        context = context,
+                        throwable = throwable,
+                        fallback =
+                            R.string.shizuku_error_unknown_alarm
+                    )
                 )
             }
         }
@@ -303,7 +322,9 @@ object ShizukuDiagnostics {
                 ShizukuState.NOT_RUNNING
             ) {
                 return@withContext jobErrorResult(
-                    "Shizuku läuft nicht."
+                    context.getString(
+                        R.string.shizuku_error_not_running
+                    )
                 )
             }
 
@@ -312,7 +333,9 @@ object ShizukuDiagnostics {
                 ShizukuState.RUNNING_GRANTED
             ) {
                 return@withContext jobErrorResult(
-                    "Shizuku-Berechtigung fehlt."
+                    context.getString(
+                        R.string.shizuku_error_permission_missing
+                    )
                 )
             }
 
@@ -342,8 +365,12 @@ object ShizukuDiagnostics {
                 remoteService = null
 
                 jobErrorResult(
-                    throwable.message
-                        ?: "Unbekannter JobScheduler-Fehler"
+                    failureMessage(
+                        context = context,
+                        throwable = throwable,
+                        fallback =
+                            R.string.shizuku_error_unknown_jobscheduler
+                    )
                 )
             }
         }
@@ -359,7 +386,9 @@ object ShizukuDiagnostics {
                 ShizukuState.NOT_RUNNING
             ) {
                 return@withContext networkStatsErrorResult(
-                    "Shizuku läuft nicht."
+                    context.getString(
+                        R.string.shizuku_error_not_running
+                    )
                 )
             }
 
@@ -368,7 +397,9 @@ object ShizukuDiagnostics {
                 ShizukuState.RUNNING_GRANTED
             ) {
                 return@withContext networkStatsErrorResult(
-                    "Shizuku-Berechtigung fehlt."
+                    context.getString(
+                        R.string.shizuku_error_permission_missing
+                    )
                 )
             }
 
@@ -399,8 +430,12 @@ object ShizukuDiagnostics {
                 remoteService = null
 
                 networkStatsErrorResult(
-                    throwable.message
-                        ?: "Unbekannter NetStats-Fehler"
+                    failureMessage(
+                        context = context,
+                        throwable = throwable,
+                        fallback =
+                            R.string.shizuku_error_unknown_netstats
+                    )
                 )
             }
         }
@@ -415,7 +450,9 @@ object ShizukuDiagnostics {
                 ShizukuState.NOT_RUNNING
             ) {
                 return@withContext wakeReasonErrorResult(
-                    "Shizuku läuft nicht."
+                    context.getString(
+                        R.string.shizuku_error_not_running
+                    )
                 )
             }
 
@@ -424,7 +461,9 @@ object ShizukuDiagnostics {
                 ShizukuState.RUNNING_GRANTED
             ) {
                 return@withContext wakeReasonErrorResult(
-                    "Shizuku-Berechtigung fehlt."
+                    context.getString(
+                        R.string.shizuku_error_permission_missing
+                    )
                 )
             }
 
@@ -452,8 +491,12 @@ object ShizukuDiagnostics {
                 remoteService = null
 
                 wakeReasonErrorResult(
-                    throwable.message
-                        ?: "Unbekannter Aufweckgrund-Fehler"
+                    failureMessage(
+                        context = context,
+                        throwable = throwable,
+                        fallback =
+                            R.string.shizuku_error_unknown_wake_reason
+                    )
                 )
             }
         }
@@ -468,7 +511,9 @@ object ShizukuDiagnostics {
                 ShizukuState.RUNNING_GRANTED
             ) {
                 throw IllegalStateException(
-                    "Shizuku-Systemdiagnose nicht verfügbar."
+                    context.getString(
+                        R.string.shizuku_error_diagnostics_unavailable
+                    )
                 )
             }
 
@@ -479,8 +524,12 @@ object ShizukuDiagnostics {
                 remoteService = null
 
                 throw IllegalStateException(
-                    throwable.message
-                        ?: "Diagnosebefehl fehlgeschlagen.",
+                    failureMessage(
+                        context = context,
+                        throwable = throwable,
+                        fallback =
+                            R.string.shizuku_error_diagnostic_command_failed
+                    ),
                     throwable
                 )
             }
@@ -551,12 +600,42 @@ object ShizukuDiagnostics {
             binding = false
 
             throw IllegalStateException(
-                "Shizuku-UserService antwortet nicht."
+                context.getString(
+                    R.string.shizuku_error_user_service_not_responding
+                )
             )
         }
     }
 
+    private fun failureMessage(
+        context: Context,
+        throwable: Throwable,
+        @StringRes fallback: Int
+    ): String {
+        val message =
+            throwable.message
+                ?: return context.getString(
+                    fallback
+                )
+
+        if (
+            !message.startsWith(
+                WakeSleuthUserService.EXIT_CODE_ERROR_PREFIX
+            )
+        ) {
+            return message
+        }
+
+        return context.getString(
+            R.string.shizuku_error_shell_command_failed,
+            message.removePrefix(
+                WakeSleuthUserService.EXIT_CODE_ERROR_PREFIX
+            )
+        )
+    }
+
     private fun parsePowerDump(
+        context: Context,
         output: String,
         ownPackageName: String,
         referenceTimestamp: Long?
@@ -603,6 +682,7 @@ object ShizukuDiagnostics {
 
         val historyEntries =
             parseWakeLockHistory(
+                context = context,
                 lines = lines,
                 ownPackageName =
                     ownPackageName
@@ -626,6 +706,7 @@ object ShizukuDiagnostics {
     }
 
     private fun parseWakeLockHistory(
+        context: Context,
         lines: List<String>,
         ownPackageName: String
     ): List<WakeLockHistoryEntry> {
@@ -694,6 +775,7 @@ object ShizukuDiagnostics {
         val parsed =
             historyLines.mapNotNull { rawLine ->
                 parseWakeLockHistoryLine(
+                    context = context,
                     line = rawLine.trim(),
                     ownPackageName =
                         ownPackageName
@@ -840,6 +922,7 @@ object ShizukuDiagnostics {
     }
 
     private fun parseWakeLockHistoryLine(
+        context: Context,
         line: String,
         ownPackageName: String
     ): RawWakeLockHistoryLine? {
@@ -916,21 +999,31 @@ object ShizukuDiagnostics {
                 lowerFlags.contains(
                     "screen-bright"
                 ) ->
-                    "Display hell"
+                    context.getString(
+                        R.string.shizuku_wakelock_type_screen_bright
+                    )
 
                 lowerFlags.contains(
                     "screen-dim"
                 ) ->
-                    "Display gedimmt"
+                    context.getString(
+                        R.string.shizuku_wakelock_type_screen_dim
+                    )
 
                 lowerFlags.contains("full") ->
-                    "Full"
+                    context.getString(
+                        R.string.shizuku_wakelock_type_full
+                    )
 
                 lowerFlags.contains("partial") ->
-                    "Partial"
+                    context.getString(
+                        R.string.shizuku_wakelock_type_partial
+                    )
 
                 else ->
-                    "Unbekannt"
+                    context.getString(
+                        R.string.shizuku_wakelock_type_unknown
+                    )
             }
 
         return RawWakeLockHistoryLine(
@@ -1114,6 +1207,7 @@ object ShizukuDiagnostics {
     }
 
     private fun parseAlarmDump(
+        context: Context,
         output: String,
         ownPackageName: String
     ): WakeupAlarmDiagnostic {
@@ -1126,7 +1220,9 @@ object ShizukuDiagnostics {
 
         if (statsStart < 0) {
             return alarmErrorResult(
-                "Alarm-Statistik wurde nicht gefunden."
+                context.getString(
+                    R.string.shizuku_error_alarm_stats_not_found
+                )
             )
         }
 
@@ -1801,7 +1897,7 @@ object ShizukuDiagnostics {
         context: Context
     ): String {
         val deviceFamily =
-            DeviceProfile.detect().family
+            DeviceProfile.detect(context).family
 
         fun hasAny(
             text: String,
@@ -1829,7 +1925,9 @@ object ShizukuDiagnostics {
                     .take(maxItems)
 
             return if (cleaned.isEmpty()) {
-                "keine auffälligen kompakten Treffer"
+                context.getString(
+                    R.string.shizuku_snapshot_no_hits
+                )
             } else {
                 cleaned.joinToString(
                     separator = "\n"
@@ -1873,7 +1971,9 @@ object ShizukuDiagnostics {
             )
         ) {
             locationHints.add(
-                "Google Fused Location aktiv/vorhanden"
+                context.getString(
+                    R.string.shizuku_hint_fused_location
+                )
             )
         }
 
@@ -1886,7 +1986,9 @@ object ShizukuDiagnostics {
             )
         ) {
             locationHints.add(
-                "Netzwerk-Standort aktiv/vorhanden"
+                context.getString(
+                    R.string.shizuku_hint_network_location
+                )
             )
         }
 
@@ -1899,7 +2001,9 @@ object ShizukuDiagnostics {
             )
         ) {
             locationHints.add(
-                "GNSS/GPS-Standortdienst vorhanden"
+                context.getString(
+                    R.string.shizuku_hint_gnss_location
+                )
             )
         }
 
@@ -1912,7 +2016,9 @@ object ShizukuDiagnostics {
             )
         ) {
             locationHints.add(
-                "Bewegungserkennung / Activity Recognition sichtbar"
+                context.getString(
+                    R.string.shizuku_hint_activity_recognition
+                )
             )
         }
 
@@ -1925,7 +2031,9 @@ object ShizukuDiagnostics {
             )
         ) {
             locationHints.add(
-                "Geofencing-Hinweise sichtbar"
+                context.getString(
+                    R.string.shizuku_hint_geofencing
+                )
             )
         }
 
@@ -1937,7 +2045,9 @@ object ShizukuDiagnostics {
             )
         ) {
             locationHints.add(
-                "Wetterdienst nutzt passive Standortdaten"
+                context.getString(
+                    R.string.shizuku_hint_weather_passive_location
+                )
             )
         }
 
@@ -1953,7 +2063,9 @@ object ShizukuDiagnostics {
             )
         ) {
             locationHints.add(
-                "OnePlus/Oplus Standort- oder Sensor-Dienste sichtbar"
+                context.getString(
+                    R.string.shizuku_hint_oplus_location_services
+                )
             )
         }
 
@@ -1968,7 +2080,9 @@ object ShizukuDiagnostics {
             )
         ) {
             sensorHints.add(
-                "Wakeup-Näherungssensor vorhanden/aktivierbar"
+                context.getString(
+                    R.string.shizuku_hint_proximity_wakeup
+                )
             )
         }
 
@@ -1980,7 +2094,9 @@ object ShizukuDiagnostics {
             )
         ) {
             sensorHints.add(
-                "Pick-up-/Anheben-Erkennung vorhanden"
+                context.getString(
+                    R.string.shizuku_hint_pick_up_detection
+                )
             )
         }
 
@@ -1992,7 +2108,9 @@ object ShizukuDiagnostics {
             )
         ) {
             sensorHints.add(
-                "AOD-/Lichtsensor-Wakeup vorhanden"
+                context.getString(
+                    R.string.shizuku_hint_aod_light_wakeup
+                )
             )
         }
 
@@ -2006,13 +2124,19 @@ object ShizukuDiagnostics {
             sensorHints.add(
                 when (deviceFamily) {
                     DeviceFamily.ONEPLUS ->
-                        "Oplus Activity Recognition Sensor vorhanden"
+                        context.getString(
+                            R.string.shizuku_hint_oplus_activity_sensor
+                        )
 
                     DeviceFamily.SAMSUNG ->
-                        "Samsung Bewegungs-/Aktivitätserkennung vorhanden"
+                        context.getString(
+                            R.string.shizuku_hint_samsung_activity_detection
+                        )
 
                     DeviceFamily.GENERIC_ANDROID ->
-                        "Bewegungs-/Aktivitätserkennung vorhanden"
+                        context.getString(
+                            R.string.shizuku_hint_activity_detection
+                        )
                 }
             )
         }
@@ -2026,7 +2150,9 @@ object ShizukuDiagnostics {
             )
         ) {
             sensorHints.add(
-                "Schritt-/Bewegungssensoren sichtbar"
+                context.getString(
+                    R.string.shizuku_hint_step_sensors
+                )
             )
         }
 
@@ -2038,7 +2164,9 @@ object ShizukuDiagnostics {
             )
         ) {
             sensorHints.add(
-                "Significant-Motion-Erkennung vorhanden"
+                context.getString(
+                    R.string.shizuku_hint_significant_motion
+                )
             )
         }
 
@@ -2054,7 +2182,9 @@ object ShizukuDiagnostics {
             )
         ) {
             networkHints.add(
-                "WLAN aktiv/verbunden"
+                context.getString(
+                    R.string.shizuku_hint_wifi_connected
+                )
             )
         }
 
@@ -2067,7 +2197,9 @@ object ShizukuDiagnostics {
             )
         ) {
             networkHints.add(
-                "Mobilfunk/IMS-Kontext sichtbar"
+                context.getString(
+                    R.string.shizuku_hint_cellular_ims
+                )
             )
         }
 
@@ -2079,7 +2211,9 @@ object ShizukuDiagnostics {
             )
         ) {
             networkHints.add(
-                "Telefonie-Netzwerkanfragen sichtbar"
+                context.getString(
+                    R.string.shizuku_hint_telephony_requests
+                )
             )
         }
 
@@ -2092,28 +2226,44 @@ object ShizukuDiagnostics {
             )
         ) {
             networkHints.add(
-                "Qualcomm/OEM Netzwerkoptimierung sichtbar"
+                context.getString(
+                    R.string.shizuku_hint_qualcomm_network_optimization
+                )
             )
         }
 
         return buildString {
-            appendLine("Standort / Bewegung")
+            appendLine(
+                context.getString(
+                    R.string.shizuku_snapshot_section_location
+                )
+            )
             appendLine(
                 compactLineList(locationHints)
             )
             appendLine()
-            appendLine("Sensorik")
+            appendLine(
+                context.getString(
+                    R.string.shizuku_snapshot_section_sensors
+                )
+            )
             appendLine(
                 compactLineList(sensorHints)
             )
             appendLine()
-            appendLine("Funk / Netzwerk")
+            appendLine(
+                context.getString(
+                    R.string.shizuku_snapshot_section_network
+                )
+            )
             appendLine(
                 compactLineList(networkHints)
             )
             appendLine()
             appendLine(
-                "Hinweis: Rohdaten wurden bewusst verdichtet; Standortkoordinaten werden nicht exportiert."
+                context.getString(
+                    R.string.shizuku_snapshot_note
+                )
             )
         }
     }

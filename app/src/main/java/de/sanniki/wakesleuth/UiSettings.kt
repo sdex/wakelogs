@@ -1,6 +1,7 @@
 package de.sanniki.wakesleuth
 
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,58 +31,59 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 enum class AccentColor(
-    val label: String
+    @StringRes val labelRes: Int
 ) {
-    BLUE("Leuchtblau"),
-    CYAN("Cyanblau"),
-    TEAL("Tiefes Türkis"),
-    GREEN("Mittelgrün"),
-    GOLD("Gold"),
-    ORANGE("Sonnengelb"),
-    RED("Korallrot"),
-    PINK("Eisblau"),
-    PURPLE("Kornblumenblau"),
-    INDIGO("Salbeigrün")
+    BLUE(R.string.settings_accent_blue),
+    CYAN(R.string.settings_accent_cyan),
+    TEAL(R.string.settings_accent_teal),
+    GREEN(R.string.settings_accent_green),
+    GOLD(R.string.settings_accent_gold),
+    ORANGE(R.string.settings_accent_orange),
+    RED(R.string.settings_accent_red),
+    PINK(R.string.settings_accent_pink),
+    PURPLE(R.string.settings_accent_purple),
+    INDIGO(R.string.settings_accent_indigo)
 }
 
 enum class CardDensity(
-    val label: String
+    @StringRes val labelRes: Int
 ) {
-    COMPACT("Kompakt"),
-    NORMAL("Normal"),
-    COMFORTABLE("Großzügig")
+    COMPACT(R.string.settings_density_compact),
+    NORMAL(R.string.settings_density_normal),
+    COMFORTABLE(R.string.settings_density_comfortable)
 }
 
 enum class DetailLevel(
-    val label: String
+    @StringRes val labelRes: Int
 ) {
-    SIMPLE("Einfach"),
-    NORMAL("Normal"),
-    EXPERT("Experte")
+    SIMPLE(R.string.settings_level_simple),
+    NORMAL(R.string.settings_level_normal),
+    EXPERT(R.string.settings_level_expert)
 }
 
 enum class UiProfile(
-    val label: String,
-    val description: String
+    @StringRes val labelRes: Int,
+    @StringRes val descriptionRes: Int
 ) {
     SIMPLE(
-        "Einfach",
-        "Start, Tagesübersicht und klare Hinweise"
+        R.string.settings_level_simple,
+        R.string.settings_profile_simple_description
     ),
 
     SLEEP(
-        "Analyse",
-        "Timeline, Schlafanalyse und Ursachenhinweise"
+        R.string.settings_profile_analysis,
+        R.string.settings_profile_sleep_description
     ),
 
     DEVELOPER(
-        "Experte",
-        "Shizuku, Wakelocks, Alarme und Rohdetails"
+        R.string.settings_level_expert,
+        R.string.settings_profile_developer_description
     )
 }
 
@@ -337,7 +339,7 @@ fun WakeSleuthSettingsScreen(
                             Modifier.padding(18.dp)
                     ) {
                         Text(
-                            text = "Personalisierung",
+                            text = stringResource(R.string.settings_title),
                             style =
                                 MaterialTheme.typography
                                     .headlineSmall,
@@ -352,7 +354,7 @@ fun WakeSleuthSettingsScreen(
 
                         Text(
                             text =
-                                "Mach wakelogs zu deiner eigenen Analysezentrale.",
+                                stringResource(R.string.settings_subtitle),
                             color =
                                 MaterialTheme.colorScheme
                                     .onSurfaceVariant
@@ -368,7 +370,7 @@ fun WakeSleuthSettingsScreen(
                             modifier =
                                 Modifier.fillMaxWidth()
                         ) {
-                            Text("Zurück zum Dashboard")
+                            Text(stringResource(R.string.settings_back_to_dashboard))
                         }
                     }
                 }
@@ -381,7 +383,7 @@ fun WakeSleuthSettingsScreen(
                     )
 
                 SettingsSection(
-                    title = "Ansichtsmodi"
+                    title = stringResource(R.string.settings_view_modes)
                 ) {
                     UiProfile.entries.forEach {
                             profile ->
@@ -405,16 +407,16 @@ fun WakeSleuthSettingsScreen(
 
             item {
                 SettingsSection(
-                    title = "Erscheinungsbild"
+                    title = stringResource(R.string.settings_appearance)
                 ) {
                     ChoiceChips(
-                        title = "Akzentfarbe",
+                        title = stringResource(R.string.settings_accent_color),
                         values =
                             AccentColor.entries,
                         selected =
                             settings.accentColor,
-                        label = {
-                            it.label
+                        labelRes = {
+                            it.labelRes
                         },
                         onSelected = {
                             onSettingsChanged(
@@ -426,13 +428,13 @@ fun WakeSleuthSettingsScreen(
                     )
 
                     ChoiceChips(
-                        title = "Kartendarstellung",
+                        title = stringResource(R.string.settings_card_layout),
                         values =
                             CardDensity.entries,
                         selected =
                             settings.cardDensity,
-                        label = {
-                            it.label
+                        labelRes = {
+                            it.labelRes
                         },
                         onSelected = {
                             onSettingsChanged(
@@ -444,13 +446,13 @@ fun WakeSleuthSettingsScreen(
                     )
 
                     ChoiceChips(
-                        title = "Detailgrad",
+                        title = stringResource(R.string.settings_detail_level),
                         values =
                             DetailLevel.entries,
                         selected =
                             settings.detailLevel,
-                        label = {
-                            it.label
+                        labelRes = {
+                            it.labelRes
                         },
                         onSelected = {
                             onSettingsChanged(
@@ -465,11 +467,11 @@ fun WakeSleuthSettingsScreen(
 
             item {
                 SettingsSection(
-                    title = "Erweiterte Anzeigeoptionen"
+                    title = stringResource(R.string.settings_advanced_display_options)
                 ) {
                     Text(
                         text =
-                            "Feinsteuerung für einzelne Dashboard-Bereiche. Die Ansichtsmodi oben setzen diese Optionen automatisch.",
+                            stringResource(R.string.settings_advanced_display_options_description),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -487,18 +489,18 @@ fun WakeSleuthSettingsScreen(
                     ) {
                         Text(
                             if (advancedDashboardOptionsExpanded.value) {
-                                "Optionen ausblenden"
+                                stringResource(R.string.settings_hide_options)
                             } else {
-                                "Optionen anzeigen"
+                                stringResource(R.string.settings_show_options)
                             }
                         )
                     }
 
                     if (advancedDashboardOptionsExpanded.value) {
                         SettingsSwitchRow(
-                            title = "Tagesübersicht",
+                            title = stringResource(R.string.settings_daily_overview),
                             description =
-                                "Display-Aktivierungen und Zuordnungen",
+                                stringResource(R.string.settings_daily_overview_description),
                             checked =
                                 settings.showDailyStatistics,
                             onCheckedChange = {
@@ -514,9 +516,9 @@ fun WakeSleuthSettingsScreen(
                         HorizontalDivider()
 
                         SettingsSwitchRow(
-                            title = "Nachtanalyse",
+                            title = stringResource(R.string.settings_night_analysis),
                             description =
-                                "Auswertung des letzten Überwachungszeitraums",
+                                stringResource(R.string.settings_night_analysis_description),
                             checked =
                                 settings.showNightAnalysis,
                             onCheckedChange = {
@@ -532,9 +534,9 @@ fun WakeSleuthSettingsScreen(
                         HorizontalDivider()
 
                         SettingsSwitchRow(
-                            title = "Aktivste Quellen",
+                            title = stringResource(R.string.settings_most_active_sources),
                             description =
-                                "Rangliste zeitlich zugeordneter Apps und Systemdienste",
+                                stringResource(R.string.settings_most_active_sources_description),
                             checked =
                                 settings.showSourceStatistics,
                             onCheckedChange = {
@@ -550,9 +552,9 @@ fun WakeSleuthSettingsScreen(
                         HorizontalDivider()
 
                         SettingsSwitchRow(
-                            title = "Shizuku-Systemdiagnose",
+                            title = stringResource(R.string.settings_shizuku_diagnostics),
                             description =
-                                "Wakelocks, Jobs, Alarme und Aufweckgründe",
+                                stringResource(R.string.settings_shizuku_diagnostics_description),
                             checked =
                                 settings.showShizukuDiagnostics,
                             onCheckedChange = {
@@ -578,7 +580,7 @@ fun WakeSleuthSettingsScreen(
                     modifier =
                         Modifier.fillMaxWidth()
                 ) {
-                    Text("Standardeinstellungen")
+                    Text(stringResource(R.string.settings_restore_defaults))
                 }
             }
 
@@ -624,13 +626,13 @@ private fun ProfileChoiceButton(
     val preview =
         when (profile) {
             UiProfile.SIMPLE ->
-                "Ruhig · wenig Technik · klare Hinweise"
+                stringResource(R.string.settings_profile_simple_preview)
 
             UiProfile.SLEEP ->
-                "Timeline · Schlafanalyse · Ursachen"
+                stringResource(R.string.settings_profile_sleep_preview)
 
             UiProfile.DEVELOPER ->
-                "Shizuku · Wakelocks · Rohdetails"
+                stringResource(R.string.settings_profile_developer_preview)
         }
 
     val content: @Composable () -> Unit = {
@@ -640,15 +642,18 @@ private fun ProfileChoiceButton(
             Text(
                 text =
                     if (selected) {
-                        "${profile.label} · Aktiv"
+                        stringResource(
+                            R.string.settings_profile_active,
+                            stringResource(profile.labelRes)
+                        )
                     } else {
-                        profile.label
+                        stringResource(profile.labelRes)
                     },
                 fontWeight = FontWeight.Bold
             )
 
             Text(
-                text = profile.description,
+                text = stringResource(profile.descriptionRes),
                 style =
                     MaterialTheme.typography
                         .bodySmall
@@ -727,7 +732,7 @@ private fun <T> ChoiceChips(
     title: String,
     values: List<T>,
     selected: T,
-    label: (T) -> String,
+    labelRes: (T) -> Int,
     onSelected: (T) -> Unit
 ) {
     Column {
@@ -760,7 +765,7 @@ private fun <T> ChoiceChips(
                         onSelected(value)
                     },
                     label = {
-                        Text(label(value))
+                        Text(stringResource(labelRes(value)))
                     }
                 )
             }

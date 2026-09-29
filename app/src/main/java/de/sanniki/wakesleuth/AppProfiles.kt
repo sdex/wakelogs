@@ -1,5 +1,7 @@
 package de.sanniki.wakesleuth
 
+import android.content.Context
+
 enum class AppProfileTrend {
     MORE_ACTIVE,
     LESS_ACTIVE,
@@ -32,6 +34,7 @@ data class AppProfileData(
 }
 
 fun buildAppProfiles(
+    context: Context,
     sessions: List<ArchivedSession>
 ): List<AppProfileData> {
     data class MutableProfile(
@@ -56,6 +59,7 @@ fun buildAppProfiles(
         session.topApps.forEach { app ->
             val name =
                 sourceDisplayName(
+                    context,
                     app.name
                 )
 
@@ -80,6 +84,7 @@ fun buildAppProfiles(
         session.sources.forEach { source ->
             val name =
                 sourceDisplayName(
+                    context,
                     source.name
                 )
 
@@ -119,6 +124,7 @@ fun buildAppProfiles(
 
         val trendData =
             calculateAppProfileTrend(
+                context = context,
                 name = entry.key,
                 sessions = sessions
             )
@@ -179,6 +185,7 @@ private data class AppProfileTrendData(
 )
 
 private fun calculateAppProfileTrend(
+    context: Context,
     name: String,
     sessions: List<ArchivedSession>
 ): AppProfileTrendData {
@@ -237,6 +244,7 @@ private fun calculateAppProfileTrend(
         recent
             .map {
                 appActivityScore(
+                    context = context,
                     session = it,
                     name = name
                 )
@@ -247,6 +255,7 @@ private fun calculateAppProfileTrend(
         previous
             .map {
                 appActivityScore(
+                    context = context,
                     session = it,
                     name = name
                 )
@@ -291,11 +300,13 @@ private fun calculateAppProfileTrend(
 }
 
 private fun appActivityScore(
+    context: Context,
     session: ArchivedSession,
     name: String
 ): Double {
     val normalizedName =
         sourceDisplayName(
+            context,
             name
         )
 
@@ -303,6 +314,7 @@ private fun appActivityScore(
         session.sources
             .firstOrNull {
                 sourceDisplayName(
+                    context,
                     it.name
                 ).equals(
                     normalizedName,
@@ -314,6 +326,7 @@ private fun appActivityScore(
         session.topApps
             .firstOrNull {
                 sourceDisplayName(
+                    context,
                     it.name
                 ).equals(
                     normalizedName,

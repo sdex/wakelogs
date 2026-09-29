@@ -888,22 +888,34 @@ object BackgroundWakeMonitor {
 
         val title =
             if (possibleSource != null) {
-                "CPU-Wakeup · " +
+                context.getString(
+                    R.string.bg_title_cpu_wakeup_source,
                     possibleSource.source
+                )
             } else {
-                "CPU im Hintergrund aufgeweckt"
+                context.getString(
+                    R.string.bg_title_cpu_woken_background
+                )
             }
 
         val wakeReasonText =
             candidate.wakeReason
-                ?.let(::readableWakeReason)
+                ?.let { rawReason ->
+                    readableWakeReason(
+                        context = context,
+                        rawReason = rawReason
+                    )
+                }
                 ?: if (
                     candidate.runningObserved
                 ) {
-                    "CPU-Aktivität erkannt; " +
-                        "kein Wake-Reason übermittelt"
+                    context.getString(
+                        R.string.bg_wake_reason_cpu_activity_no_reason
+                    )
                 } else {
-                    "Nicht näher bezeichnet"
+                    context.getString(
+                        R.string.bg_unspecified
+                    )
                 }
 
         EventStore.addEventAt(
@@ -914,75 +926,114 @@ object BackgroundWakeMonitor {
             title = title,
             details = buildString {
                 appendLine(
-                    "Display: blieb ausgeschaltet"
+                    context.getString(
+                        R.string.bg_detail_display_stayed_off
+                    )
                 )
 
                 appendLine(
-                    "Systemgrund: $wakeReasonText"
+                    context.getString(
+                        R.string.bg_detail_system_reason,
+                        wakeReasonText
+                    )
                 )
 
                 appendLine(
-                    "Erkennung: " +
+                    context.getString(
+                        R.string.bg_detail_detection,
                         buildDetectionDescription(
-                            candidate
+                            context = context,
+                            candidate = candidate
                         )
+                    )
                 )
 
                 appendLine(
-                    "CPU-Wachzeit: " +
+                    context.getString(
+                        R.string.bg_detail_cpu_awake_time,
                         formatCpuAwakeDuration(
-                            cpuAwakeDurationMillis
+                            context = context,
+                            durationMillis =
+                                cpuAwakeDurationMillis
                         )
+                    )
                 )
 
                 appendLine(
-                    "Rückkehr in Ruhezustand: " +
+                    context.getString(
+                        R.string.bg_detail_return_to_sleep,
                         if (
                             cpuAwakeDurationMillis != null
                         ) {
-                            "erkannt"
+                            context.getString(
+                                R.string.bg_return_to_sleep_detected
+                            )
                         } else {
-                            "im aktuellen Verlauf nicht ermittelt"
+                            context.getString(
+                                R.string.bg_return_to_sleep_not_determined
+                            )
                         }
+                    )
                 )
 
                 if (possibleSource != null) {
                     appendLine(
-                        "Mögliche Quelle: " +
+                        context.getString(
+                            R.string.bg_detail_possible_source,
                             possibleSource.source
+                        )
                     )
 
                     appendLine(
-                        "Aktivität: " +
-                            possibleSource.type
+                        context.getString(
+                            R.string.bg_detail_activity,
+                            evidenceTypeLabel(
+                                context = context,
+                                type = possibleSource.type
+                            )
+                        )
                     )
 
                     appendLine(
-                        "Einordnung: zeitlich zugeordnet, " +
-                            "nicht als alleinige Ursache bewiesen"
+                        context.getString(
+                            R.string.bg_detail_assessment_correlated
+                        )
                     )
                 } else {
                     appendLine(
-                        "Mögliche Quelle: " +
-                            "nicht eindeutig zuordenbar"
+                        context.getString(
+                            R.string.bg_detail_possible_source,
+                            context.getString(
+                                R.string.bg_possible_source_ambiguous
+                            )
+                        )
                     )
                 }
 
                 appendLine()
                 appendLine(
-                    "Zugehörige Aktivitäten:"
+                    context.getString(
+                        R.string.bg_detail_related_activities
+                    )
                 )
 
                 if (resolvedEvidence.isEmpty()) {
                     appendLine(
-                        "• Keine App- oder Dienstaktivität " +
-                            "im kurzen Zeitfenster gefunden"
+                        context.getString(
+                            R.string.bg_detail_no_related_activity
+                        )
                     )
                 } else {
                     resolvedEvidence.forEach { item ->
                         appendLine(
-                            "• ${item.type}: " +
+                            context.getString(
+                                R.string.bg_detail_evidence_item,
+                                evidenceTypeLabel(
+                                    context = context,
+                                    type = item.type
+                                ),
                                 item.source
+                            )
                         )
                     }
                 }
@@ -991,13 +1042,19 @@ object BackgroundWakeMonitor {
 
                 if (candidate.wakeReason != null) {
                     appendLine(
-                        "Technischer Wake-Reason: " +
+                        context.getString(
+                            R.string.bg_detail_technical_wake_reason,
                             candidate.wakeReason
+                        )
                     )
                 } else {
                     appendLine(
-                        "Technischer Wake-Reason: " +
-                            "von BatteryStats nicht geliefert"
+                        context.getString(
+                            R.string.bg_detail_technical_wake_reason,
+                            context.getString(
+                                R.string.bg_technical_wake_reason_missing
+                            )
+                        )
                     )
                 }
 
@@ -1010,7 +1067,9 @@ object BackgroundWakeMonitor {
 
                 if (technicalSources.isNotEmpty()) {
                     appendLine(
-                        "Technische Quellen:"
+                        context.getString(
+                            R.string.bg_detail_technical_sources
+                        )
                     )
 
                     technicalSources.forEach {
@@ -1019,28 +1078,69 @@ object BackgroundWakeMonitor {
                 }
 
                 append(
-                    "Datenquelle: Android BatteryStats-Historie"
+                    context.getString(
+                        R.string.bg_detail_data_source
+                    )
                 )
             }
         )
     }
 
     private fun buildDetectionDescription(
+        context: Context,
         candidate: WakeCandidate
     ): String {
         return when {
             candidate.wakeReason != null &&
                 candidate.runningObserved ->
-                "Wake-Reason und CPU-Start"
+                context.getString(
+                    R.string.bg_detection_reason_and_cpu_start
+                )
 
             candidate.wakeReason != null ->
-                "Wake-Reason ohne separaten CPU-Start-Eintrag"
+                context.getString(
+                    R.string.bg_detection_reason_only
+                )
 
             candidate.runningObserved ->
-                "CPU-Start ohne übermittelten Wake-Reason"
+                context.getString(
+                    R.string.bg_detection_cpu_start_only
+                )
 
             else ->
-                "BatteryStats-Aktivität"
+                context.getString(
+                    R.string.bg_detection_batterystats_activity
+                )
+        }
+    }
+
+    private fun evidenceTypeLabel(
+        context: Context,
+        type: String
+    ): String {
+        return when (type) {
+            "Synchronisierung" ->
+                context.getString(
+                    R.string.bg_type_sync
+                )
+
+            "Wakeup-Alarm" ->
+                context.getString(
+                    R.string.bg_type_wakeup_alarm
+                )
+
+            "Job-Wakelock" ->
+                context.getString(
+                    R.string.bg_type_job_wakelock
+                )
+
+            "Partial Wakelock" ->
+                context.getString(
+                    R.string.bg_type_partial_wakelock
+                )
+
+            else ->
+                type
         }
     }
 
@@ -1133,12 +1233,14 @@ object BackgroundWakeMonitor {
 
         if (packageName == null) {
             return readableTechnicalSource(
-                rawSource
+                context = context,
+                rawSource = rawSource
             )
         }
 
         readableKnownPackage(
-            packageName
+            context = context,
+            packageName = packageName
         )?.let {
             return it
         }
@@ -1162,7 +1264,8 @@ object BackgroundWakeMonitor {
             appName.isNullOrBlank()
         ) {
             readableTechnicalSource(
-                rawSource
+                context = context,
+                rawSource = rawSource
             )
         } else {
             appName
@@ -1180,6 +1283,7 @@ object BackgroundWakeMonitor {
     }
 
     private fun readableKnownPackage(
+        context: Context,
         packageName: String
     ): String? {
         val value =
@@ -1189,7 +1293,9 @@ object BackgroundWakeMonitor {
 
         return when {
             value == "android" ->
-                "Android-System"
+                context.getString(
+                    R.string.bg_source_android_system
+                )
 
             value == "com.whatsapp" ->
                 "WhatsApp"
@@ -1200,7 +1306,9 @@ object BackgroundWakeMonitor {
             value.startsWith(
                 "com.google.android.gms"
             ) ->
-                "Google Play-Dienste"
+                context.getString(
+                    R.string.bg_source_google_play_services
+                )
 
             value.startsWith(
                 "com.android.vending"
@@ -1210,25 +1318,35 @@ object BackgroundWakeMonitor {
             value.startsWith(
                 "com.android.systemui"
             ) ->
-                "Android Systemoberfläche"
+                context.getString(
+                    R.string.bg_source_android_system_ui
+                )
 
             value == "com.android.stk2" ->
-                "Samsung Telefonie-/SIM-Dienst"
+                context.getString(
+                    R.string.bg_source_samsung_telephony_sim
+                )
 
             value.startsWith(
                 "com.android.phone"
             ) ->
-                "Android Telefoniedienst"
+                context.getString(
+                    R.string.bg_source_android_phone_service
+                )
 
             value.startsWith(
                 "com.android.providers.contacts"
             ) ->
-                "Android Kontakte"
+                context.getString(
+                    R.string.bg_source_android_contacts
+                )
 
             value.startsWith(
                 "com.android.providers.calendar"
             ) ->
-                "Android Kalender"
+                context.getString(
+                    R.string.bg_source_android_calendar
+                )
 
             value.startsWith(
                 "com.samsung."
@@ -1236,7 +1354,9 @@ object BackgroundWakeMonitor {
             value.startsWith(
                 "com.sec."
             ) ->
-                "Samsung-Systemdienst"
+                context.getString(
+                    R.string.bg_source_samsung_system_service
+                )
 
             value.startsWith(
                 "com.oplus."
@@ -1247,7 +1367,9 @@ object BackgroundWakeMonitor {
             value.startsWith(
                 "com.heytap."
             ) ->
-                "OnePlus-Systemdienst"
+                context.getString(
+                    R.string.bg_source_oneplus_system_service
+                )
 
             else ->
                 null
@@ -1255,6 +1377,7 @@ object BackgroundWakeMonitor {
     }
 
     private fun readableTechnicalSource(
+        context: Context,
         rawSource: String
     ): String {
         return when {
@@ -1270,7 +1393,9 @@ object BackgroundWakeMonitor {
                     "RILJ_ACK_WL",
                     ignoreCase = true
                 ) ->
-                "Samsung Telefonie-/SIM-Dienst"
+                context.getString(
+                    R.string.bg_source_samsung_telephony_sim
+                )
 
             rawSource.contains(
                 "FMM-acquireWakeLock",
@@ -1280,7 +1405,9 @@ object BackgroundWakeMonitor {
                     "OfflineFindTask",
                     ignoreCase = true
                 ) ->
-                "Samsung Offline-Suche"
+                context.getString(
+                    R.string.bg_source_samsung_offline_finding
+                )
 
             rawSource.contains(
                 "gmail-ls",
@@ -1298,7 +1425,9 @@ object BackgroundWakeMonitor {
                 "com.google.android.gms",
                 ignoreCase = true
             ) ->
-                "Google Play-Dienste"
+                context.getString(
+                    R.string.bg_source_google_play_services
+                )
 
             rawSource.contains(
                 "com.android.vending",
@@ -1310,7 +1439,9 @@ object BackgroundWakeMonitor {
                 "android/com.android.server",
                 ignoreCase = true
             ) ->
-                "Android-System"
+                context.getString(
+                    R.string.bg_source_android_system
+                )
 
             rawSource.contains(
                 "com.samsung.",
@@ -1320,7 +1451,9 @@ object BackgroundWakeMonitor {
                 "com.sec.",
                 ignoreCase = true
             ) ->
-                "Samsung-Systemdienst"
+                context.getString(
+                    R.string.bg_source_samsung_system_service
+                )
 
             else ->
                 rawSource
@@ -1328,25 +1461,29 @@ object BackgroundWakeMonitor {
                     .takeIf {
                         it.isNotBlank()
                     }
-                    ?: "Unbekannte Systemquelle"
+                    ?: context.getString(
+                        R.string.bg_source_unknown_system
+                    )
         }
     }
 
     private fun formatCpuAwakeDuration(
+        context: Context,
         durationMillis: Long?
     ): String {
         val value =
             durationMillis
-                ?: return "nicht ermittelbar"
+                ?: return context.getString(
+                    R.string.bg_duration_not_determinable
+                )
 
         return when {
             value < 1_000L ->
                 "${value} ms"
 
             value < 60_000L ->
-                String.format(
-                    Locale.getDefault(),
-                    "%.1f Sekunden",
+                context.getString(
+                    R.string.bg_duration_seconds,
                     value / 1_000.0
                 )
 
@@ -1357,12 +1494,17 @@ object BackgroundWakeMonitor {
                 val seconds =
                     value % 60_000L / 1_000L
 
-                "${minutes} Min ${seconds} Sek"
+                context.getString(
+                    R.string.bg_duration_minutes_seconds,
+                    minutes,
+                    seconds
+                )
             }
         }
     }
 
     private fun readableWakeReason(
+        context: Context,
         rawReason: String
     ): String {
         val reason =
@@ -1378,13 +1520,17 @@ object BackgroundWakeMonitor {
                 "failed to suspend",
                 ignoreCase = true
             ) ->
-                "Fehlgeschlagener Ruhezustandsversuch"
+                context.getString(
+                    R.string.bg_wake_reason_failed_suspend
+                )
 
             reason.contains(
                 "pm8xxx_rtc_alarm",
                 ignoreCase = true
             ) ->
-                "Geplanter Systemalarm"
+                context.getString(
+                    R.string.bg_wake_reason_scheduled_system_alarm
+                )
 
             reason.contains(
                 "qcom_rx_wakelock",
@@ -1394,19 +1540,25 @@ object BackgroundWakeMonitor {
                     "qrtr_ws",
                     ignoreCase = true
                 ) ->
-                "Qualcomm Funk-/Modemaktivität"
+                context.getString(
+                    R.string.bg_wake_reason_qualcomm_radio
+                )
 
             reason.contains(
                 "timerfd",
                 ignoreCase = true
             ) ->
-                "Android Timer-/Scheduler-Aktivität"
+                context.getString(
+                    R.string.bg_wake_reason_timer_scheduler
+                )
 
             reason.contains(
                 "userspace-abort",
                 ignoreCase = true
             ) ->
-                "Android-Systemaktivität"
+                context.getString(
+                    R.string.bg_wake_reason_system_activity
+                )
 
             reason.contains(
                 "NO_SUSPEND",
@@ -1416,28 +1568,38 @@ object BackgroundWakeMonitor {
                     "IRQ",
                     ignoreCase = true
                 ) ->
-                "Kernel- oder Hardware-Interrupt"
+                context.getString(
+                    R.string.bg_wake_reason_kernel_hardware_interrupt
+                )
 
             reason.contains(
                 "NO_SUSPEND",
                 ignoreCase = true
             ) ->
-                "Kernel-/Systemsignal"
+                context.getString(
+                    R.string.bg_wake_reason_kernel_system_signal
+                )
 
             reason.contains(
                 "IRQ",
                 ignoreCase = true
             ) ->
-                "Hardware- oder Interrupt-Signal"
+                context.getString(
+                    R.string.bg_wake_reason_hardware_interrupt_signal
+                )
 
             reason.contains(
                 "alarm",
                 ignoreCase = true
             ) ->
-                "Wakeup-Alarm"
+                context.getString(
+                    R.string.bg_type_wakeup_alarm
+                )
 
             reason.isBlank() ->
-                "Nicht näher bezeichnet"
+                context.getString(
+                    R.string.bg_unspecified
+                )
 
             else ->
                 reason

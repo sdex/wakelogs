@@ -1,6 +1,7 @@
 package de.sanniki.wakesleuth
 
 import android.content.Context
+import androidx.annotation.StringRes
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -96,6 +97,7 @@ object SessionArchiveStore {
 
         val network =
             parseNetworkSession(
+                context,
                 networkEvent?.details
             )
 
@@ -131,6 +133,7 @@ object SessionArchiveStore {
                     network.topApps,
                 sources =
                     buildArchivedSessionSources(
+                        context,
                         sessionEvents
                     ),
                 note = null
@@ -655,6 +658,7 @@ object SessionArchiveStore {
     )
 
     private fun buildArchivedSessionSources(
+        context: Context,
         events: List<WakeEvent>
     ): List<ArchivedSessionSource> {
         val values =
@@ -673,6 +677,7 @@ object SessionArchiveStore {
 
             val sources =
                 extractArchivedSources(
+                    context,
                     event
                 )
 
@@ -682,6 +687,7 @@ object SessionArchiveStore {
                     "CPU_WAKEUP"
                 ) {
                     parseArchivedCpuDuration(
+                        context,
                         event.details
                     )
                 } else {
@@ -754,6 +760,7 @@ object SessionArchiveStore {
     }
 
     private fun extractArchivedSources(
+        context: Context,
         event: WakeEvent
     ): Map<String, Boolean> {
         val result =
@@ -775,40 +782,48 @@ object SessionArchiveStore {
 
         lines.forEach { line ->
             when {
-                line.startsWith(
-                    "Begleitaktivität:",
-                    ignoreCase = true
+                startsWithLabel(
+                    line,
+                    context,
+                    R.string.event_label_companion_activity
                 ) -> {
                     companionSection = true
                 }
 
-                line.startsWith(
-                    "Direkter Aufweckgrund:",
-                    ignoreCase = true
+                startsWithLabel(
+                    line,
+                    context,
+                    R.string.event_label_direct_wake_reason
                 ) ||
-                line.startsWith(
-                    "Wahrscheinliche Ursache:",
-                    ignoreCase = true
+                startsWithLabel(
+                    line,
+                    context,
+                    R.string.timeline_prefix_likely_cause
                 ) ||
-                line.startsWith(
-                    "Mögliche Ursache:",
-                    ignoreCase = true
+                startsWithLabel(
+                    line,
+                    context,
+                    R.string.timeline_prefix_possible_cause
                 ) ||
-                line.startsWith(
-                    "Nachträglich erkannte Ursache:",
-                    ignoreCase = true
+                startsWithLabel(
+                    line,
+                    context,
+                    R.string.event_label_cause_detected_later
                 ) ||
-                line.startsWith(
-                    "Wakeup-Alarm-Hinweis:",
-                    ignoreCase = true
+                startsWithLabel(
+                    line,
+                    context,
+                    R.string.event_label_wakeup_alarm_hint
                 ) ||
-                line.startsWith(
-                    "Hintergrundjob-Hinweis:",
-                    ignoreCase = true
+                startsWithLabel(
+                    line,
+                    context,
+                    R.string.event_label_background_job_hint
                 ) ||
-                line.startsWith(
-                    "Systemhinweis:",
-                    ignoreCase = true
+                startsWithLabel(
+                    line,
+                    context,
+                    R.string.event_label_system_hint
                 ) -> {
                     companionSection = false
 
@@ -819,23 +834,27 @@ object SessionArchiveStore {
                         )
                             .trim()
                             .takeIf {
-                                line.startsWith(
-                                    "Wahrscheinliche Ursache:",
-                                    ignoreCase = true
+                                startsWithLabel(
+                                    line,
+                                    context,
+                                    R.string.timeline_prefix_likely_cause
                                 ) ||
-                                line.startsWith(
-                                    "Mögliche Ursache:",
-                                    ignoreCase = true
+                                startsWithLabel(
+                                    line,
+                                    context,
+                                    R.string.timeline_prefix_possible_cause
                                 ) ||
-                                line.startsWith(
-                                    "Nachträglich erkannte Ursache:",
-                                    ignoreCase = true
+                                startsWithLabel(
+                                    line,
+                                    context,
+                                    R.string.event_label_cause_detected_later
                                 )
                             }
 
                     inlineSource
                         ?.let {
                             normalizeArchivedSource(
+                                context,
                                 it
                             )
                         }
@@ -845,11 +864,13 @@ object SessionArchiveStore {
                         }
                 }
 
-                line.startsWith(
-                    "Mögliche Quelle:",
-                    ignoreCase = true
+                startsWithLabel(
+                    line,
+                    context,
+                    R.string.timeline_prefix_possible_source
                 ) -> {
                     normalizeArchivedSource(
+                        context,
                         line.substringAfter(":")
                     )?.let { source ->
                         result[source] =
@@ -857,11 +878,13 @@ object SessionArchiveStore {
                     }
                 }
 
-                line.startsWith(
-                    "Quelle:",
-                    ignoreCase = true
+                startsWithLabel(
+                    line,
+                    context,
+                    R.string.timeline_prefix_source
                 ) -> {
                     normalizeArchivedSource(
+                        context,
                         line.substringAfter(":")
                     )?.let { source ->
                         val existing =
@@ -879,6 +902,7 @@ object SessionArchiveStore {
     }
 
     private fun normalizeArchivedSource(
+        context: Context,
         raw: String
     ): String? {
         val value =
@@ -894,28 +918,33 @@ object SessionArchiveStore {
 
         if (
             value.isBlank() ||
-            value.equals(
-                "nicht eindeutig zuordenbar",
-                ignoreCase = true
+            equalsLabel(
+                value,
+                context,
+                R.string.bg_possible_source_ambiguous
             ) ||
-            value.equals(
-                "unbekannt",
-                ignoreCase = true
+            equalsLabel(
+                value,
+                context,
+                R.string.event_unknown
             ) ||
-            value.equals(
-                "keine",
-                ignoreCase = true
+            equalsLabel(
+                value,
+                context,
+                R.string.event_none
             )
         ) {
             return null
         }
 
         return sourceDisplayName(
+            context,
             value
         )
     }
 
     private fun parseArchivedCpuDuration(
+        context: Context,
         details: String
     ): Long? {
         val value =
@@ -925,8 +954,10 @@ object SessionArchiveStore {
                     it.trim()
                 }
                 .firstOrNull {
-                    it.startsWith(
-                        "CPU-Wachzeit:"
+                    LocalizedText.startsWithAny(
+                        it,
+                        context,
+                        R.string.timeline_prefix_cpu_awake_time
                     )
                 }
                 ?.substringAfter(":")
@@ -959,7 +990,11 @@ object SessionArchiveStore {
             normalized.contains(
                 "Sek",
                 ignoreCase = true
-            ) ->
+            ) ||
+                normalized.contains(
+                    "sec",
+                    ignoreCase = true
+                ) ->
                 (number * 1_000.0)
                     .toLong()
 
@@ -985,6 +1020,7 @@ object SessionArchiveStore {
     )
 
     private fun parseNetworkSession(
+        context: Context,
         details: String?
     ): ParsedNetworkSession {
         if (details.isNullOrBlank()) {
@@ -1005,39 +1041,59 @@ object SessionArchiveStore {
 
         val totalLine =
             lines.firstOrNull {
-                it.startsWith("Gesamt:")
+                LocalizedText.startsWithAny(
+                    it,
+                    context,
+                    R.string.sleep_label_total
+                )
             }
 
         val totalBytes =
             parseFormattedBytes(
                 totalLine
-                    ?.substringAfter("Gesamt:")
+                    ?.let {
+                        LocalizedText.removeAnyPrefix(
+                            it,
+                            context,
+                            R.string.sleep_label_total
+                        )
+                    }
                     ?.substringBefore("·")
             )
 
         val rxBytes =
             parseFormattedBytes(
                 totalLine
-                    ?.substringAfter(
-                        "Empfangen:",
-                        ""
-                    )
+                    ?.let {
+                        LocalizedText.substringAfterAny(
+                            it,
+                            context,
+                            R.string.sleep_label_received,
+                            missing = ""
+                        )
+                    }
                     ?.substringBefore("·")
             )
 
         val txBytes =
             parseFormattedBytes(
                 totalLine
-                    ?.substringAfter(
-                        "Gesendet:",
-                        ""
-                    )
+                    ?.let {
+                        LocalizedText.substringAfterAny(
+                            it,
+                            context,
+                            R.string.sleep_label_sent,
+                            missing = ""
+                        )
+                    }
             )
 
         val activeApps =
             lines.firstOrNull {
-                it.startsWith(
-                    "Apps mit Datenverkehr:"
+                LocalizedText.startsWithAny(
+                    it,
+                    context,
+                    R.string.sleep_label_apps_with_traffic
                 )
             }
                 ?.substringAfter(":")
@@ -1163,6 +1219,40 @@ object SessionArchiveStore {
 
         return result.toLong()
     }
+
+    private fun startsWithLabel(
+        line: String,
+        context: Context,
+        @StringRes id: Int
+    ): Boolean =
+        LocalizedText
+            .variants(
+                context,
+                id
+            )
+            .any {
+                line.startsWith(
+                    it,
+                    ignoreCase = true
+                )
+            }
+
+    private fun equalsLabel(
+        value: String,
+        context: Context,
+        @StringRes id: Int
+    ): Boolean =
+        LocalizedText
+            .variants(
+                context,
+                id
+            )
+            .any {
+                value.equals(
+                    it,
+                    ignoreCase = true
+                )
+            }
 
     private fun preferences(
         context: Context

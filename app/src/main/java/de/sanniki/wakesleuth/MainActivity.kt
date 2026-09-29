@@ -15,6 +15,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -72,6 +73,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
@@ -93,57 +97,57 @@ import java.util.Locale
 import rikka.shizuku.Shizuku
 
 private enum class MainSection(
-    val label: String,
-    val shortLabel: String
+    @StringRes val label: Int,
+    @StringRes val shortLabel: Int
 ) {
     OVERVIEW(
-        label = "Übersicht",
-        shortLabel = "Ü"
+        label = R.string.main_section_overview,
+        shortLabel = R.string.main_section_overview_short
     ),
     ANALYSIS(
-        label = "Analyse",
-        shortLabel = "A"
+        label = R.string.main_section_analysis,
+        shortLabel = R.string.main_section_analysis_short
     ),
     SESSIONS(
-        label = "Sitzungen",
-        shortLabel = "S"
+        label = R.string.main_section_sessions,
+        shortLabel = R.string.main_section_sessions_short
     ),
     DIAGNOSTICS(
-        label = "Diagnose",
-        shortLabel = "D"
+        label = R.string.main_section_diagnostics,
+        shortLabel = R.string.main_section_diagnostics_short
     )
 }
 
 private enum class EventFilter(
-    val label: String
+    @StringRes val label: Int
 ) {
-    ALL("Alle"),
-    DISPLAY("Display"),
-    BACKGROUND("Hintergrund"),
-    NOTIFICATIONS("Hinweise"),
-    UNKNOWN("Ungeklärt")
+    ALL(R.string.main_filter_all),
+    DISPLAY(R.string.main_filter_display),
+    BACKGROUND(R.string.main_filter_background),
+    NOTIFICATIONS(R.string.main_filter_notifications),
+    UNKNOWN(R.string.main_filter_unexplained)
 }
 
 private enum class EventViewMode(
-    val label: String
+    @StringRes val label: Int
 ) {
-    LIST("Liste"),
-    TIMELINE("Zeitstrahl")
+    LIST(R.string.main_view_mode_list),
+    TIMELINE(R.string.main_view_mode_timeline)
 }
 
 private enum class CauseConfidence(
-    val label: String
+    @StringRes val label: Int
 ) {
-    CONFIRMED("Bestätigt"),
-    PROBABLE("Wahrscheinlich"),
-    POSSIBLE("Möglicher Zusammenhang"),
-    COMPANION("Begleitaktivität"),
-    UNRESOLVED("Ungeklärt")
+    CONFIRMED(R.string.main_confidence_confirmed),
+    PROBABLE(R.string.main_confidence_probable),
+    POSSIBLE(R.string.main_confidence_possible),
+    COMPANION(R.string.main_confidence_companion),
+    UNRESOLVED(R.string.main_confidence_unresolved)
 }
 
 private data class CauseAssessment(
     val confidence: CauseConfidence,
-    val explanation: String
+    @StringRes val explanation: Int
 )
 
 class MainActivity : ComponentActivity() {
@@ -192,6 +196,7 @@ private fun WakeSleuthScreen(
         (WakeSleuthUiSettings) -> Unit
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val lifecycleOwner =
         LocalLifecycleOwner.current
 
@@ -300,7 +305,9 @@ private fun WakeSleuthScreen(
 
                     Toast.makeText(
                         context,
-                        "Zum Beenden erneut zurück",
+                        resources.getString(
+                            R.string.main_toast_press_back_again
+                        ),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -569,7 +576,10 @@ private fun WakeSleuthScreen(
             EventFilter.UNKNOWN -> {
                 events.filter {
                     it.type == "SCREEN_ON" &&
-                        isUnexplainedScreenOn(it)
+                        isUnexplainedScreenOn(
+                            context,
+                            it
+                        )
                 }
             }
         }
@@ -590,7 +600,9 @@ private fun WakeSleuthScreen(
                 context.contentResolver
                     .openOutputStream(uri)
                     ?: error(
-                        "Datei konnte nicht geöffnet werden."
+                        resources.getString(
+                            R.string.main_error_file_open_failed
+                        )
                     )
 
             outputStream.bufferedWriter().use {
@@ -602,9 +614,13 @@ private fun WakeSleuthScreen(
         Toast.makeText(
             context,
             if (succeeded) {
-                "wakelogs-Export gespeichert"
+                resources.getString(
+                    R.string.main_toast_export_saved
+                )
             } else {
-                "Export konnte nicht gespeichert werden"
+                resources.getString(
+                    R.string.main_toast_export_failed
+                )
             },
             Toast.LENGTH_LONG
         ).show()
@@ -627,7 +643,9 @@ private fun WakeSleuthScreen(
             ) {
                 Toast.makeText(
                     context,
-                    "Überwachung läuft. Die Dauerbenachrichtigung kann ausgeblendet sein.",
+                    resources.getString(
+                        R.string.main_toast_monitoring_notification_hidden
+                    ),
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -648,7 +666,9 @@ private fun WakeSleuthScreen(
             ) {
                 Toast.makeText(
                     context,
-                    "Benachrichtigungen wurden nicht erlaubt.",
+                    resources.getString(
+                        R.string.main_toast_notifications_denied
+                    ),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -836,7 +856,9 @@ private fun WakeSleuthScreen(
                             } else {
                                 Toast.makeText(
                                     context,
-                                    "Shizuku-App wurde nicht gefunden.",
+                                    resources.getString(
+                                        R.string.main_toast_shizuku_app_not_found
+                                    ),
                                     Toast.LENGTH_LONG
                                 ).show()
                             }
@@ -1103,7 +1125,9 @@ private fun WakeSleuthScreen(
                             modifier = Modifier.padding(18.dp)
                         ) {
                             Text(
-                                text = "Ereignisse",
+                                text = stringResource(
+                                    R.string.main_events_title
+                                ),
                             style =
                                 MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
@@ -1116,9 +1140,16 @@ private fun WakeSleuthScreen(
                         Text(
                             text =
                                 if (events.size == filteredEvents.size) {
-                                    "${events.size} gespeichert"
+                                    stringResource(
+                                        R.string.main_events_saved_count,
+                                        events.size
+                                    )
                                 } else {
-                                    "${filteredEvents.size} von ${events.size} sichtbar"
+                                    stringResource(
+                                        R.string.main_events_visible_count,
+                                        filteredEvents.size,
+                                        events.size
+                                    )
                                 },
                             color =
                                 MaterialTheme.colorScheme
@@ -1150,9 +1181,13 @@ private fun WakeSleuthScreen(
                         ) {
                             Text(
                                 if (eventSectionExpanded) {
-                                    "Ereignisse ausblenden"
+                                    stringResource(
+                                        R.string.main_events_hide
+                                    )
                                 } else {
-                                    "Ereignisse anzeigen"
+                                    stringResource(
+                                        R.string.main_events_show
+                                    )
                                 }
                             )
                             }
@@ -1180,7 +1215,9 @@ private fun WakeSleuthScreen(
                             pendingExportText =
                                 buildString {
                                     appendLine(
-                                        "Art des Exports: Technischer Bericht"
+                                        resources.getString(
+                                            R.string.main_export_kind_technical_report
+                                        )
                                     )
                                     appendLine()
 
@@ -1218,9 +1255,10 @@ private fun WakeSleuthScreen(
                                 )
 
                             exportLauncher.launch(
-                                "wakelogs_technischer_bericht_${
+                                resources.getString(
+                                    R.string.main_export_technical_report_file_name,
                                     formatter.format(Date())
-                                }.txt"
+                                )
                             )
                         },
                         onClear = {
@@ -1229,7 +1267,9 @@ private fun WakeSleuthScreen(
 
                             Toast.makeText(
                                 context,
-                                "Ereignisliste geleert",
+                                resources.getString(
+                                    R.string.main_toast_events_cleared
+                                ),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -1284,6 +1324,7 @@ private fun WakeSleuthScreen(
                         EventViewMode.LIST -> {
                             val groupedListItems =
                                 buildGroupedEventList(
+                                    context,
                                     filteredEvents
                                 )
 
@@ -1376,13 +1417,17 @@ private fun wakelogsBottomNavigation(
                                     Icons.Filled.Build
                             },
                         contentDescription =
-                            section.label
+                            stringResource(
+                                section.label
+                            )
                     )
                 },
                 label = {
                     Text(
                         text =
-                            section.label,
+                            stringResource(
+                                section.label
+                            ),
                         maxLines = 1,
                         fontWeight =
                             if (
@@ -1447,7 +1492,9 @@ private fun CurrentSectionHeader(
             MainSection.OVERVIEW
         ) {
             Text(
-                text = section.label,
+                text = stringResource(
+                    section.label
+                ),
                 style =
                     MaterialTheme.typography
                         .headlineSmall,
@@ -1465,16 +1512,24 @@ private fun CurrentSectionHeader(
             text =
                 when (section) {
                     MainSection.OVERVIEW ->
-                        "Aktueller Gerätestatus"
+                        stringResource(
+                            R.string.main_section_overview_subtitle
+                        )
 
                     MainSection.ANALYSIS ->
-                        "Auswertung, Quellen und Ereignisse"
+                        stringResource(
+                            R.string.main_section_analysis_subtitle
+                        )
 
                     MainSection.SESSIONS ->
-                        "Vergleich und gespeicherte Messungen"
+                        stringResource(
+                            R.string.main_section_sessions_subtitle
+                        )
 
                     MainSection.DIAGNOSTICS ->
-                        "Shizuku und technische Systemprüfungen"
+                        stringResource(
+                            R.string.main_section_diagnostics_subtitle
+                        )
                 },
             color =
                 MaterialTheme.colorScheme
@@ -1528,7 +1583,11 @@ private fun HeaderCard(
 
                 Text(
                     text =
-                        "Version ${BuildConfig.VERSION_NAME} · dernikiausd",
+                        stringResource(
+                            R.string.main_header_version,
+                            BuildConfig.VERSION_NAME,
+                            "dernikiausd"
+                        ),
                     color =
                         MaterialTheme.colorScheme
                             .onPrimary.copy(
@@ -1546,7 +1605,9 @@ private fun HeaderCard(
                 onClick = onOpenSettings
             ) {
                 Text(
-                    text = "Einstellungen",
+                    text = stringResource(
+                        R.string.main_settings
+                    ),
                     color =
                         MaterialTheme.colorScheme
                             .onPrimary,
@@ -1607,9 +1668,13 @@ private fun SetupStatusCard(
             Text(
                 text =
                     if (setupComplete) {
-                        "Einrichtung vollständig"
+                        stringResource(
+                            R.string.main_setup_complete
+                        )
                     } else {
-                        "Einrichtung erforderlich"
+                        stringResource(
+                            R.string.main_setup_required
+                        )
                     },
                 style =
                     MaterialTheme.typography
@@ -1627,7 +1692,9 @@ private fun SetupStatusCard(
             if (setupComplete) {
                 Text(
                     text =
-                        "Alle benötigten Zugriffe sind aktiv.",
+                        stringResource(
+                            R.string.main_setup_all_access_active
+                        ),
                     color =
                         MaterialTheme.colorScheme
                             .onSurfaceVariant
@@ -1636,11 +1703,17 @@ private fun SetupStatusCard(
                 if (!notificationAccessEnabled) {
                     SetupRequirementRow(
                         title =
-                            "Benachrichtigungszugriff",
+                            stringResource(
+                                R.string.main_setup_notification_access_title
+                            ),
                         description =
-                            "Erkennt eingehende Benachrichtigungen.",
+                            stringResource(
+                                R.string.main_setup_notification_access_description
+                            ),
                         buttonText =
-                            "Zugriff aktivieren",
+                            stringResource(
+                                R.string.main_setup_notification_access_button
+                            ),
                         onClick =
                             onOpenNotificationAccess
                     )
@@ -1649,11 +1722,17 @@ private fun SetupStatusCard(
                 if (!notificationsAllowed) {
                     SetupRequirementRow(
                         title =
-                            "Benachrichtigungen senden",
+                            stringResource(
+                                R.string.main_setup_post_notifications_title
+                            ),
                         description =
-                            "Zeigt die laufende Überwachung an.",
+                            stringResource(
+                                R.string.main_setup_post_notifications_description
+                            ),
                         buttonText =
-                            "Erlauben",
+                            stringResource(
+                                R.string.main_setup_post_notifications_button
+                            ),
                         onClick =
                             onRequestNotifications
                     )
@@ -1665,11 +1744,17 @@ private fun SetupStatusCard(
                     ShizukuState.RUNNING_DENIED -> {
                         SetupRequirementRow(
                             title =
-                                "Shizuku-Berechtigung",
+                                stringResource(
+                                    R.string.main_setup_shizuku_permission_title
+                                ),
                             description =
-                                "Ermöglicht die vollständige Systemanalyse.",
+                                stringResource(
+                                    R.string.main_setup_shizuku_permission_description
+                                ),
                             buttonText =
-                                "Berechtigung erteilen",
+                                stringResource(
+                                    R.string.main_setup_shizuku_permission_button
+                                ),
                             onClick =
                                 onRequestShizukuPermission
                         )
@@ -1678,11 +1763,17 @@ private fun SetupStatusCard(
                     ShizukuState.NOT_RUNNING -> {
                         SetupRequirementRow(
                             title =
-                                "Shizuku nicht aktiv",
+                                stringResource(
+                                    R.string.main_setup_shizuku_not_running_title
+                                ),
                             description =
-                                "Die Ursachenanalyse ist eingeschränkt.",
+                                stringResource(
+                                    R.string.main_setup_shizuku_not_running_description
+                                ),
                             buttonText =
-                                "Shizuku öffnen",
+                                stringResource(
+                                    R.string.main_setup_shizuku_not_running_button
+                                ),
                             onClick =
                                 onOpenShizuku
                         )
@@ -1778,13 +1869,19 @@ private fun MonitorCard(
                         text =
                             when {
                                 finalizing ->
-                                    "Messung wird abgeschlossen"
+                                    stringResource(
+                                        R.string.main_monitor_finalizing
+                                    )
 
                                 monitoring ->
-                                    "Messung läuft"
+                                    stringResource(
+                                        R.string.main_monitor_running
+                                    )
 
                                 else ->
-                                    "Bereit für eine Messung"
+                                    stringResource(
+                                        R.string.main_monitor_ready
+                                    )
                             },
                         style =
                             MaterialTheme.typography
@@ -1794,7 +1891,9 @@ private fun MonitorCard(
 
                     Text(
                         text =
-                            "Erkennt Display-Aktivität, CPU-Wakeups und Hintergrundereignisse.",
+                            stringResource(
+                                R.string.main_monitor_description
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -1811,10 +1910,13 @@ private fun MonitorCard(
 
                         Text(
                             text =
-                                "Sitzungsdauer · " +
+                                stringResource(
+                                    R.string.main_monitor_session_duration,
                                     formatLiveSessionDuration(
+                                        LocalContext.current,
                                         sessionDurationMillis
-                                    ),
+                                    )
+                                ),
                             color =
                                 MaterialTheme.colorScheme
                                     .primary,
@@ -1856,7 +1958,9 @@ private fun MonitorCard(
                     )
                 ) {
                     Text(
-                        text = "Start",
+                        text = stringResource(
+                            R.string.main_monitor_start
+                        ),
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -1880,7 +1984,9 @@ private fun MonitorCard(
                     )
                 ) {
                     Text(
-                        text = "Stopp",
+                        text = stringResource(
+                            R.string.main_monitor_stop
+                        ),
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -1894,9 +2000,13 @@ private fun MonitorCard(
                 Text(
                     text =
                         if (finalizing) {
-                            "Der Timer ist angehalten. Letzte System- und Netzwerkdaten werden noch übernommen."
+                            stringResource(
+                                R.string.main_monitor_finalizing_hint
+                            )
                         } else {
-                            "Die Dauerbenachrichtigung hält den Diagnosemonitor zuverlässig aktiv."
+                            stringResource(
+                                R.string.main_monitor_running_hint
+                            )
                         },
                     color =
                         MaterialTheme.colorScheme
@@ -1933,79 +2043,113 @@ private fun buildManualDiagnosticsExport(
         return error
             ?.trim()
             ?.takeIf { it.isNotBlank() }
-            ?: "Unbekannter Diagnosefehler"
+            ?: context.getString(
+                R.string.main_diag_unknown_error
+            )
     }
 
     return buildString {
         appendLine(
             "=================================================="
         )
-        appendLine("Manuelle Shizuku-Systemdiagnose")
         appendLine(
-            "Die folgenden Werte stammen aus manuell " +
-                "ausgeführten Prüfungen."
+            context.getString(
+                R.string.main_diag_export_title
+            )
+        )
+        appendLine(
+            context.getString(
+                R.string.main_diag_export_intro
+            )
         )
 
         appendLine()
-        appendLine("Wakelocks")
+        appendLine(
+            context.getString(
+                R.string.main_diag_wakelocks
+            )
+        )
 
         when {
             wakeLockDiagnostic == null -> {
-                appendLine("Status: Nicht ausgeführt")
+                appendLine(
+                    context.getString(
+                        R.string.main_diag_status_not_run
+                    )
+                )
             }
 
             wakeLockDiagnostic.error != null -> {
                 appendLine(
-                    "Status: Prüfung fehlgeschlagen"
+                    context.getString(
+                        R.string.main_diag_status_failed
+                    )
                 )
                 appendLine(
-                    "Fehler: " +
+                    context.getString(
+                        R.string.main_diag_error,
                         errorText(
                             wakeLockDiagnostic.error
                         )
+                    )
                 )
             }
 
             else -> {
                 appendLine(
-                    "Aktuell aktive Wakelocks: " +
+                    context.getString(
+                        R.string.main_diag_active_wakelocks,
                         wakeLockDiagnostic.activeCount
+                    )
                 )
 
                 if (
                     wakeLockDiagnostic.rawLastEntry == null
                 ) {
                     appendLine(
-                        "Letzter Partial-Wakelock: " +
-                            "Keine Daten gefunden."
+                        context.getString(
+                            R.string.main_diag_last_partial_wakelock_no_data
+                        )
                     )
                 } else {
                     appendLine(
-                        "Letzter Partial-Wakelock:"
+                        context.getString(
+                            R.string.main_diag_last_partial_wakelock
+                        )
                     )
                     appendLine(
-                        "• Quelle: " +
+                        context.getString(
+                            R.string.main_diag_bullet_source,
                             sourceFor(
                                 wakeLockDiagnostic.lastPackage
                             )
+                        )
                     )
                     appendLine(
-                        "• Zeitpunkt: " +
+                        context.getString(
+                            R.string.main_diag_bullet_time,
                             formatWakeLockTimestamp(
+                                context,
                                 wakeLockDiagnostic.lastTimestamp
                             )
+                        )
                     )
                     appendLine(
-                        "• Technischer Tag: " +
+                        context.getString(
+                            R.string.main_diag_bullet_technical_tag,
                             compactWakeLockTag(
+                                context,
                                 wakeLockDiagnostic.lastTag
                             )
+                        )
                     )
                 }
 
                 appendLine()
                 appendLine(
-                    "Wakelock-Verlauf:"
+                    context.getString(
+                        R.string.main_diag_wakelock_history
+                    )
                 )
 
                 if (
@@ -2014,7 +2158,9 @@ private fun buildManualDiagnosticsExport(
                         .isEmpty()
                 ) {
                     appendLine(
-                        "• Keine Daten gefunden."
+                        context.getString(
+                            R.string.main_diag_bullet_no_data
+                        )
                     )
                 } else {
                     val groupedEntries =
@@ -2025,6 +2171,7 @@ private fun buildManualDiagnosticsExport(
                                     .lowercase() +
                                     "|" +
                                     compactWakeLockTag(
+                                        context,
                                         entry.tag
                                     ).lowercase() +
                                     "|" +
@@ -2061,17 +2208,22 @@ private fun buildManualDiagnosticsExport(
                                             .maxOrNull()
                                             ?: 0L
                                     ) < 1_000L ->
-                                    "kurze Aktivität"
+                                    context.getString(
+                                        R.string.main_diag_short_activity
+                                    )
 
                                 finishedDurations
                                     .isNotEmpty() ->
                                     formatDuration(
+                                        context,
                                         finishedDurations
                                             .maxOrNull()
                                     )
 
                                 else ->
-                                    "Ende nicht im Ausschnitt"
+                                    context.getString(
+                                        R.string.main_diag_end_not_in_window
+                                    )
                             }
 
                         appendLine(
@@ -2084,34 +2236,46 @@ private fun buildManualDiagnosticsExport(
                         )
 
                         appendLine(
-                            "  Anzahl: " +
-                                group.size +
-                                " · Start: " +
-                                formatWakeLockTimestamp(
-                                    entry.startTimestamp
-                                ) +
-                                " · Dauer: " +
-                                durationText
+                            "  " +
+                                context.getString(
+                                    R.string.main_diag_wakelock_count_start_duration,
+                                    group.size,
+                                    formatWakeLockTimestamp(
+                                        context,
+                                        entry.startTimestamp
+                                    ),
+                                    durationText
+                                )
                         )
 
                         appendLine(
-                            "  Wirkung: " +
-                                if (
-                                    group.any {
-                                        it.causesWake
+                            "  " +
+                                context.getString(
+                                    R.string.main_diag_effect,
+                                    if (
+                                        group.any {
+                                            it.causesWake
+                                        }
+                                    ) {
+                                        context.getString(
+                                            R.string.main_diag_effect_can_wake_display
+                                        )
+                                    } else {
+                                        context.getString(
+                                            R.string.main_diag_effect_no_display_wake
+                                        )
                                     }
-                                ) {
-                                    "kann das Display aufwecken"
-                                } else {
-                                    "keine direkte " +
-                                        "Display-Aufweckwirkung erkannt"
-                                }
+                                )
                         )
 
                         appendLine(
-                            "  Tag: " +
-                                compactWakeLockTag(
-                                    entry.tag
+                            "  " +
+                                context.getString(
+                                    R.string.main_diag_tag,
+                                    compactWakeLockTag(
+                                        context,
+                                        entry.tag
+                                    )
                                 )
                         )
                     }
@@ -2120,96 +2284,138 @@ private fun buildManualDiagnosticsExport(
         }
 
         appendLine()
-        appendLine("Wakeup-Alarme")
+        appendLine(
+            context.getString(
+                R.string.main_diag_wakeup_alarms
+            )
+        )
 
         when {
             wakeupAlarmDiagnostic == null -> {
-                appendLine("Status: Nicht ausgeführt")
+                appendLine(
+                    context.getString(
+                        R.string.main_diag_status_not_run
+                    )
+                )
             }
 
             wakeupAlarmDiagnostic.error != null -> {
                 appendLine(
-                    "Status: Prüfung fehlgeschlagen"
+                    context.getString(
+                        R.string.main_diag_status_failed
+                    )
                 )
                 appendLine(
-                    "Fehler: " +
+                    context.getString(
+                        R.string.main_diag_error,
                         errorText(
                             wakeupAlarmDiagnostic.error
                         )
+                    )
                 )
             }
 
             wakeupAlarmDiagnostic.packageName == null -> {
                 appendLine(
-                    "Keine Daten gefunden."
+                    context.getString(
+                        R.string.main_diag_no_data
+                    )
                 )
             }
 
             else -> {
                 appendLine(
-                    "Quelle: " +
+                    context.getString(
+                        R.string.main_diag_source,
                         sourceFor(
                             wakeupAlarmDiagnostic.packageName
                         )
+                    )
                 )
                 appendLine(
-                    "Paket: " +
+                    context.getString(
+                        R.string.main_diag_package,
                         wakeupAlarmDiagnostic.packageName
+                    )
                 )
                 appendLine(
-                    "Technischer Tag: " +
-                        (
-                            wakeupAlarmDiagnostic.tag
-                                ?: "nicht verfügbar"
-                        )
+                    context.getString(
+                        R.string.main_diag_technical_tag,
+                        wakeupAlarmDiagnostic.tag
+                            ?: context.getString(
+                                R.string.main_not_available
+                            )
+                    )
                 )
                 appendLine(
-                    "Wakeup-Anzahl des Eintrags: " +
+                    context.getString(
+                        R.string.main_diag_entry_wakeup_count,
                         wakeupAlarmDiagnostic.wakeCount
+                    )
                 )
                 appendLine(
-                    "Wakeups des Pakets: " +
+                    context.getString(
+                        R.string.main_diag_package_wakeups,
                         wakeupAlarmDiagnostic.packageWakeups
+                    )
                 )
             }
         }
 
         appendLine()
-        appendLine("Hintergrundjobs")
+        appendLine(
+            context.getString(
+                R.string.main_diag_background_jobs
+            )
+        )
 
         when {
             backgroundJobDiagnostic == null -> {
-                appendLine("Status: Nicht ausgeführt")
+                appendLine(
+                    context.getString(
+                        R.string.main_diag_status_not_run
+                    )
+                )
             }
 
             backgroundJobDiagnostic.error != null -> {
                 appendLine(
-                    "Status: Prüfung fehlgeschlagen"
+                    context.getString(
+                        R.string.main_diag_status_failed
+                    )
                 )
                 appendLine(
-                    "Fehler: " +
+                    context.getString(
+                        R.string.main_diag_error,
                         errorText(
                             backgroundJobDiagnostic.error
                         )
+                    )
                 )
             }
 
             backgroundJobDiagnostic.packageName == null -> {
                 appendLine(
-                    "Keine Daten gefunden."
+                    context.getString(
+                        R.string.main_diag_no_data
+                    )
                 )
             }
 
             else -> {
                 appendLine(
-                    "Quelle: " +
+                    context.getString(
+                        R.string.main_diag_source,
                         sourceFor(
                             backgroundJobDiagnostic.packageName
                         )
+                    )
                 )
                 appendLine(
-                    "Paket: " +
+                    context.getString(
+                        R.string.main_diag_package,
                         backgroundJobDiagnostic.packageName
+                    )
                 )
 
                 if (
@@ -2218,94 +2424,133 @@ private fun buildManualDiagnosticsExport(
                         .isNullOrBlank()
                 ) {
                     appendLine(
-                        "Technischer Eintrag: " +
+                        context.getString(
+                            R.string.main_diag_technical_entry,
                             backgroundJobDiagnostic
                                 .rawEntry
                                 ?.trim()
+                        )
                     )
                 }
             }
         }
 
         appendLine()
-        appendLine("Aufweckgrund")
+        appendLine(
+            context.getString(
+                R.string.main_diag_wake_reason
+            )
+        )
 
         when {
             wakeReasonDiagnostic == null -> {
-                appendLine("Status: Nicht ausgeführt")
+                appendLine(
+                    context.getString(
+                        R.string.main_diag_status_not_run
+                    )
+                )
             }
 
             wakeReasonDiagnostic.error != null -> {
                 appendLine(
-                    "Status: Prüfung fehlgeschlagen"
+                    context.getString(
+                        R.string.main_diag_status_failed
+                    )
                 )
                 appendLine(
-                    "Fehler: " +
+                    context.getString(
+                        R.string.main_diag_error,
                         errorText(
                             wakeReasonDiagnostic.error
                         )
+                    )
                 )
             }
 
             wakeReasonDiagnostic.rawEntry == null -> {
                 appendLine(
-                    "Keine Daten gefunden."
+                    context.getString(
+                        R.string.main_diag_no_data
+                    )
                 )
             }
 
             else -> {
                 appendLine(
-                    "Zeitpunkt: " +
+                    context.getString(
+                        R.string.main_diag_time,
                         formatWakeLockTimestamp(
+                            context,
                             wakeReasonDiagnostic.timestamp
                         )
+                    )
                 )
                 appendLine(
-                    "Technischer Grund: " +
-                        (
-                            wakeReasonDiagnostic.reason
-                                ?: "unbekannt"
-                        )
+                    context.getString(
+                        R.string.main_diag_technical_reason,
+                        wakeReasonDiagnostic.reason
+                            ?: context.getString(
+                                R.string.main_unknown_lowercase
+                            )
+                    )
                 )
                 appendLine(
-                    "Details: " +
+                    context.getString(
+                        R.string.main_diag_details,
                         compactWakeReasonDetails(
+                            context,
                             wakeReasonDiagnostic.details
                         )
+                    )
                 )
             }
         }
 
         appendLine()
-        appendLine("Netzwerkaktivität seit Boot")
+        appendLine(
+            context.getString(
+                R.string.main_diag_network_since_boot
+            )
+        )
 
         when {
             networkStatsDiagnostic == null -> {
-                appendLine("Status: Nicht ausgeführt")
+                appendLine(
+                    context.getString(
+                        R.string.main_diag_status_not_run
+                    )
+                )
             }
 
             networkStatsDiagnostic.error != null -> {
                 appendLine(
-                    "Status: Prüfung fehlgeschlagen"
+                    context.getString(
+                        R.string.main_diag_status_failed
+                    )
                 )
                 appendLine(
-                    "Fehler: " +
+                    context.getString(
+                        R.string.main_diag_error,
                         errorText(
                             networkStatsDiagnostic.error
                         )
+                    )
                 )
             }
 
             networkStatsDiagnostic.entries.isEmpty() -> {
                 appendLine(
-                    "Keine Daten gefunden."
+                    context.getString(
+                        R.string.main_diag_no_data
+                    )
                 )
             }
 
             else -> {
                 appendLine(
-                    "Hinweis: Zeigt Datenverkehr seit dem Gerätestart, " +
-                        "aber keinen direkten Wakeup-Auslöser."
+                    context.getString(
+                        R.string.main_diag_network_hint
+                    )
                 )
 
                 networkStatsDiagnostic
@@ -2314,6 +2559,7 @@ private fun buildManualDiagnosticsExport(
                     .forEach { entry ->
                         val displayName =
                             sourceDisplayName(
+                                context = context,
                                 appLabel =
                                     entry.appLabel,
                                 packageName =
@@ -2323,27 +2569,32 @@ private fun buildManualDiagnosticsExport(
 
                         appendLine(
                             "• " +
-                                displayName +
-                                " · Gesamt: " +
-                                formatNetworkBytes(
-                                    entry.totalBytes
+                                context.getString(
+                                    R.string.main_diag_network_total,
+                                    displayName,
+                                    formatNetworkBytes(
+                                        entry.totalBytes
+                                    )
                                 )
                         )
 
                         appendLine(
-                            "  Empfangen: " +
-                                formatNetworkBytes(
-                                    entry.rxBytes
-                                ) +
-                                " · Gesendet: " +
-                                formatNetworkBytes(
-                                    entry.txBytes
+                            "  " +
+                                context.getString(
+                                    R.string.main_diag_network_received_sent,
+                                    formatNetworkBytes(
+                                        entry.rxBytes
+                                    ),
+                                    formatNetworkBytes(
+                                        entry.txBytes
+                                    )
                                 )
                         )
 
                         appendLine(
-                            "  Paket/UID: " +
-                                (
+                            "  " +
+                                context.getString(
+                                    R.string.main_diag_package_uid,
                                     entry.packageName
                                         ?: "UID ${entry.uid}"
                                 )
@@ -2365,9 +2616,12 @@ private fun ShizukuProfileHintCard(
     detailLevel: DetailLevel,
     onRequestPermission: () -> Unit
 ) {
+    val context =
+        LocalContext.current
+
     val deviceProfile =
         androidx.compose.runtime.remember {
-            DeviceProfile.detect()
+            DeviceProfile.detect(context)
         }
 
     val measurementQualityExpanded =
@@ -2409,13 +2663,19 @@ private fun ShizukuProfileHintCard(
     val statusText =
         when (state) {
             ShizukuState.RUNNING_GRANTED ->
-                "Shizuku aktiv"
+                stringResource(
+                    R.string.main_shizuku_active
+                )
 
             ShizukuState.RUNNING_DENIED ->
-                "Shizuku-Berechtigung fehlt"
+                stringResource(
+                    R.string.main_shizuku_permission_missing
+                )
 
             ShizukuState.NOT_RUNNING ->
-                "Shizuku nicht aktiv"
+                stringResource(
+                    R.string.main_setup_shizuku_not_running_title
+                )
         }
 
     val description =
@@ -2423,21 +2683,31 @@ private fun ShizukuProfileHintCard(
             isSimple &&
                 state ==
                     ShizukuState.RUNNING_GRANTED ->
-                "Erweiterte Systemanalyse verfügbar. Technische Prüfungen im Expertenmodus."
+                stringResource(
+                    R.string.main_shizuku_hint_simple_granted
+                )
 
             isSimple ->
-                "Die Systemanalyse ist derzeit eingeschränkt."
+                stringResource(
+                    R.string.main_shizuku_hint_simple_limited
+                )
 
             state ==
                 ShizukuState.RUNNING_GRANTED ->
-                "Ursachenhinweise und erweiterte Systemdaten sind verfügbar."
+                stringResource(
+                    R.string.main_shizuku_hint_granted
+                )
 
             state ==
                 ShizukuState.RUNNING_DENIED ->
-                "Für Ursachenhinweise und erweiterte Systemdaten wird die Shizuku-Berechtigung benötigt."
+                stringResource(
+                    R.string.main_shizuku_hint_denied
+                )
 
             else ->
-                "Für Ursachenhinweise und erweiterte Systemdaten muss Shizuku gestartet werden."
+                stringResource(
+                    R.string.main_shizuku_hint_not_running
+                )
         }
 
     Card(
@@ -2465,9 +2735,13 @@ private fun ShizukuProfileHintCard(
             Text(
                 text =
                     if (isSimple) {
-                        "Systemanalyse"
+                        stringResource(
+                            R.string.main_system_analysis
+                        )
                     } else {
-                        "Shizuku-Systemanalyse"
+                        stringResource(
+                            R.string.main_shizuku_system_analysis
+                        )
                     },
                 style =
                     MaterialTheme.typography
@@ -2602,7 +2876,9 @@ private fun ShizukuProfileHintCard(
                         ) {
                             Text(
                                 text =
-                                    "Messqualität",
+                                    stringResource(
+                                        R.string.main_measurement_quality
+                                    ),
                                 style =
                                     MaterialTheme
                                         .typography
@@ -2624,13 +2900,19 @@ private fun ShizukuProfileHintCard(
                                 text =
                                     when {
                                         isOnePlusProfile ->
-                                            "Für dieses Geräteprofil weitgehend gut"
+                                            stringResource(
+                                                R.string.main_measurement_quality_oneplus
+                                            )
 
                                         isSamsungProfile ->
-                                            "Gut nutzbar, bei direkten Wake-Reasons eingeschränkt"
+                                            stringResource(
+                                                R.string.main_measurement_quality_samsung
+                                            )
 
                                         else ->
-                                            "Allgemeines Android-Profil mit geräteabhängiger Abdeckung"
+                                            stringResource(
+                                                R.string.main_measurement_quality_generic
+                                            )
                                     },
                                 style =
                                     MaterialTheme
@@ -2687,9 +2969,13 @@ private fun ShizukuProfileHintCard(
                                     measurementQualityExpanded
                                         .value
                                 ) {
-                                    "Messqualität ausblenden"
+                                    stringResource(
+                                        R.string.main_measurement_quality_hide
+                                    )
                                 } else {
-                                    "Messqualität anzeigen"
+                                    stringResource(
+                                        R.string.main_measurement_quality_show
+                                    )
                                 }
                         )
                     }
@@ -2712,55 +2998,65 @@ private fun ShizukuProfileHintCard(
 
                         MeasurementQualityRow(
                             label =
-                                "Display-Aktivität",
+                                stringResource(
+                                    R.string.main_quality_display_activity
+                                ),
                             quality =
-                                "gut"
+                                R.string.main_quality_good
                         )
 
                         MeasurementQualityRow(
                             label =
-                                "Warum das Display aufwachte",
+                                stringResource(
+                                    R.string.main_quality_display_wake_reason
+                                ),
                             quality =
                                 when {
                                     isOnePlusProfile ->
-                                        "gut"
+                                        R.string.main_quality_good
 
                                     isSamsungProfile ->
-                                        "eingeschränkt"
+                                        R.string.main_quality_limited
 
                                     else ->
-                                        "geräteabhängig"
+                                        R.string.main_quality_device_dependent
                                 }
                         )
 
                         MeasurementQualityRow(
                             label =
-                                "Hintergrundaktivität",
+                                stringResource(
+                                    R.string.main_quality_background_activity
+                                ),
                             quality =
                                 when {
                                     isOnePlusProfile ->
-                                        "gut"
+                                        R.string.main_quality_good
 
                                     isSamsungProfile ->
-                                        "eingeschränkt"
+                                        R.string.main_quality_limited
 
                                     else ->
-                                        "geräteabhängig"
+                                        R.string.main_quality_device_dependent
                                 }
                         )
 
                         MeasurementQualityRow(
                             label =
-                                "Netzwerkaktivität",
+                                stringResource(
+                                    R.string.main_quality_network_activity
+                                ),
                             quality =
-                                "gut"
+                                R.string.main_quality_good
                         )
 
                         MeasurementQualityRow(
                             label =
-                                "Vergleich mehrerer Messungen",
+                                stringResource(
+                                    R.string.main_quality_session_comparison
+                                ),
                             quality =
-                                "gut"
+                                R.string.main_quality_good
                         )
 
 
@@ -2781,7 +3077,11 @@ private fun ShizukuProfileHintCard(
                     onClick = onRequestPermission,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Berechtigung erteilen")
+                    Text(
+                        stringResource(
+                            R.string.main_setup_shizuku_permission_button
+                        )
+                    )
                 }
             }
         }
@@ -2791,16 +3091,14 @@ private fun ShizukuProfileHintCard(
 @Composable
 private fun MeasurementQualityRow(
     label: String,
-    quality: String
+    @StringRes quality: Int
 ) {
     val qualityColor =
-        when (quality.lowercase(
-            Locale.getDefault()
-        )) {
-            "gut" ->
+        when (quality) {
+            R.string.main_quality_good ->
                 Color(0xFF35A853)
 
-            "eingeschränkt" ->
+            R.string.main_quality_limited ->
                 MaterialTheme
                     .colorScheme
                     .error
@@ -2839,7 +3137,9 @@ private fun MeasurementQualityRow(
         )
 
         Text(
-            text = quality,
+            text = stringResource(
+                quality
+            ),
             style =
                 MaterialTheme
                     .typography
@@ -2874,6 +3174,9 @@ private fun ShizukuWakeLockCard(
     onWakeReasonCheck: () -> Unit,
     onNetworkStatsCheck: () -> Unit
 ) {
+    val context =
+        LocalContext.current
+
     val diagnosticsExpanded = androidx.compose.runtime.remember {
         androidx.compose.runtime.mutableStateOf(false)
     }
@@ -2891,7 +3194,9 @@ private fun ShizukuWakeLockCard(
             modifier = Modifier.padding(18.dp)
         ) {
             Text(
-                text = "Shizuku-Systemdiagnose",
+                text = stringResource(
+                    R.string.main_shizuku_system_diagnostics
+                ),
                 style =
                     MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
@@ -2904,13 +3209,19 @@ private fun ShizukuWakeLockCard(
             Text(
                 text = when (state) {
                     ShizukuState.RUNNING_GRANTED ->
-                        "Bereit · Systemdiagnose verfügbar"
+                        stringResource(
+                            R.string.main_shizuku_ready_diagnostics_available
+                        )
 
                     ShizukuState.RUNNING_DENIED ->
-                        "Shizuku läuft · Berechtigung fehlt"
+                        stringResource(
+                            R.string.main_shizuku_running_permission_missing
+                        )
 
                     ShizukuState.NOT_RUNNING ->
-                        "Shizuku läuft nicht"
+                        stringResource(
+                            R.string.main_shizuku_not_running
+                        )
                 },
                 color = when (state) {
                     ShizukuState.RUNNING_GRANTED ->
@@ -2955,9 +3266,13 @@ private fun ShizukuWakeLockCard(
                     ) {
                         Text(
                             if (diagnosticsExpanded.value) {
-                                "Diagnose ausblenden"
+                                stringResource(
+                                    R.string.main_diagnostics_hide
+                                )
                             } else {
-                                "Diagnose öffnen"
+                                stringResource(
+                                    R.string.main_diagnostics_open
+                                )
                             },
                             fontWeight =
                                 FontWeight.SemiBold
@@ -3026,14 +3341,20 @@ private fun ShizukuWakeLockCard(
                             Text(
                                 when {
                                     loading ->
-                                        "Prüfe …"
+                                        stringResource(
+                                            R.string.main_checking
+                                        )
 
                                     visibleDiagnosticPanel.value ==
                                         "wakelocks" ->
-                                        "Wakelocks ausblenden"
+                                        stringResource(
+                                            R.string.main_wakelocks_hide
+                                        )
 
                                     else ->
-                                        "Wakelocks prüfen"
+                                        stringResource(
+                                            R.string.main_wakelocks_check
+                                        )
                                 }
                             )
                         }
@@ -3063,8 +3384,10 @@ private fun ShizukuWakeLockCard(
                 } else {
                     Text(
                         text =
-                            "Aktuell aktive Wakelocks: " +
-                                diagnostic.activeCount,
+                            stringResource(
+                                R.string.main_diag_active_wakelocks,
+                                diagnostic.activeCount
+                            ),
                         style =
                             MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold
@@ -3079,7 +3402,9 @@ private fun ShizukuWakeLockCard(
                     ) {
                         Text(
                             text =
-                                "Keine Daten gefunden.",
+                                stringResource(
+                                    R.string.main_diag_no_data
+                                ),
                             color =
                                 MaterialTheme.colorScheme
                                     .onSurfaceVariant,
@@ -3087,9 +3412,6 @@ private fun ShizukuWakeLockCard(
                                 MaterialTheme.typography.bodySmall
                         )
                     } else {
-                        val context =
-                            LocalContext.current
-
                         val source =
                             resolveWakeLockSource(
                                 context = context,
@@ -3099,16 +3421,20 @@ private fun ShizukuWakeLockCard(
 
                         val kind =
                             classifyWakeLockTag(
+                                context,
                                 diagnostic.lastTag
                             )
 
                         val timestamp =
                             formatWakeLockTimestamp(
+                                context,
                                 diagnostic.lastTimestamp
                             )
 
                         Text(
-                            text = "Letzter Partial-Wakelock",
+                            text = stringResource(
+                                R.string.main_last_partial_wakelock
+                            ),
                             fontWeight = FontWeight.SemiBold,
                             style =
                                 MaterialTheme.typography.bodySmall
@@ -3119,7 +3445,10 @@ private fun ShizukuWakeLockCard(
                         )
 
                         Text(
-                            text = "Quelle: $source",
+                            text = stringResource(
+                                R.string.main_diag_source,
+                                source
+                            ),
                             color =
                                 MaterialTheme.colorScheme
                                     .onSurfaceVariant,
@@ -3128,7 +3457,10 @@ private fun ShizukuWakeLockCard(
                         )
 
                         Text(
-                            text = "Art: $kind",
+                            text = stringResource(
+                                R.string.main_kind,
+                                kind
+                            ),
                             color =
                                 MaterialTheme.colorScheme
                                     .onSurfaceVariant,
@@ -3137,7 +3469,10 @@ private fun ShizukuWakeLockCard(
                         )
 
                         Text(
-                            text = "Zeitpunkt: $timestamp",
+                            text = stringResource(
+                                R.string.main_diag_time,
+                                timestamp
+                            ),
                             color =
                                 MaterialTheme.colorScheme
                                     .onSurfaceVariant,
@@ -3147,10 +3482,13 @@ private fun ShizukuWakeLockCard(
 
                         Text(
                             text =
-                                "Technischer Tag: " +
+                                stringResource(
+                                    R.string.main_diag_technical_tag,
                                     compactWakeLockTag(
+                                        context,
                                         diagnostic.lastTag
-                                    ),
+                                    )
+                                ),
                             color =
                                 MaterialTheme.colorScheme
                                     .onSurfaceVariant,
@@ -3178,7 +3516,9 @@ private fun ShizukuWakeLockCard(
                 )
 
                 Text(
-                    text = "Wakelock-Verlauf (letzte Logeinträge)",
+                    text = stringResource(
+                        R.string.main_wakelock_history_recent
+                    ),
                     fontWeight = FontWeight.SemiBold,
                     style =
                         MaterialTheme.typography.bodySmall
@@ -3194,6 +3534,7 @@ private fun ShizukuWakeLockCard(
                             entry.packageName.lowercase() +
                                 "|" +
                                 compactWakeLockTag(
+                                    context,
                                     entry.tag
                                 ).lowercase() +
                                 "|" +
@@ -3220,9 +3561,6 @@ private fun ShizukuWakeLockCard(
                         val count =
                             group.size
 
-                        val context =
-                            LocalContext.current
-
                         val source =
                             resolveWakeLockSource(
                                 context = context,
@@ -3244,23 +3582,31 @@ private fun ShizukuWakeLockCard(
                             when {
                                 hasFinishedEntry &&
                                     (longestDuration ?: 0L) < 1_000L ->
-                                    "kurze Aktivität"
+                                    stringResource(
+                                        R.string.main_diag_short_activity
+                                    )
 
                                 hasFinishedEntry ->
                                     formatDuration(
+                                        context,
                                         longestDuration
                                     )
 
                                 else ->
-                                    "Ende nicht im Ausschnitt"
+                                    stringResource(
+                                        R.string.main_diag_end_not_in_window
+                                    )
                             }
 
-                        val countText =
-                            if (count > 1) {
-                                "${count}× · "
-                            } else {
-                                ""
-                            }
+                        val startText =
+                            stringResource(
+                                R.string.main_wakelock_start_duration,
+                                formatWakeLockTimestamp(
+                                    context,
+                                    entry.startTimestamp
+                                ),
+                                durationText
+                            )
 
                         Text(
                             text =
@@ -3275,13 +3621,15 @@ private fun ShizukuWakeLockCard(
 
                         Text(
                             text =
-                                countText +
-                                    "Start: " +
-                                    formatWakeLockTimestamp(
-                                        entry.startTimestamp
-                                    ) +
-                                    " · " +
-                                    durationText,
+                                if (count > 1) {
+                                    stringResource(
+                                        R.string.main_count_prefixed,
+                                        count,
+                                        startText
+                                    )
+                                } else {
+                                    startText
+                                },
                             color =
                                 MaterialTheme.colorScheme
                                     .onSurfaceVariant,
@@ -3291,21 +3639,27 @@ private fun ShizukuWakeLockCard(
 
                         Text(
                             text =
-                                (
-                                    if (
-                                        group.any {
-                                            it.causesWake
-                                        }
-                                    ) {
-                                        "Display-Aufweckwirkung · "
-                                    } else {
-                                        ""
+                                if (
+                                    group.any {
+                                        it.causesWake
                                     }
-                                ) +
-                                    "Tag: " +
-                                    compactWakeLockTag(
-                                        entry.tag
-                                    ),
+                                ) {
+                                    stringResource(
+                                        R.string.main_wakelock_display_wake_tag,
+                                        compactWakeLockTag(
+                                            context,
+                                            entry.tag
+                                        )
+                                    )
+                                } else {
+                                    stringResource(
+                                        R.string.main_diag_tag,
+                                        compactWakeLockTag(
+                                            context,
+                                            entry.tag
+                                        )
+                                    )
+                                },
                             color =
                                 MaterialTheme.colorScheme
                                     .onSurfaceVariant,
@@ -3389,14 +3743,20 @@ private fun ShizukuWakeLockCard(
                             Text(
                                 when {
                                     alarmLoading ->
-                                        "Prüfe Wakeup-Alarme …"
+                                        stringResource(
+                                            R.string.main_wakeup_alarms_checking
+                                        )
 
                                     visibleDiagnosticPanel.value ==
                                         "alarms" ->
-                                        "Wakeup-Alarme ausblenden"
+                                        stringResource(
+                                            R.string.main_wakeup_alarms_hide
+                                        )
 
                                     else ->
-                                        "Wakeup-Alarme prüfen"
+                                        stringResource(
+                                            R.string.main_wakeup_alarms_check
+                                        )
                                 }
                             )
                         }
@@ -3429,7 +3789,9 @@ private fun ShizukuWakeLockCard(
                 ) {
                     Text(
                         text =
-                            "Keine Daten gefunden.",
+                            stringResource(
+                                R.string.main_diag_no_data
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3437,9 +3799,6 @@ private fun ShizukuWakeLockCard(
                             MaterialTheme.typography.bodySmall
                     )
                 } else {
-                    val context =
-                        LocalContext.current
-
                     val source =
                         resolveWakeLockSource(
                             context = context,
@@ -3449,7 +3808,9 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Letzter Wakeup-Alarm",
+                            stringResource(
+                                R.string.main_last_wakeup_alarm
+                            ),
                         fontWeight =
                             FontWeight.SemiBold,
                         style =
@@ -3461,7 +3822,10 @@ private fun ShizukuWakeLockCard(
                     )
 
                     Text(
-                        text = "Quelle: $source",
+                        text = stringResource(
+                            R.string.main_diag_source,
+                            source
+                        ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3471,10 +3835,13 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Zuletzt: vor " +
+                            stringResource(
+                                R.string.main_last_ago,
                                 formatDuration(
+                                    context,
                                     alarmDiagnostic.ageMillis
-                                ),
+                                )
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3484,9 +3851,10 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Seit Statistikstart: " +
-                                alarmDiagnostic.wakeCount +
-                                " Wakeups",
+                            stringResource(
+                                R.string.main_wakeups_since_stats_start,
+                                alarmDiagnostic.wakeCount
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3496,10 +3864,13 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Technischer Tag: " +
+                            stringResource(
+                                R.string.main_diag_technical_tag,
                                 compactAlarmTag(
+                                    context,
                                     alarmDiagnostic.tag
-                                ),
+                                )
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3571,14 +3942,20 @@ private fun ShizukuWakeLockCard(
                             Text(
                                 when {
                                     jobLoading ->
-                                        "Prüfe Hintergrundjobs …"
+                                        stringResource(
+                                            R.string.main_background_jobs_checking
+                                        )
 
                                     visibleDiagnosticPanel.value ==
                                         "jobs" ->
-                                        "Hintergrundjobs ausblenden"
+                                        stringResource(
+                                            R.string.main_background_jobs_hide
+                                        )
 
                                     else ->
-                                        "Hintergrundjobs prüfen"
+                                        stringResource(
+                                            R.string.main_background_jobs_check
+                                        )
                                 }
                             )
                         }
@@ -3610,7 +3987,9 @@ private fun ShizukuWakeLockCard(
                 ) {
                     Text(
                         text =
-                            "Keine Daten gefunden.",
+                            stringResource(
+                                R.string.main_diag_no_data
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3618,9 +3997,6 @@ private fun ShizukuWakeLockCard(
                             MaterialTheme.typography.bodySmall
                     )
                 } else {
-                    val context =
-                        LocalContext.current
-
                     val source =
                         resolveWakeLockSource(
                             context = context,
@@ -3630,7 +4006,9 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Letzter gestarteter Hintergrundjob",
+                            stringResource(
+                                R.string.main_last_started_background_job
+                            ),
                         fontWeight =
                             FontWeight.SemiBold,
                         style =
@@ -3642,7 +4020,10 @@ private fun ShizukuWakeLockCard(
                     )
 
                     Text(
-                        text = "Quelle: $source",
+                        text = stringResource(
+                            R.string.main_diag_source,
+                            source
+                        ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3652,10 +4033,13 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Gestartet: vor " +
+                            stringResource(
+                                R.string.main_started_ago,
                                 formatDuration(
+                                    context,
                                     jobDiagnostic.ageMillis
-                                ),
+                                )
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3665,14 +4049,20 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Starttyp: " +
+                            stringResource(
+                                R.string.main_start_type,
                                 if (
                                     jobDiagnostic.prioritized
                                 ) {
-                                    "priorisiert"
+                                    stringResource(
+                                        R.string.main_start_type_prioritized
+                                    )
                                 } else {
-                                    "regulär"
-                                },
+                                    stringResource(
+                                        R.string.main_start_type_regular
+                                    )
+                                }
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3682,10 +4072,13 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Dienst: " +
+                            stringResource(
+                                R.string.main_service,
                                 compactJobService(
+                                    context,
                                     jobDiagnostic.serviceName
-                                ),
+                                )
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3757,14 +4150,20 @@ private fun ShizukuWakeLockCard(
                             Text(
                                 when {
                                     wakeReasonLoading ->
-                                        "Prüfe Aufweckgrund …"
+                                        stringResource(
+                                            R.string.main_wake_reason_checking
+                                        )
 
                                     visibleDiagnosticPanel.value ==
                                         "wake_reason" ->
-                                        "Aufweckgrund ausblenden"
+                                        stringResource(
+                                            R.string.main_wake_reason_hide
+                                        )
 
                                     else ->
-                                        "Aufweckgrund prüfen"
+                                        stringResource(
+                                            R.string.main_wake_reason_check
+                                        )
                                 }
                             )
                         }
@@ -3799,7 +4198,9 @@ private fun ShizukuWakeLockCard(
                 ) {
                     Text(
                         text =
-                            "Keine Daten gefunden.",
+                            stringResource(
+                                R.string.main_diag_no_data
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3809,7 +4210,9 @@ private fun ShizukuWakeLockCard(
                 } else {
                     Text(
                         text =
-                            "Letzter direkter Aufweckgrund",
+                            stringResource(
+                                R.string.main_last_direct_wake_reason
+                            ),
                         fontWeight =
                             FontWeight.SemiBold,
                         style =
@@ -3822,10 +4225,13 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Ursache: " +
+                            stringResource(
+                                R.string.main_cause,
                                 readableWakeReason(
+                                    context,
                                     wakeReasonDiagnostic
-                                ),
+                                )
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3835,11 +4241,14 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Zeitpunkt: " +
+                            stringResource(
+                                R.string.main_diag_time,
                                 formatWakeLockTimestamp(
+                                    context,
                                     wakeReasonDiagnostic
                                         .timestamp
-                                ),
+                                )
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3849,12 +4258,14 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Technischer Grund: " +
-                                (
-                                    wakeReasonDiagnostic
-                                        .reason
-                                        ?: "unbekannt"
-                                ),
+                            stringResource(
+                                R.string.main_diag_technical_reason,
+                                wakeReasonDiagnostic
+                                    .reason
+                                    ?: stringResource(
+                                        R.string.main_unknown_lowercase
+                                    )
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3864,11 +4275,14 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Details: " +
+                            stringResource(
+                                R.string.main_diag_details,
                                 compactWakeReasonDetails(
+                                    context,
                                     wakeReasonDiagnostic
                                         .details
-                                ),
+                                )
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3940,14 +4354,20 @@ private fun ShizukuWakeLockCard(
                             Text(
                                 when {
                                     networkStatsLoading ->
-                                        "Prüfe Netzwerkaktivität …"
+                                        stringResource(
+                                            R.string.main_network_checking
+                                        )
 
                                     visibleDiagnosticPanel.value ==
                                         "network" ->
-                                        "Netzwerkaktivität ausblenden"
+                                        stringResource(
+                                            R.string.main_network_hide
+                                        )
 
                                     else ->
-                                        "Netzwerkaktivität prüfen"
+                                        stringResource(
+                                            R.string.main_network_check
+                                        )
                                 }
                             )
                         }
@@ -3980,7 +4400,9 @@ private fun ShizukuWakeLockCard(
                 ) {
                     Text(
                         text =
-                            "Keine Daten gefunden.",
+                            stringResource(
+                                R.string.main_diag_no_data
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -3990,7 +4412,9 @@ private fun ShizukuWakeLockCard(
                 } else {
                     Text(
                         text =
-                            "Netzwerkaktivität seit Boot",
+                            stringResource(
+                                R.string.main_diag_network_since_boot
+                            ),
                         fontWeight =
                             FontWeight.SemiBold,
                         style =
@@ -4003,8 +4427,9 @@ private fun ShizukuWakeLockCard(
 
                     Text(
                         text =
-                            "Hinweis: Zeigt Datenverkehr seit dem Gerätestart, " +
-                                "aber keinen direkten Wakeup-Auslöser.",
+                            stringResource(
+                                R.string.main_diag_network_hint
+                            ),
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -4019,9 +4444,6 @@ private fun ShizukuWakeLockCard(
                     networkStatsDiagnostic.entries
                         .take(5)
                         .forEachIndexed { index, entry ->
-                            val context =
-                                LocalContext.current
-
                             val source =
                                 entry.appLabel
                                     ?: if (
@@ -4034,6 +4456,7 @@ private fun ShizukuWakeLockCard(
                                         )
                                     } else {
                                         sourceDisplayName(
+                                            context,
                                             "UID " +
                                                 entry.uid
                                         )
@@ -4054,14 +4477,15 @@ private fun ShizukuWakeLockCard(
 
                             Text(
                                 text =
-                                    "Empfangen: " +
+                                    stringResource(
+                                        R.string.main_diag_network_received_sent,
                                         formatNetworkBytes(
                                             entry.rxBytes
-                                        ) +
-                                        " · Gesendet: " +
+                                        ),
                                         formatNetworkBytes(
                                             entry.txBytes
-                                        ),
+                                        )
+                                    ),
                                 color =
                                     MaterialTheme.colorScheme
                                         .onSurfaceVariant,
@@ -4107,7 +4531,11 @@ private fun ShizukuWakeLockCard(
                         onClick = onRequestPermission,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Shizuku erlauben")
+                        Text(
+                            stringResource(
+                                R.string.main_shizuku_allow
+                            )
+                        )
                     }
                 }
 
@@ -4117,7 +4545,11 @@ private fun ShizukuWakeLockCard(
                         enabled = false,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Shizuku starten")
+                        Text(
+                            stringResource(
+                                R.string.main_shizuku_start
+                            )
+                        )
                     }
                 }
             }
@@ -4162,6 +4594,7 @@ private fun SessionComparisonCard(
                     previous = previous,
                     summary =
                         buildSessionComparisonSummary(
+                            context = context,
                             latest = latest,
                             previous = previous
                         )
@@ -4191,7 +4624,9 @@ private fun SessionComparisonCard(
             modifier = Modifier.padding(18.dp)
         ) {
             Text(
-                text = "Sitzungsvergleich",
+                text = stringResource(
+                    R.string.main_session_comparison
+                ),
                 style =
                     MaterialTheme.typography
                         .titleMedium,
@@ -4204,13 +4639,15 @@ private fun SessionComparisonCard(
 
             Text(
                 text =
-                    formatComparisonSessionTime(
-                        latest.startMillis
-                    ) +
-                        " gegenüber " +
+                    stringResource(
+                        R.string.main_session_comparison_versus,
+                        formatComparisonSessionTime(
+                            latest.startMillis
+                        ),
                         formatComparisonSessionTime(
                             previous.startMillis
-                        ),
+                        )
+                    ),
                 color =
                     MaterialTheme.colorScheme
                         .onSurfaceVariant,
@@ -4257,7 +4694,9 @@ private fun SessionComparisonCard(
             HorizontalDivider()
 
             SessionComparisonRow(
-                label = "Dauer",
+                label = stringResource(
+                    R.string.main_metric_duration
+                ),
                 latest =
                     formatComparisonDuration(
                         latest.durationMillis
@@ -4279,7 +4718,9 @@ private fun SessionComparisonCard(
             )
 
             SessionComparisonRow(
-                label = "Display an",
+                label = stringResource(
+                    R.string.main_metric_screen_on
+                ),
                 latest =
                     latest.displayWakeups
                         .toString(),
@@ -4302,7 +4743,9 @@ private fun SessionComparisonCard(
             )
 
             SessionComparisonRow(
-                label = "CPU-Wakes",
+                label = stringResource(
+                    R.string.main_metric_cpu_wakes
+                ),
                 latest =
                     latest.cpuWakeups
                         .toString(),
@@ -4325,7 +4768,9 @@ private fun SessionComparisonCard(
             )
 
             SessionComparisonRow(
-                label = "Netzwerk",
+                label = stringResource(
+                    R.string.main_metric_network
+                ),
                 latest =
                     formatNetworkBytes(
                         latest.networkTotalBytes
@@ -4367,7 +4812,9 @@ private fun SessionComparisonCard(
                     )
 
                 SessionComparisonRow(
-                    label = "Netzwerk / Min",
+                    label = stringResource(
+                        R.string.main_metric_network_per_minute
+                    ),
                     latest =
                         formatNetworkBytes(
                             latestNetworkPerMinute
@@ -4388,7 +4835,9 @@ private fun SessionComparisonCard(
                         ).toDouble()
                 )
                 SessionComparisonRow(
-                    label = "Aktive Apps",
+                    label = stringResource(
+                        R.string.main_metric_active_apps
+                    ),
                     latest =
                         latest.networkActiveApps
                             .toString(),
@@ -4413,7 +4862,9 @@ private fun SessionComparisonCard(
                 DetailLevel.EXPERT
             ) {
                 SessionComparisonRow(
-                    label = "Empfangen",
+                    label = stringResource(
+                        R.string.main_metric_received
+                    ),
                     latest =
                         formatNetworkBytes(
                             latest.networkRxBytes
@@ -4435,7 +4886,9 @@ private fun SessionComparisonCard(
                 )
 
                 SessionComparisonRow(
-                    label = "Gesendet",
+                    label = stringResource(
+                        R.string.main_metric_sent
+                    ),
                     latest =
                         formatNetworkBytes(
                             latest.networkTxBytes
@@ -4478,7 +4931,9 @@ private fun SessionComparisonCard(
                 )
 
                 Text(
-                    text = "Aktivste Apps",
+                    text = stringResource(
+                        R.string.main_most_active_apps
+                    ),
                     style =
                         MaterialTheme.typography
                             .titleSmall,
@@ -4490,12 +4945,16 @@ private fun SessionComparisonCard(
                 )
 
                 SessionTopAppRow(
-                    label = "Letzte Sitzung",
+                    label = stringResource(
+                        R.string.main_latest_session
+                    ),
                     app = latestTopApp
                 )
 
                 SessionTopAppRow(
-                    label = "Vorherige Sitzung",
+                    label = stringResource(
+                        R.string.main_previous_session
+                    ),
                     app = previousTopApp
                 )
             }
@@ -4506,7 +4965,9 @@ private fun SessionComparisonCard(
 
             Text(
                 text =
-                    "Die Sitzungen werden anhand technischer Aktivität verglichen. Unterschiedliche Nutzung und Laufzeiten beeinflussen die Werte.",
+                    stringResource(
+                        R.string.main_session_comparison_disclaimer
+                    ),
                 color =
                     MaterialTheme.colorScheme
                         .onSurfaceVariant,
@@ -4530,7 +4991,9 @@ private fun SessionComparisonHeader() {
             Alignment.CenterVertically
     ) {
         Text(
-            text = "Kennzahl",
+            text = stringResource(
+                R.string.main_comparison_metric
+            ),
             modifier = Modifier.weight(1.25f),
             color =
                 MaterialTheme.colorScheme
@@ -4541,7 +5004,9 @@ private fun SessionComparisonHeader() {
         )
 
         Text(
-            text = "Jetzt",
+            text = stringResource(
+                R.string.main_comparison_now
+            ),
             modifier = Modifier.weight(0.8f),
             color =
                 MaterialTheme.colorScheme
@@ -4553,7 +5018,9 @@ private fun SessionComparisonHeader() {
         )
 
         Text(
-            text = "Vorher",
+            text = stringResource(
+                R.string.main_comparison_before
+            ),
             modifier = Modifier.weight(0.8f),
             color =
                 MaterialTheme.colorScheme
@@ -4565,7 +5032,9 @@ private fun SessionComparisonHeader() {
         )
 
         Text(
-            text = "Änderung",
+            text = stringResource(
+                R.string.main_comparison_change
+            ),
             modifier = Modifier.weight(0.9f),
             color =
                 MaterialTheme.colorScheme
@@ -4713,7 +5182,9 @@ private fun SessionTopAppRow(
 
         if (app == null) {
             Text(
-                text = "Keine Daten",
+                text = stringResource(
+                    R.string.main_no_data_short
+                ),
                 color =
                     MaterialTheme.colorScheme
                         .onSurfaceVariant,
@@ -4725,6 +5196,7 @@ private fun SessionTopAppRow(
             Text(
                 text =
                     sourceDisplayName(
+                        LocalContext.current,
                         app.name
                     ),
                 modifier = Modifier.fillMaxWidth(),
@@ -4761,6 +5233,7 @@ private fun SessionTopAppRow(
 }
 
 private fun buildSessionComparisonSummary(
+    context: Context,
     latest: ArchivedSession,
     previous: ArchivedSession
 ): String {
@@ -4799,26 +5272,38 @@ private fun buildSessionComparisonSummary(
             latest.cpuWakeups == 0 &&
             previous.displayWakeups == 0 &&
             previous.cpuWakeups == 0 ->
-            "Beide Sitzungen verliefen ohne erfasste Display- oder CPU-Wakeups."
+            context.getString(
+                R.string.main_comparison_summary_no_wakeups
+            )
 
         latestWakeRate <
             previousWakeRate * 0.75 ->
-            "Die letzte Sitzung war technisch deutlich ruhiger als die vorherige."
+            context.getString(
+                R.string.main_comparison_summary_much_calmer
+            )
 
         latestWakeRate >
             previousWakeRate * 1.25 ->
-            "Die letzte Sitzung enthielt mehr technische Unterbrechungen als die vorherige."
+            context.getString(
+                R.string.main_comparison_summary_more_interruptions
+            )
 
         displayDelta < 0 ||
             cpuDelta < 0 ->
-            "Die letzte Sitzung war etwas ruhiger als die vorherige."
+            context.getString(
+                R.string.main_comparison_summary_slightly_calmer
+            )
 
         displayDelta > 0 ||
             cpuDelta > 0 ->
-            "Die letzte Sitzung zeigte etwas mehr Aktivität als die vorherige."
+            context.getString(
+                R.string.main_comparison_summary_slightly_more_activity
+            )
 
         else ->
-            "Beide Sitzungen zeigten einen ähnlichen technischen Verlauf."
+            context.getString(
+                R.string.main_comparison_summary_similar
+            )
     }
 }
 
@@ -4853,6 +5338,7 @@ private fun formatComparisonDuration(
     }
 }
 
+@Composable
 private fun formatDurationChange(
     deltaMillis: Long
 ): String {
@@ -4860,7 +5346,9 @@ private fun formatDurationChange(
         kotlin.math.abs(deltaMillis) <
         1_000L
     ) {
-        return "gleich"
+        return stringResource(
+            R.string.main_change_equal
+        )
     }
 
     val prefix =
@@ -4876,6 +5364,7 @@ private fun formatDurationChange(
         )
 }
 
+@Composable
 private fun formatCountChange(
     delta: Int
 ): String {
@@ -4887,7 +5376,9 @@ private fun formatCountChange(
             "−${kotlin.math.abs(delta)}"
 
         else ->
-            "gleich"
+            stringResource(
+                R.string.main_change_equal
+            )
     }
 }
 
@@ -4927,6 +5418,7 @@ private fun networkBytesPerMinute(
     return result.toLong()
 }
 
+@Composable
 private fun formatNetworkChange(
     deltaBytes: Long
 ): String {
@@ -4946,7 +5438,9 @@ private fun formatNetworkChange(
                 )
 
         else ->
-            "gleich"
+            stringResource(
+                R.string.main_change_equal
+            )
     }
 }
 
@@ -5011,7 +5505,9 @@ private fun SessionHistoryCard(
             modifier = Modifier.padding(18.dp)
         ) {
             Text(
-                text = "Sitzungsverlauf",
+                text = stringResource(
+                    R.string.main_session_history
+                ),
                 style =
                     MaterialTheme.typography
                         .titleMedium,
@@ -5024,12 +5520,11 @@ private fun SessionHistoryCard(
 
             Text(
                 text =
-                    sessions.size.toString() +
-                        if (sessions.size == 1) {
-                            " Sitzung gespeichert"
-                        } else {
-                            " Sitzungen gespeichert"
-                        },
+                    pluralStringResource(
+                        R.plurals.main_sessions_saved,
+                        sessions.size,
+                        sessions.size
+                    ),
                 color =
                     MaterialTheme.colorScheme
                         .onSurfaceVariant,
@@ -5129,9 +5624,13 @@ private fun SessionHistoryCard(
                     Text(
                         text =
                             if (expanded.value) {
-                                "Weniger Sitzungen anzeigen"
+                                stringResource(
+                                    R.string.main_sessions_show_less
+                                )
                             } else {
-                                "Alle Sitzungen anzeigen"
+                                stringResource(
+                                    R.string.main_sessions_show_all
+                                )
                             }
                     )
                 }
@@ -5166,7 +5665,9 @@ private fun SessionHistoryCard(
                 ) {
                     Text(
                         text =
-                            "Alle Sitzungen löschen"
+                            stringResource(
+                                R.string.main_sessions_delete_all
+                            )
                     )
                 }
 
@@ -5176,7 +5677,9 @@ private fun SessionHistoryCard(
 
             Text(
                 text =
-                    "wakelogs speichert höchstens die letzten 20 Sitzungen lokal auf dem Gerät.",
+                    stringResource(
+                        R.string.main_sessions_storage_limit
+                    ),
                 color =
                     MaterialTheme.colorScheme
                         .onSurfaceVariant,
@@ -5196,13 +5699,17 @@ private fun SessionHistoryCard(
             title = {
                 Text(
                     text =
-                        "Alle Sitzungen löschen?"
+                        stringResource(
+                            R.string.main_sessions_delete_all_title
+                        )
                 )
             },
             text = {
                 Text(
                     text =
-                        "Wirklich alle gespeicherten Sitzungen löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+                        stringResource(
+                            R.string.main_sessions_delete_all_message
+                        )
                 )
             },
             confirmButton = {
@@ -5230,7 +5737,9 @@ private fun SessionHistoryCard(
                             )
                 ) {
                     Text(
-                        text = "Alle löschen"
+                        text = stringResource(
+                            R.string.main_delete_all
+                        )
                     )
                 }
             },
@@ -5242,7 +5751,9 @@ private fun SessionHistoryCard(
                     }
                 ) {
                     Text(
-                        text = "Abbrechen"
+                        text = stringResource(
+                            R.string.main_cancel
+                        )
                     )
                 }
             }
@@ -5259,6 +5770,9 @@ private fun SessionHistoryEntry(
 ) {
     val context =
         LocalContext.current
+
+    val resources =
+        LocalResources.current
 
     val pendingSessionExport =
         remember(session.id) {
@@ -5294,7 +5808,9 @@ private fun SessionHistoryEntry(
                                     )
                                 }
                                 ?: error(
-                                    "Ausgabedatei konnte nicht geöffnet werden."
+                                    resources.getString(
+                                        R.string.main_error_output_file_open_failed
+                                    )
                                 )
                         }.isSuccess
 
@@ -5302,9 +5818,13 @@ private fun SessionHistoryEntry(
                         .makeText(
                             context,
                             if (succeeded) {
-                                "Sitzungsexport gespeichert"
+                                resources.getString(
+                                    R.string.main_toast_session_export_saved
+                                )
                             } else {
-                                "Sitzungsexport fehlgeschlagen"
+                                resources.getString(
+                                    R.string.main_toast_session_export_failed
+                                )
                             },
                             android.widget.Toast.LENGTH_LONG
                         )
@@ -5477,9 +5997,13 @@ private fun SessionHistoryEntry(
                     Text(
                         text =
                             if (expanded.value) {
-                                "Details ausblenden"
+                                stringResource(
+                                    R.string.main_details_hide
+                                )
                             } else {
-                                "Details anzeigen"
+                                stringResource(
+                                    R.string.main_details_show
+                                )
                             },
                         color =
                             MaterialTheme
@@ -5508,7 +6032,9 @@ private fun SessionHistoryEntry(
                     value =
                         session.displayWakeups
                             .toString(),
-                    label = "Display",
+                    label = stringResource(
+                        R.string.main_metric_display
+                    ),
                     modifier =
                         Modifier.weight(1f)
                 )
@@ -5517,7 +6043,9 @@ private fun SessionHistoryEntry(
                     value =
                         session.cpuWakeups
                             .toString(),
-                    label = "CPU",
+                    label = stringResource(
+                        R.string.main_metric_cpu
+                    ),
                     modifier =
                         Modifier.weight(1f)
                 )
@@ -5528,7 +6056,9 @@ private fun SessionHistoryEntry(
                             session
                                 .networkTotalBytes
                         ),
-                    label = "Netzwerk",
+                    label = stringResource(
+                        R.string.main_metric_network
+                    ),
                     modifier =
                         Modifier.weight(1.2f)
                 )
@@ -5541,7 +6071,9 @@ private fun SessionHistoryEntry(
                 )
 
                 Text(
-                    text = "Aktivste App",
+                    text = stringResource(
+                        R.string.main_most_active_app
+                    ),
                     color =
                         MaterialTheme
                             .colorScheme
@@ -5560,6 +6092,7 @@ private fun SessionHistoryEntry(
                 Text(
                     text =
                         sourceDisplayName(
+                            context,
                             app.name
                         ),
                     modifier =
@@ -5612,7 +6145,9 @@ private fun SessionHistoryEntry(
                 )
 
                 SessionHistoryValueRow(
-                    label = "Aktive Apps",
+                    label = stringResource(
+                        R.string.main_metric_active_apps
+                    ),
                     value =
                         session
                             .networkActiveApps
@@ -5620,7 +6155,9 @@ private fun SessionHistoryEntry(
                 )
 
                 SessionHistoryValueRow(
-                    label = "Empfangen",
+                    label = stringResource(
+                        R.string.main_metric_received
+                    ),
                     value =
                         formatNetworkBytes(
                             session
@@ -5629,7 +6166,9 @@ private fun SessionHistoryEntry(
                 )
 
                 SessionHistoryValueRow(
-                    label = "Gesendet",
+                    label = stringResource(
+                        R.string.main_metric_sent
+                    ),
                     value =
                         formatNetworkBytes(
                             session
@@ -5638,7 +6177,9 @@ private fun SessionHistoryEntry(
                 )
 
                 SessionHistoryValueRow(
-                    label = "Netzwerk / Min",
+                    label = stringResource(
+                        R.string.main_metric_network_per_minute
+                    ),
                     value =
                         formatNetworkBytes(
                             networkBytesPerMinute(
@@ -5664,7 +6205,9 @@ private fun SessionHistoryEntry(
 
                     Text(
                         text =
-                            "Weitere aktive Apps",
+                            stringResource(
+                                R.string.main_more_active_apps
+                            ),
                         style =
                             MaterialTheme
                                 .typography
@@ -5685,6 +6228,7 @@ private fun SessionHistoryEntry(
                             SessionHistoryValueRow(
                                 label =
                                     sourceDisplayName(
+                                        context,
                                         app.name
                                     ),
                                 value =
@@ -5705,11 +6249,13 @@ private fun SessionHistoryEntry(
                         onClick = {
                             pendingSessionExport.value =
                                 buildSessionExportText(
+                                    context,
                                     session
                                 )
 
                             sessionExportLauncher.launch(
                                 buildSessionExportFileName(
+                                    context,
                                     session
                                 )
                             )
@@ -5719,7 +6265,9 @@ private fun SessionHistoryEntry(
                     ) {
                         Text(
                             text =
-                                "Sitzungszusammenfassung"
+                                stringResource(
+                                    R.string.main_session_summary
+                                )
                         )
                     }
 
@@ -5745,9 +6293,13 @@ private fun SessionHistoryEntry(
                                 if (
                                     normalizedNote == null
                                 ) {
-                                    "Notiz hinzufügen"
+                                    stringResource(
+                                        R.string.main_note_add
+                                    )
                                 } else {
-                                    "Notiz bearbeiten"
+                                    stringResource(
+                                        R.string.main_note_edit
+                                    )
                                 }
                         )
                     }
@@ -5768,7 +6320,9 @@ private fun SessionHistoryEntry(
                     ) {
                         Text(
                             text =
-                                "Sitzung löschen",
+                                stringResource(
+                                    R.string.main_session_delete
+                                ),
                             color =
                                 MaterialTheme
                                     .colorScheme
@@ -5791,9 +6345,13 @@ private fun SessionHistoryEntry(
                         if (
                             normalizedNote == null
                         ) {
-                            "Notiz hinzufügen"
+                            stringResource(
+                                R.string.main_note_add
+                            )
                         } else {
-                            "Notiz bearbeiten"
+                            stringResource(
+                                R.string.main_note_edit
+                            )
                         }
                 )
             },
@@ -5811,12 +6369,16 @@ private fun SessionHistoryEntry(
                                 Modifier.fillMaxWidth(),
                             label = {
                                 Text(
-                                    "Notiz"
+                                    stringResource(
+                                        R.string.main_note
+                                    )
                                 )
                             },
                             placeholder = {
                                 Text(
-                                    "z. B. Disney+, Nachtmessung oder Flugmodus-Test"
+                                    stringResource(
+                                        R.string.main_note_placeholder
+                                    )
                                 )
                             },
                             supportingText = {
@@ -5845,7 +6407,11 @@ private fun SessionHistoryEntry(
                             )
                         }
                     ) {
-                        Text("Speichern")
+                        Text(
+                            stringResource(
+                                R.string.main_save
+                            )
+                        )
                     }
             },
             dismissButton = {
@@ -5868,7 +6434,9 @@ private fun SessionHistoryEntry(
                             ) {
                                 Text(
                                     text =
-                                        "Entfernen",
+                                        stringResource(
+                                            R.string.main_remove
+                                        ),
                                     color =
                                         MaterialTheme
                                             .colorScheme
@@ -5884,7 +6452,11 @@ private fun SessionHistoryEntry(
                                     false
                             }
                         ) {
-                            Text("Abbrechen")
+                            Text(
+                                stringResource(
+                                    R.string.main_cancel
+                                )
+                            )
                         }
                 }
             }
@@ -5900,13 +6472,17 @@ private fun SessionHistoryEntry(
             title = {
                 Text(
                     text =
-                        "Sitzung löschen?"
+                        stringResource(
+                            R.string.main_session_delete_title
+                        )
                 )
             },
             text = {
                 Text(
                     text =
-                        "Diese archivierte Sitzung wird dauerhaft vom Gerät entfernt."
+                        stringResource(
+                            R.string.main_session_delete_message
+                        )
                 )
             },
             confirmButton = {
@@ -5919,7 +6495,9 @@ private fun SessionHistoryEntry(
                         }
                     ) {
                         Text(
-                            text = "Löschen",
+                            text = stringResource(
+                                R.string.main_delete
+                            ),
                             color =
                                 MaterialTheme
                                     .colorScheme
@@ -5935,7 +6513,11 @@ private fun SessionHistoryEntry(
                                 false
                         }
                     ) {
-                        Text("Abbrechen")
+                        Text(
+                            stringResource(
+                                R.string.main_cancel
+                            )
+                        )
                     }
             }
         )
@@ -6038,6 +6620,7 @@ private fun SessionHistoryValueRow(
 }
 
 private fun buildSessionExportFileName(
+    context: Context,
     session: ArchivedSession
 ): String {
     val timestamp =
@@ -6048,36 +6631,50 @@ private fun buildSessionExportFileName(
             Date(session.startMillis)
         )
 
-    return "wakelogs_sitzungszusammenfassung_$timestamp.txt"
+    return context.getString(
+        R.string.main_session_export_file_name,
+        timestamp
+    )
 }
 
 private fun buildSessionExportText(
+    context: Context,
     session: ArchivedSession
 ): String {
     return buildString {
         appendLine("wakelogs v${BuildConfig.VERSION_NAME} · dernikiausd")
-        appendLine("Art des Exports: Sitzungszusammenfassung")
+        appendLine(
+            context.getString(
+                R.string.main_export_kind_session_summary
+            )
+        )
         appendLine()
 
         appendLine(
-            "Beginn: " +
+            context.getString(
+                R.string.main_export_start,
                 formatSessionExportTimestamp(
-                    session.startMillis
-                )
+                session.startMillis
+            )
+            )
         )
 
         appendLine(
-            "Ende: " +
+            context.getString(
+                R.string.main_export_end,
                 formatSessionExportTimestamp(
-                    session.endMillis
-                )
+                session.endMillis
+            )
+            )
         )
 
         appendLine(
-            "Dauer: " +
+            context.getString(
+                R.string.main_export_duration,
                 formatComparisonDuration(
-                    session.durationMillis
-                )
+                session.durationMillis
+            )
+            )
         )
 
         session.note
@@ -6091,49 +6688,71 @@ private fun buildSessionExportText(
             }
             ?.let { note ->
                 appendLine(
-                    "Notiz: $note"
+                    context.getString(
+                        R.string.main_export_note,
+                        note
+                    )
                 )
             }
 
         appendLine()
-        appendLine("Technische Aktivität")
-
         appendLine(
-            "Display-Wakeups: " +
-                session.displayWakeups
+            context.getString(
+                R.string.main_export_technical_activity
+            )
         )
 
         appendLine(
-            "CPU-Wakeups: " +
+            context.getString(
+                R.string.main_export_display_wakeups,
+                session.displayWakeups
+            )
+        )
+
+        appendLine(
+            context.getString(
+                R.string.main_export_cpu_wakeups,
                 session.cpuWakeups
+            )
         )
 
         appendLine()
-        appendLine("Netzwerk")
-
         appendLine(
-            "Gesamt: " +
-                formatNetworkBytes(
-                    session.networkTotalBytes
-                )
+            context.getString(
+                R.string.main_metric_network
+            )
         )
 
         appendLine(
-            "Empfangen: " +
+            context.getString(
+                R.string.main_export_total,
                 formatNetworkBytes(
-                    session.networkRxBytes
-                )
+                session.networkTotalBytes
+            )
+            )
         )
 
         appendLine(
-            "Gesendet: " +
+            context.getString(
+                R.string.main_export_received,
                 formatNetworkBytes(
-                    session.networkTxBytes
-                )
+                session.networkRxBytes
+            )
+            )
         )
 
         appendLine(
-            "Pro Minute: " +
+            context.getString(
+                R.string.main_export_sent,
+                formatNetworkBytes(
+                session.networkTxBytes
+            )
+            )
+        )
+
+        appendLine(
+            context.getString(
+                R.string.main_export_per_minute,
                 formatNetworkBytes(
                     networkBytesPerMinute(
                         bytes =
@@ -6142,19 +6761,28 @@ private fun buildSessionExportText(
                             session.durationMillis
                     )
                 )
+            )
         )
 
         appendLine(
-            "Aktive Apps: " +
+            context.getString(
+                R.string.main_export_active_apps,
                 session.networkActiveApps
+            )
         )
 
         appendLine()
-        appendLine("Aktivste Apps")
+        appendLine(
+            context.getString(
+                R.string.main_most_active_apps
+            )
+        )
 
         if (session.topApps.isEmpty()) {
             appendLine(
-                "Keine App-Daten gespeichert."
+                context.getString(
+                    R.string.main_export_no_app_data
+                )
             )
         } else {
             session.topApps.forEachIndexed {
@@ -6164,6 +6792,7 @@ private fun buildSessionExportText(
                 appendLine(
                     "${index + 1}. " +
                         sourceDisplayName(
+                            context,
                             app.name
                         ) +
                         " · " +
@@ -6176,7 +6805,9 @@ private fun buildSessionExportText(
 
         appendLine()
         appendLine(
-            "Hinweis: Netzwerkaktivität zeigt Nutzung oder Hintergrundverkehr, beweist aber keinen direkten Wakeup-Zusammenhang."
+            context.getString(
+                R.string.main_export_network_hint
+            )
         )
     }
 }
@@ -6265,6 +6896,9 @@ private fun startOfNextDayMillis(
 private fun StatisticsCard(
     events: List<WakeEvent>
 ) {
+    val context =
+        LocalContext.current
+
     val todayStartMillis =
         remember {
             startOfTodayMillis()
@@ -6288,12 +6922,18 @@ private fun StatisticsCard(
 
     val hintedCount =
         screenOnEvents.count {
-            hasExplanationOrHint(it)
+            hasExplanationOrHint(
+                context,
+                it
+            )
         }
 
     val unknownCount =
         screenOnEvents.count {
-            isUnexplainedScreenOn(it)
+            isUnexplainedScreenOn(
+                context,
+                it
+            )
         }
 
     Card(
@@ -6304,7 +6944,9 @@ private fun StatisticsCard(
             modifier = Modifier.padding(18.dp)
         ) {
             Text(
-                text = "Tagesübersicht",
+                text = stringResource(
+                    R.string.main_daily_overview
+                ),
                 style =
                     MaterialTheme.typography
                         .titleMedium,
@@ -6322,7 +6964,9 @@ private fun StatisticsCard(
             ) {
                 Text(
                     text =
-                        "Heute noch keine Ereignisse erfasst.",
+                        stringResource(
+                            R.string.main_daily_no_events
+                        ),
                     color =
                         MaterialTheme.colorScheme
                             .onSurfaceVariant,
@@ -6339,21 +6983,27 @@ private fun StatisticsCard(
                     StatisticValue(
                         value =
                             screenOnEvents.size.toString(),
-                        label = "Display an",
+                        label = stringResource(
+                            R.string.main_metric_screen_on
+                        ),
                         modifier = Modifier.weight(1f)
                     )
 
                     StatisticValue(
                         value =
                             hintedCount.toString(),
-                        label = "Mit Ursache",
+                        label = stringResource(
+                            R.string.main_metric_with_cause
+                        ),
                         modifier = Modifier.weight(1f)
                     )
 
                     StatisticValue(
                         value =
                             unknownCount.toString(),
-                        label = "Ungeklärt",
+                        label = stringResource(
+                            R.string.main_filter_unexplained
+                        ),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -6366,7 +7016,7 @@ private data class NightWindow(
     val startMillis: Long,
     val endMillis: Long,
     val ongoing: Boolean,
-    val title: String
+    @StringRes val title: Int
 )
 
 private enum class NightWakeCategory {
@@ -6383,6 +7033,9 @@ private fun NightAnalysisCard(
     events: List<WakeEvent>,
     monitoring: Boolean
 ) {
+    val context =
+        LocalContext.current
+
     val nightWindow =
         remember(
             events,
@@ -6405,7 +7058,10 @@ private fun NightAnalysisCard(
 
     val categories =
         screenOnEvents.groupingBy {
-            nightWakeCategory(it)
+            nightWakeCategory(
+                context,
+                it
+            )
         }.eachCount()
 
     val powerButtonCount =
@@ -6455,7 +7111,9 @@ private fun NightAnalysisCard(
             modifier = Modifier.padding(18.dp)
         ) {
             Text(
-                text = nightWindow.title,
+                text = stringResource(
+                    nightWindow.title
+                ),
                 style =
                     MaterialTheme.typography
                         .titleMedium,
@@ -6490,7 +7148,9 @@ private fun NightAnalysisCard(
                 StatisticValue(
                     value =
                         screenOnEvents.size.toString(),
-                    label = "Display an",
+                    label = stringResource(
+                        R.string.main_metric_screen_on
+                    ),
                     modifier = Modifier.weight(1f)
                 )
 
@@ -6500,14 +7160,18 @@ private fun NightAnalysisCard(
                             screenOnEvents.size -
                                 unexplainedCount
                         ).toString(),
-                    label = "Zugeordnet",
+                    label = stringResource(
+                        R.string.main_metric_assigned
+                    ),
                     modifier = Modifier.weight(1f)
                 )
 
                 StatisticValue(
                     value =
                         unexplainedCount.toString(),
-                    label = "Ungeklärt",
+                    label = stringResource(
+                        R.string.main_filter_unexplained
+                    ),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -6523,37 +7187,51 @@ private fun NightAnalysisCard(
             )
 
             NightAnalysisRow(
-                label = "Power-Taste",
+                label = stringResource(
+                    R.string.main_night_power_button
+                ),
                 value = powerButtonCount
             )
 
             NightAnalysisRow(
-                label = "Doppeltipp",
+                label = stringResource(
+                    R.string.main_night_double_tap
+                ),
                 value = doubleTapCount
             )
 
             NightAnalysisRow(
-                label = "Benachrichtigungen",
+                label = stringResource(
+                    R.string.main_night_notifications
+                ),
                 value = notificationCount
             )
 
             NightAnalysisRow(
-                label = "Wakeup-Alarme",
+                label = stringResource(
+                    R.string.main_diag_wakeup_alarms
+                ),
                 value = alarmCount
             )
 
             NightAnalysisRow(
-                label = "Andere Hinweise",
+                label = stringResource(
+                    R.string.main_night_other_hints
+                ),
                 value = otherExplainedCount
             )
 
             NightAnalysisRow(
-                label = "Ungeklärt",
+                label = stringResource(
+                    R.string.main_filter_unexplained
+                ),
                 value = unexplainedCount
             )
 
             NightAnalysisRow(
-                label = "CPU-Wakeups im Hintergrund",
+                label = stringResource(
+                    R.string.main_night_background_cpu_wakeups
+                ),
                 value = backgroundWakeCount
             )
 
@@ -6567,7 +7245,9 @@ private fun NightAnalysisCard(
 
                 Text(
                     text =
-                        "In diesem Überwachungszeitraum wurden keine Display- oder CPU-Wakeups erfasst.",
+                        stringResource(
+                            R.string.main_night_no_wakeups
+                        ),
                     color =
                         MaterialTheme.colorScheme
                             .onSurfaceVariant,
@@ -6644,7 +7324,7 @@ private fun calculateNightWindow(
                 endMillis = now,
                 ongoing = true,
                 title =
-                    "Laufende Überwachung"
+                    R.string.main_night_window_ongoing
             )
         }
 
@@ -6666,7 +7346,7 @@ private fun calculateNightWindow(
                 endTimestamp,
             ongoing = false,
             title =
-                "Letzte Überwachung"
+                R.string.main_night_window_last
         )
     }
 
@@ -6678,7 +7358,7 @@ private fun calculateNightWindow(
                 sortedEvents.last().timestamp,
             ongoing = false,
             title =
-                "Aufgezeichneter Zeitraum"
+                R.string.main_night_window_recorded
         )
     }
 
@@ -6686,10 +7366,11 @@ private fun calculateNightWindow(
         startMillis = now,
         endMillis = now,
         ongoing = false,
-        title = "Noch keine Überwachung"
+        title = R.string.main_night_window_none
     )
 }
 
+@Composable
 private fun formatNightWindow(
     window: NightWindow
 ): String {
@@ -6700,10 +7381,12 @@ private fun formatNightWindow(
         )
 
     return if (window.ongoing) {
-        "Seit " +
+        stringResource(
+            R.string.main_since,
             formatter.format(
                 Date(window.startMillis)
             )
+        )
     } else if (
         window.startMillis ==
             window.endMillis
@@ -6731,38 +7414,54 @@ private fun formatNightWindow(
 }
 
 private fun nightWakeCategory(
+    context: Context,
     event: WakeEvent
 ): NightWakeCategory {
     val details = event.details
 
     return when {
-        details.contains(
-            "Direkter Aufweckgrund: Power-Taste"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.main_match_direct_wake_power_button
         ) ->
             NightWakeCategory.POWER_BUTTON
 
-        details.contains(
-            "Direkter Aufweckgrund: Doppeltipp"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.main_match_direct_wake_double_tap
         ) ->
             NightWakeCategory.DOUBLE_TAP
 
-        details.contains(
-            "Wahrscheinliche Ursache:"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.main_label_likely_cause
         ) ||
-        details.contains(
-            "Mögliche Ursache:"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.main_label_possible_cause
         ) ||
-        details.contains(
-            "Nachträglich erkannte Ursache:"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.event_label_cause_detected_later
         ) ->
             NightWakeCategory.NOTIFICATION
 
-        details.contains(
-            "Wakeup-Alarm-Hinweis:"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.event_label_wakeup_alarm_hint
         ) ->
             NightWakeCategory.WAKEUP_ALARM
 
-        isUnexplainedScreenOn(event) ->
+        isUnexplainedScreenOn(
+            context,
+            event
+        ) ->
             NightWakeCategory.UNEXPLAINED
 
         else ->
@@ -6860,7 +7559,9 @@ private fun ActionCard(
         ) {
             Text(
                 text =
-                    "Technischen Bericht exportieren",
+                    stringResource(
+                        R.string.main_export_technical_report
+                    ),
                 maxLines = 1,
                 overflow =
                     TextOverflow.Ellipsis,
@@ -6885,7 +7586,9 @@ private fun ActionCard(
                 )
         ) {
             Text(
-                text = "Liste leeren",
+                text = stringResource(
+                    R.string.main_clear_list
+                ),
                 style =
                     MaterialTheme.typography.bodyMedium,
                 fontWeight =
@@ -6928,7 +7631,9 @@ private fun EventFilterBar(
                 },
                 label = {
                     Text(
-                        text = filter.label,
+                        text = stringResource(
+                            filter.label
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -6960,7 +7665,9 @@ private fun EventViewModeBar(
                 },
                 label = {
                     Text(
-                        text = mode.label,
+                        text = stringResource(
+                            mode.label
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -6980,44 +7687,68 @@ private fun FilterEmptyCard(
     val title =
         when (filter) {
             EventFilter.UNKNOWN ->
-                "Keine ungeklärten Ereignisse"
+                stringResource(
+                    R.string.main_empty_unexplained_title
+                )
 
             EventFilter.BACKGROUND ->
-                "Keine Hintergrund-Wakeups"
+                stringResource(
+                    R.string.main_empty_background_title
+                )
 
             EventFilter.NOTIFICATIONS ->
-                "Keine Hinweise vorhanden"
+                stringResource(
+                    R.string.main_empty_notifications_title
+                )
 
             EventFilter.DISPLAY ->
-                "Keine Display-Ereignisse"
+                stringResource(
+                    R.string.main_empty_display_title
+                )
 
             EventFilter.ALL ->
                 if (monitoring) {
-                    "Überwachung aktiv …"
+                    stringResource(
+                        R.string.main_empty_all_monitoring_title
+                    )
                 } else {
-                    "Noch keine Ereignisse"
+                    stringResource(
+                        R.string.main_empty_all_title
+                    )
                 }
         }
 
     val text =
         when (filter) {
             EventFilter.UNKNOWN ->
-                "Alle bisher erfassten Display-Aktivierungen konnten erklärt werden."
+                stringResource(
+                    R.string.main_empty_unexplained_text
+                )
 
             EventFilter.BACKGROUND ->
-                "Noch keine CPU-Aktivierung bei ausgeschaltetem Display erfasst."
+                stringResource(
+                    R.string.main_empty_background_text
+                )
 
             EventFilter.NOTIFICATIONS ->
-                "Noch keine passende Benachrichtigung wurde erfasst."
+                stringResource(
+                    R.string.main_empty_notifications_text
+                )
 
             EventFilter.DISPLAY ->
-                "Schalte das Display aus und wieder ein."
+                stringResource(
+                    R.string.main_empty_display_text
+                )
 
             EventFilter.ALL ->
                 if (monitoring) {
-                    "wakelogs wartet auf neue Ereignisse."
+                    stringResource(
+                        R.string.main_empty_all_monitoring_text
+                    )
                 } else {
-                    "Starte die Überwachung, damit wakelogs Ereignisse sammeln kann."
+                    stringResource(
+                        R.string.main_empty_all_text
+                    )
                 }
         }
 
@@ -7095,7 +7826,9 @@ private fun GroupedCpuEventCard(
                 ) {
                     Text(
                         text =
-                            "GEBÜNDELTE CPU-AKTIVITÄT",
+                            stringResource(
+                                R.string.main_grouped_cpu_activity
+                            ),
                         color =
                             MaterialTheme
                                 .colorScheme
@@ -7150,7 +7883,9 @@ private fun GroupedCpuEventCard(
 
             GroupedEventValueRow(
                 label =
-                    "Ähnliche Ereignisse",
+                    stringResource(
+                        R.string.main_grouped_similar_events
+                    ),
                 value =
                     group.events.size
                         .toString()
@@ -7158,7 +7893,9 @@ private fun GroupedCpuEventCard(
 
             GroupedEventValueRow(
                 label =
-                    "Zeitraum",
+                    stringResource(
+                        R.string.main_grouped_time_range
+                    ),
                 value =
                     formatGroupedEventRange(
                         group.events
@@ -7169,7 +7906,9 @@ private fun GroupedCpuEventCard(
                 ?.let { duration ->
                     GroupedEventValueRow(
                         label =
-                            "Gesamte CPU-Wachzeit",
+                            stringResource(
+                                R.string.main_grouped_total_cpu_awake_time
+                            ),
                         value =
                             formatGroupedCpuDuration(
                                 duration
@@ -7181,7 +7920,9 @@ private fun GroupedCpuEventCard(
                 ?.let { duration ->
                     GroupedEventValueRow(
                         label =
-                            "Längster Vorgang",
+                            stringResource(
+                                R.string.main_grouped_longest_operation
+                            ),
                         value =
                             formatGroupedCpuDuration(
                                 duration
@@ -7203,7 +7944,9 @@ private fun GroupedCpuEventCard(
                 ?.let { duration ->
                     GroupedEventValueRow(
                         label =
-                            "Durchschnitt",
+                            stringResource(
+                                R.string.main_grouped_average
+                            ),
                         value =
                             formatGroupedCpuDuration(
                                 duration
@@ -7251,7 +7994,9 @@ private fun GroupedCpuEventCard(
                 ) {
                     Text(
                         text =
-                            classification.title,
+                            stringResource(
+                                classification.title
+                            ),
                         color =
                             classification.color(),
                         style =
@@ -7269,7 +8014,9 @@ private fun GroupedCpuEventCard(
 
                     Text(
                         text =
-                            classification.explanation,
+                            stringResource(
+                                classification.explanation
+                            ),
                         color =
                             MaterialTheme
                                 .colorScheme
@@ -7290,7 +8037,9 @@ private fun GroupedCpuEventCard(
 
             Text(
                 text =
-                    "Mehrere CPU-Wakeups derselben Quelle wurden für eine ruhigere Darstellung zusammengefasst.",
+                    stringResource(
+                        R.string.main_grouped_cpu_hint
+                    ),
                 color =
                     MaterialTheme
                         .colorScheme
@@ -7317,9 +8066,13 @@ private fun GroupedCpuEventCard(
                 Text(
                     text =
                         if (expanded.value) {
-                            "Einzelereignisse ausblenden"
+                            stringResource(
+                                R.string.main_single_events_hide
+                            )
                         } else {
-                            "Einzelereignisse anzeigen"
+                            stringResource(
+                                R.string.main_single_events_show
+                            )
                         }
                 )
             }
@@ -7364,8 +8117,8 @@ private fun GroupedCpuEventCard(
 }
 
 private data class GroupedCpuClassification(
-    val title: String,
-    val explanation: String,
+    @StringRes val title: Int,
+    @StringRes val explanation: Int,
     val level: Int
 )
 
@@ -7399,9 +8152,9 @@ private fun classifyGroupedCpuActivity(
     ) {
         return GroupedCpuClassification(
             title =
-                "Technisch nicht vollständig bewertbar",
+                R.string.main_grouped_class_incomplete_title,
             explanation =
-                "Für mindestens einen Vorgang konnte keine vollständige CPU-Wachzeit ermittelt werden.",
+                R.string.main_grouped_class_incomplete_text,
             level = 1
         )
     }
@@ -7415,9 +8168,9 @@ private fun classifyGroupedCpuActivity(
                 90_000L ->
             GroupedCpuClassification(
                 title =
-                    "Länger andauernde Aktivität",
+                    R.string.main_grouped_class_long_title,
                 explanation =
-                    "Mindestens ein Wakeup oder die gesamte Gruppe hielt die CPU vergleichsweise lange aktiv. Das ist noch kein Beweis für problematischen Akkuverbrauch.",
+                    R.string.main_grouped_class_long_text,
                 level = 2
             )
 
@@ -7430,18 +8183,18 @@ private fun classifyGroupedCpuActivity(
             count >= 10 ->
             GroupedCpuClassification(
                 title =
-                    "Beachtenswerte Aktivität",
+                    R.string.main_grouped_class_notable_title,
                 explanation =
-                    "Die Gruppe enthält mehrere oder etwas längere CPU-Wakeups. Ein Vergleich mit weiteren Sitzungen ist sinnvoll.",
+                    R.string.main_grouped_class_notable_text,
                 level = 1
             )
 
         else ->
             GroupedCpuClassification(
                 title =
-                    "Kurz und überwiegend unauffällig",
+                    R.string.main_grouped_class_short_title,
                 explanation =
-                    "Die einzelnen Vorgänge waren kurz. Solche Hintergrundaktivitäten sind bei Android häufig normal.",
+                    R.string.main_grouped_class_short_text,
                 level = 0
             )
     }
@@ -7571,6 +8324,9 @@ private fun EventCard(
     event: WakeEvent,
     detailLevel: DetailLevel
 ) {
+    val context =
+        LocalContext.current
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp)
@@ -7586,7 +8342,10 @@ private fun EventCard(
                     Alignment.CenterVertically
             ) {
                 Text(
-                    text = eventTypeLabel(event.type),
+                    text = eventTypeLabel(
+                        context,
+                        event.type
+                    ),
                     color =
                         MaterialTheme.colorScheme.primary,
                     style =
@@ -7622,7 +8381,10 @@ private fun EventCard(
             )
 
             val causeAssessment =
-                causeAssessmentFor(event)
+                causeAssessmentFor(
+                    context,
+                    event
+                )
 
             if (causeAssessment != null) {
                 Spacer(
@@ -7637,7 +8399,10 @@ private fun EventCard(
 
             val causalChain =
                 remember(event.details) {
-                    buildCausalChain(event)
+                    buildCausalChain(
+                        context,
+                        event
+                    )
                 }
 
             if (causalChain.isNotEmpty()) {
@@ -7665,7 +8430,10 @@ private fun EventCard(
                 )
 
                 Text(
-                    text = uiDetailsForEvent(event),
+                    text = uiDetailsForEvent(
+                        context,
+                        event
+                    ),
                     color =
                         MaterialTheme.colorScheme
                             .onSurfaceVariant,
@@ -7708,7 +8476,9 @@ private fun CausalChainView(
             )
         ) {
             Text(
-                text = "Ursachenkette",
+                text = stringResource(
+                    R.string.main_chain_title
+                ),
                 color =
                     MaterialTheme.colorScheme.primary,
                 style =
@@ -7789,7 +8559,9 @@ private fun CausalChainView(
                 )
 
                 Text(
-                    text = "Begleitaktivitäten nach dem Aufwecken",
+                    text = stringResource(
+                        R.string.main_chain_companion_activities
+                    ),
                     color =
                         MaterialTheme.colorScheme
                             .onSurfaceVariant,
@@ -7840,6 +8612,7 @@ private fun CausalChainView(
 }
 
 private fun buildCausalChain(
+    context: Context,
     event: WakeEvent
 ): List<CausalChainStep> {
     if (event.type != "SCREEN_ON") {
@@ -7856,13 +8629,14 @@ private fun buildCausalChain(
 
     fun valueAfter(
         startIndex: Int,
-        prefix: String
+        @StringRes prefixId: Int
     ): String? {
         val end =
             lines.indices
                 .drop(startIndex + 1)
                 .firstOrNull { index ->
                     isCausalSectionStart(
+                        context,
                         lines[index]
                     )
                 }
@@ -7874,9 +8648,19 @@ private fun buildCausalChain(
                 end
             )
             .firstOrNull {
-                it.startsWith(prefix)
+                LocalizedText.startsWithAny(
+                    it,
+                    context,
+                    prefixId
+                )
             }
-            ?.substringAfter(prefix)
+            ?.let {
+                LocalizedText.removeAnyPrefix(
+                    it,
+                    context,
+                    prefixId
+                )
+            }
             ?.trim()
     }
 
@@ -7885,8 +8669,10 @@ private fun buildCausalChain(
             line ->
 
         when {
-            line.startsWith(
-                "Direkter Aufweckgrund:"
+            LocalizedText.startsWithAny(
+                line,
+                context,
+                R.string.event_label_direct_wake_reason
             ) -> {
                 val title =
                     line.substringAfter(":")
@@ -7895,31 +8681,41 @@ private fun buildCausalChain(
                 val timing =
                     valueAfter(
                         index,
-                        "Zeitabstand:"
-                    ) ?: "zeitlich direkt zugeordnet"
+                        R.string.event_label_time_offset
+                    ) ?: context.getString(
+                        R.string.main_timing_directly_assigned
+                    )
 
                 steps.add(
                     CausalChainStep(
                         offsetMillis =
                             parseCausalOffset(
+                                context,
                                 timing
                             ),
                         timingText =
                             readableCausalTiming(
+                                context,
                                 timing
                             ),
                         title =
-                            "Auslöser",
+                            context.getString(
+                                R.string.main_chain_trigger
+                            ),
                         source = title
                     )
                 )
             }
 
-            line.startsWith(
-                "Wahrscheinliche Ursache:"
+            LocalizedText.startsWithAny(
+                line,
+                context,
+                R.string.main_label_likely_cause
             ) ||
-            line.startsWith(
-                "Mögliche Ursache:"
+            LocalizedText.startsWithAny(
+                line,
+                context,
+                R.string.main_label_possible_cause
             ) -> {
                 val source =
                     line.substringAfter(":")
@@ -7928,183 +8724,246 @@ private fun buildCausalChain(
                 val timing =
                     valueAfter(
                         index,
-                        "Zeitabstand:"
-                    ) ?: "zeitlich zugeordnet"
+                        R.string.event_label_time_offset
+                    ) ?: context.getString(
+                        R.string.main_timing_assigned
+                    )
 
                 steps.add(
                     CausalChainStep(
                         offsetMillis =
                             parseCausalOffset(
+                                context,
                                 timing
                             ),
                         timingText =
                             readableCausalTiming(
+                                context,
                                 timing
                             ),
                         title =
-                            "Benachrichtigung",
+                            context.getString(
+                                R.string.main_chain_notification
+                            ),
                         source = source
                     )
                 )
             }
 
-            line.startsWith(
-                "Nachträglich erkannte Ursache:"
+            LocalizedText.startsWithAny(
+                line,
+                context,
+                R.string.event_label_cause_detected_later
             ) -> {
                 val source =
                     line.substringAfter(":")
                         .trim()
 
+                val arrivedPrefixes =
+                    LocalizedText.variants(
+                        context,
+                        R.string.main_label_notification_arrived
+                    ).map { "$it " }
+
                 val timingLine =
                     lines
                         .drop(index + 1)
-                        .firstOrNull {
-                            it.startsWith(
-                                "Hinweis kam "
-                            )
+                        .firstNotNullOfOrNull { candidate ->
+                            arrivedPrefixes
+                                .firstOrNull {
+                                    candidate.startsWith(it)
+                                }
+                                ?.let {
+                                    candidate.removePrefix(it)
+                                }
                         }
-                        ?.removePrefix(
-                            "Hinweis kam "
+                        ?: context.getString(
+                            R.string.main_match_after_screen_on
                         )
-                        ?: "nach Display an"
 
                 steps.add(
                     CausalChainStep(
                         offsetMillis =
                             parseCausalOffset(
+                                context,
                                 timingLine
                             ),
                         timingText =
                             readableCausalTiming(
+                                context,
                                 timingLine
                             ),
                         title =
-                            "Benachrichtigung",
+                            context.getString(
+                                R.string.main_chain_notification
+                            ),
                         source = source
                     )
                 )
             }
 
-            line.startsWith(
-                "Systemhinweis:"
+            LocalizedText.startsWithAny(
+                line,
+                context,
+                R.string.event_label_system_hint
             ) ||
-            line ==
-                "Begleitaktivität: Wakelock" -> {
+            LocalizedText.equalsAny(
+                line,
+                context,
+                R.string.event_section_companion_wakelock
+            ) -> {
                 val source =
                     valueAfter(
                         index,
-                        "Quelle:"
+                        R.string.event_label_source
                     ).orEmpty()
 
                 val kind =
                     valueAfter(
                         index,
-                        "Art:"
-                    ) ?: "Wakelock"
+                        R.string.event_label_kind
+                    ) ?: context.getString(
+                        R.string.main_chain_wakelock
+                    )
 
                 val timing =
                     valueAfter(
                         index,
-                        "Zeitabstand:"
-                    ) ?: "zeitlich zugeordnet"
+                        R.string.event_label_time_offset
+                    ) ?: context.getString(
+                        R.string.main_timing_assigned
+                    )
 
                 steps.add(
                     CausalChainStep(
                         offsetMillis =
                             parseCausalOffset(
+                                context,
                                 timing
                             ),
                         timingText =
                             readableCausalTiming(
+                                context,
                                 timing
                             ),
                         title = kind,
                         source = source,
                         companionActivity =
-                            line.startsWith(
-                                "Begleitaktivität:"
+                            LocalizedText.startsWithAny(
+                                line,
+                                context,
+                                R.string.event_label_companion_activity
                             ) &&
                                 parseCausalOffset(
+                                    context,
                                     timing
                                 ) >= 0L
                     )
                 )
             }
 
-            line.startsWith(
-                "Wakeup-Alarm-Hinweis:"
+            LocalizedText.startsWithAny(
+                line,
+                context,
+                R.string.event_label_wakeup_alarm_hint
             ) ||
-            line ==
-                "Begleitaktivität: Wakeup-Alarm" -> {
+            LocalizedText.equalsAny(
+                line,
+                context,
+                R.string.event_section_companion_wakeup_alarm
+            ) -> {
                 val source =
                     valueAfter(
                         index,
-                        "Quelle:"
+                        R.string.event_label_source
                     ).orEmpty()
 
                 val timing =
                     valueAfter(
                         index,
-                        "Zeitabstand:"
-                    ) ?: "zeitlich zugeordnet"
+                        R.string.event_label_time_offset
+                    ) ?: context.getString(
+                        R.string.main_timing_assigned
+                    )
 
                 steps.add(
                     CausalChainStep(
                         offsetMillis =
                             parseCausalOffset(
+                                context,
                                 timing
                             ),
                         timingText =
                             readableCausalTiming(
+                                context,
                                 timing
                             ),
-                        title = "Wakeup-Alarm",
+                        title = context.getString(
+                            R.string.main_chain_wakeup_alarm
+                        ),
                         source = source,
                         companionActivity =
-                            line.startsWith(
-                                "Begleitaktivität:"
+                            LocalizedText.startsWithAny(
+                                line,
+                                context,
+                                R.string.event_label_companion_activity
                             ) &&
                                 parseCausalOffset(
+                                    context,
                                     timing
                                 ) >= 0L
                     )
                 )
             }
 
-            line.startsWith(
-                "Hintergrundjob-Hinweis:"
+            LocalizedText.startsWithAny(
+                line,
+                context,
+                R.string.event_label_background_job_hint
             ) ||
-            line ==
-                "Begleitaktivität: Hintergrundjob" -> {
+            LocalizedText.equalsAny(
+                line,
+                context,
+                R.string.event_section_companion_background_job
+            ) -> {
                 val source =
                     valueAfter(
                         index,
-                        "Quelle:"
+                        R.string.event_label_source
                     ).orEmpty()
 
                 val timing =
                     valueAfter(
                         index,
-                        "Zeitabstand:"
-                    ) ?: "zeitlich zugeordnet"
+                        R.string.event_label_time_offset
+                    ) ?: context.getString(
+                        R.string.main_timing_assigned
+                    )
 
                 steps.add(
                     CausalChainStep(
                         offsetMillis =
                             parseCausalOffset(
+                                context,
                                 timing
                             ),
                         timingText =
                             readableCausalTiming(
+                                context,
                                 timing
                             ),
-                        title = "Hintergrundjob",
+                        title = context.getString(
+                            R.string.main_kind_background_job
+                        ),
                         source = source,
                         companionActivity =
-                            line.startsWith(
-                                "Begleitaktivität:"
+                            LocalizedText.startsWithAny(
+                                line,
+                                context,
+                                R.string.event_label_companion_activity
                             ) &&
                                 parseCausalOffset(
+                                    context,
                                     timing
                                 ) >= 0L
                     )
@@ -8120,8 +8979,10 @@ private fun buildCausalChain(
     steps.add(
         CausalChainStep(
             offsetMillis = 0L,
-            timingText = "0,0 s",
-            title = "Display eingeschaltet",
+            timingText = formatZeroCausalTiming(),
+            title = context.getString(
+                R.string.main_chain_screen_turned_on
+            ),
             source = "",
             companionActivity = false
         )
@@ -8147,35 +9008,53 @@ private fun buildCausalChain(
 }
 
 private fun isCausalSectionStart(
+    context: Context,
     line: String
 ): Boolean {
-    return line.startsWith(
-        "Direkter Aufweckgrund:"
+    return LocalizedText.startsWithAny(
+        line,
+        context,
+        R.string.event_label_direct_wake_reason
     ) ||
-        line.startsWith(
-            "Wahrscheinliche Ursache:"
+        LocalizedText.startsWithAny(
+            line,
+            context,
+            R.string.main_label_likely_cause
         ) ||
-        line.startsWith(
-            "Mögliche Ursache:"
+        LocalizedText.startsWithAny(
+            line,
+            context,
+            R.string.main_label_possible_cause
         ) ||
-        line.startsWith(
-            "Nachträglich erkannte Ursache:"
+        LocalizedText.startsWithAny(
+            line,
+            context,
+            R.string.event_label_cause_detected_later
         ) ||
-        line.startsWith(
-            "Systemhinweis:"
+        LocalizedText.startsWithAny(
+            line,
+            context,
+            R.string.event_label_system_hint
         ) ||
-        line.startsWith(
-            "Wakeup-Alarm-Hinweis:"
+        LocalizedText.startsWithAny(
+            line,
+            context,
+            R.string.event_label_wakeup_alarm_hint
         ) ||
-        line.startsWith(
-            "Hintergrundjob-Hinweis:"
+        LocalizedText.startsWithAny(
+            line,
+            context,
+            R.string.event_label_background_job_hint
         ) ||
-        line.startsWith(
-            "Begleitaktivität:"
+        LocalizedText.startsWithAny(
+            line,
+            context,
+            R.string.event_label_companion_activity
         )
 }
 
 private fun parseCausalOffset(
+    context: Context,
     text: String
 ): Long {
     val normalized =
@@ -8185,17 +9064,27 @@ private fun parseCausalOffset(
         )
 
     if (
-        normalized.contains(
-            "zeitgleich",
+        LocalizedText.containsAny(
+            normalized,
+            context,
+            R.string.main_match_simultaneous,
             ignoreCase = true
         )
     ) {
         return 0L
     }
 
+    val secondsPattern =
+        LocalizedText.variants(
+            context,
+            R.string.main_match_seconds
+        ).joinToString("|") {
+            Regex.escape(it)
+        }
+
     val match =
         Regex(
-            """(\d+(?:\.\d+)?)\s+Sekunden"""
+            """(\d+(?:\.\d+)?)\s+(?:$secondsPattern)"""
         ).find(normalized)
 
     val milliseconds =
@@ -8208,14 +9097,18 @@ private fun parseCausalOffset(
             ?: 0L
 
     return when {
-        normalized.contains(
-            "vor Display an",
+        LocalizedText.containsAny(
+            normalized,
+            context,
+            R.string.main_match_before_screen_on,
             ignoreCase = true
         ) ->
             -milliseconds
 
-        normalized.contains(
-            "nach Display an",
+        LocalizedText.containsAny(
+            normalized,
+            context,
+            R.string.main_match_after_screen_on,
             ignoreCase = true
         ) ->
             milliseconds
@@ -8225,61 +9118,107 @@ private fun parseCausalOffset(
     }
 }
 
+private fun formatZeroCausalTiming(): String {
+    return String.format(
+        Locale.getDefault(),
+        "%.1f s",
+        0.0
+    )
+}
+
 private fun readableCausalTiming(
+    context: Context,
     text: String
 ): String {
     val offset =
-        parseCausalOffset(text)
-
-    if (offset == 0L) {
-        return "0,0 s"
-    }
-
-    val normalized =
-        text.replace(
-            '.',
-            ','
+        parseCausalOffset(
+            context,
+            text
         )
 
+    if (offset == 0L) {
+        return formatZeroCausalTiming()
+    }
+
+    val decimalSeparator =
+        java.text.DecimalFormatSymbols
+            .getInstance(
+                Locale.getDefault()
+            )
+            .decimalSeparator
+
+    val normalized =
+        text
+            .replace(
+                '.',
+                decimalSeparator
+            )
+            .replace(
+                ',',
+                decimalSeparator
+            )
+
+    fun secondsValue(): String {
+        val secondsWord =
+            LocalizedText.variants(
+                context,
+                R.string.main_match_seconds
+            ).firstOrNull {
+                normalized.contains(" $it")
+            }
+
+        val beforeSeconds =
+            if (secondsWord == null) {
+                normalized
+            } else {
+                normalized
+                    .substringBefore(
+                        " $secondsWord"
+                    )
+            }
+
+        return beforeSeconds
+            .substringAfterLast(' ')
+            .trim()
+    }
+
     return when {
-        normalized.contains(
-            "vor Display an",
+        LocalizedText.containsAny(
+            normalized,
+            context,
+            R.string.main_match_before_screen_on,
             ignoreCase = true
         ) -> {
             val value =
-                normalized
-                    .substringBefore(
-                        " Sekunden"
-                    )
-                    .substringAfterLast(' ')
-                    .trim()
+                secondsValue()
 
             "−$value s"
         }
 
-        normalized.contains(
-            "nach Display an",
+        LocalizedText.containsAny(
+            normalized,
+            context,
+            R.string.main_match_after_screen_on,
             ignoreCase = true
         ) -> {
             val value =
-                normalized
-                    .substringBefore(
-                        " Sekunden"
-                    )
-                    .substringAfterLast(' ')
-                    .trim()
+                secondsValue()
 
             "+$value s"
         }
 
-        normalized.contains(
-            "zeitgleich",
+        LocalizedText.containsAny(
+            normalized,
+            context,
+            R.string.main_match_simultaneous,
             ignoreCase = true
         ) ->
-            "0,0 s"
+            formatZeroCausalTiming()
 
         else ->
-            "zeitlich zugeordnet"
+            context.getString(
+                R.string.main_timing_assigned
+            )
     }
 }
 
@@ -8348,7 +9287,9 @@ private fun CauseAssessmentCard(
         ) {
             Text(
                 text =
-                    assessment.confidence.label,
+                    stringResource(
+                        assessment.confidence.label
+                    ),
                 color = titleColor,
                 style =
                     MaterialTheme.typography
@@ -8364,7 +9305,9 @@ private fun CauseAssessmentCard(
 
             Text(
                 text =
-                    assessment.explanation,
+                    stringResource(
+                        assessment.explanation
+                    ),
                 color =
                     MaterialTheme.colorScheme
                         .onSurfaceVariant,
@@ -8378,6 +9321,7 @@ private fun CauseAssessmentCard(
 }
 
 private fun uiDetailsForEvent(
+    context: Context,
     event: WakeEvent
 ): String {
     if (event.type == "EXPERT_SNAPSHOT") {
@@ -8388,56 +9332,93 @@ private fun uiDetailsForEvent(
                 .filter { it.isNotBlank() }
                 .toList()
 
-        fun findLine(
-            prefix: String
+        fun findValue(
+            @StringRes prefixId: Int
         ): String? {
             return lines.firstOrNull { line ->
-                line.startsWith(prefix)
+                LocalizedText.startsWithAny(
+                    line,
+                    context,
+                    prefixId
+                )
             }
+                ?.let {
+                    LocalizedText.removeAnyPrefix(
+                        it,
+                        context,
+                        prefixId
+                    )
+                }
+                ?.trim()
+                ?.ifBlank { null }
         }
 
         val location =
-            findLine("• Standort / Bewegung:")
-                ?.removePrefix("• Standort / Bewegung:")
-                ?.trim()
-                ?.ifBlank { null }
+            findValue(
+                R.string.main_label_expert_location
+            )
 
         val sensor =
-            findLine("• Sensorik:")
-                ?.removePrefix("• Sensorik:")
-                ?.trim()
-                ?.ifBlank { null }
+            findValue(
+                R.string.main_label_expert_sensors
+            )
 
         val network =
-            findLine("• Funk / Netzwerk:")
-                ?.removePrefix("• Funk / Netzwerk:")
-                ?.trim()
-                ?.ifBlank { null }
+            findValue(
+                R.string.main_label_expert_network
+            )
 
         return buildString {
-            appendLine("Auslöser: Display an")
-            appendLine("Expertenkontext kurz")
+            appendLine(
+                context.getString(
+                    R.string.main_ui_trigger,
+                    context.getString(
+                        R.string.main_metric_screen_on
+                    )
+                )
+            )
+            appendLine(
+                context.getString(
+                    R.string.main_ui_expert_context_summary
+                )
+            )
 
             if (location != null) {
                 appendLine()
-                appendLine("Standort / Bewegung")
+                appendLine(
+                    context.getString(
+                        R.string.main_ui_expert_section_location
+                    )
+                )
                 appendLine("• $location")
             }
 
             if (sensor != null) {
                 appendLine()
-                appendLine("Sensorik")
+                appendLine(
+                    context.getString(
+                        R.string.main_ui_expert_section_sensors
+                    )
+                )
                 appendLine("• $sensor")
             }
 
             if (network != null) {
                 appendLine()
-                appendLine("Funk / Netzwerk")
+                appendLine(
+                    context.getString(
+                        R.string.main_ui_expert_section_network
+                    )
+                )
                 appendLine("• $network")
             }
 
             appendLine()
-            append("Keine Standortkoordinaten im Export.")
+            append(
+                context.getString(
+                    R.string.main_ui_expert_no_coordinates
+                )
+            )
         }.trim()
     }
 
@@ -8450,18 +9431,30 @@ private fun uiDetailsForEvent(
                 .toList()
 
         fun valueAfter(
-            prefix: String
+            @StringRes prefixId: Int
         ): String? {
             return lines.firstOrNull { line ->
-                line.startsWith(prefix)
-            }?.removePrefix(prefix)
+                LocalizedText.startsWithAny(
+                    line,
+                    context,
+                    prefixId
+                )
+            }?.let {
+                LocalizedText.removeAnyPrefix(
+                    it,
+                    context,
+                    prefixId
+                )
+            }
                 ?.trim()
                 ?.ifBlank { null }
         }
 
         val trigger =
-            valueAfter("Auslöser:")
-                ?: "Systemprüfung"
+            valueAfter(R.string.main_label_trigger)
+                ?: context.getString(
+                    R.string.main_ui_system_check
+                )
 
         val wakefulness =
             lines.firstOrNull { line ->
@@ -8471,11 +9464,17 @@ private fun uiDetailsForEvent(
                 ?.substringBefore(",")
                 ?.trim()
                 ?.ifBlank { null }
-                ?: "unbekannt"
+                ?: context.getString(
+                    R.string.main_unknown_lowercase
+                )
 
         val screenOn =
             lines.firstOrNull { line ->
-                line.startsWith("Rahmenzustand:")
+                LocalizedText.startsWithAny(
+                    line,
+                    context,
+                    R.string.main_label_conditions
+                )
             }
                 ?.substringAfter("ScreenOn=", "")
                 ?.substringBefore(",")
@@ -8484,9 +9483,15 @@ private fun uiDetailsForEvent(
 
         val displayText =
             when (screenOn) {
-                "true" -> "an"
-                "false" -> "aus"
-                else -> "unbekannt"
+                "true" -> context.getString(
+                    R.string.main_ui_display_on
+                )
+                "false" -> context.getString(
+                    R.string.main_ui_display_off
+                )
+                else -> context.getString(
+                    R.string.main_unknown_lowercase
+                )
             }
 
         val idleLine =
@@ -8496,20 +9501,43 @@ private fun uiDetailsForEvent(
 
         val idleText =
             readableIdleStateForUi(
+                context,
                 idleLine
             )
 
         val classification =
-            valueAfter("Einordnung:")
-                ?: "Keine Einordnung verfügbar."
+            valueAfter(R.string.main_label_assessment)
+                ?: context.getString(
+                    R.string.main_ui_no_assessment
+                )
 
         return buildString {
-            appendLine("Auslöser: $trigger")
-            appendLine("Zustand: $wakefulness")
-            appendLine("Display: $displayText")
+            appendLine(
+                context.getString(
+                    R.string.main_ui_trigger,
+                    trigger
+                )
+            )
+            appendLine(
+                context.getString(
+                    R.string.main_ui_state,
+                    wakefulness
+                )
+            )
+            appendLine(
+                context.getString(
+                    R.string.main_ui_display,
+                    displayText
+                )
+            )
 
             if (idleText != null) {
-                appendLine("Idle: $idleText")
+                appendLine(
+                    context.getString(
+                        R.string.main_ui_idle,
+                        idleText
+                    )
+                )
             }
 
             appendLine()
@@ -8523,6 +9551,7 @@ private fun uiDetailsForEvent(
 
 
 private fun readableIdleStateForUi(
+    context: Context,
     idleLine: String?
 ): String? {
     if (idleLine.isNullOrBlank()) {
@@ -8535,18 +9564,26 @@ private fun readableIdleStateForUi(
     return when {
         lower.contains("deep=idle") ||
             lower.contains("deepmode=true") ->
-            "tiefer Doze aktiv"
+            context.getString(
+                R.string.main_idle_deep_doze
+            )
 
         lower.contains("deep=inactive") &&
             lower.contains("light=inactive") ->
-            "noch nicht tief im Doze"
+            context.getString(
+                R.string.main_idle_not_deep_yet
+            )
 
         lower.contains("light=active") ||
             lower.contains("deep=active") ->
-            "System aktiv"
+            context.getString(
+                R.string.main_idle_system_active
+            )
 
         lower.contains("light=idle") ->
-            "leichter Doze aktiv"
+            context.getString(
+                R.string.main_idle_light_doze
+            )
 
         else ->
             idleLine
@@ -8558,6 +9595,7 @@ private fun readableIdleStateForUi(
 }
 
 private fun causeAssessmentFor(
+    context: Context,
     event: WakeEvent
 ): CauseAssessment? {
     if (event.type != "SCREEN_ON") {
@@ -8568,8 +9606,10 @@ private fun causeAssessmentFor(
         event.details
 
     val hasDirectWakeReason =
-        details.contains(
-            "Direkter Aufweckgrund:",
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.event_label_direct_wake_reason,
             ignoreCase = true
         )
 
@@ -8578,22 +9618,28 @@ private fun causeAssessmentFor(
             confidence =
                 CauseConfidence.CONFIRMED,
             explanation =
-                "Ein direkter Aufweckgrund wurde vom System erkannt."
+                R.string.main_assessment_confirmed
         )
     }
 
     val hasStrongNotification =
-        details.contains(
-            "Wahrscheinliche Ursache:",
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.main_label_likely_cause,
             ignoreCase = true
         ) ||
             (
-                details.contains(
-                    "Nachträglich erkannte Ursache:",
+                LocalizedText.containsAny(
+                    details,
+                    context,
+                    R.string.event_label_cause_detected_later,
                     ignoreCase = true
                 ) &&
-                details.contains(
-                    "Sicherheit: hoch",
+                LocalizedText.containsAny(
+                    details,
+                    context,
+                    R.string.service_confidence_high,
                     ignoreCase = true
                 )
             )
@@ -8603,22 +9649,28 @@ private fun causeAssessmentFor(
             confidence =
                 CauseConfidence.PROBABLE,
             explanation =
-                "Ein starker zeitlicher und technischer Hinweis spricht für diese Ursache."
+                R.string.main_assessment_probable
         )
     }
 
     val hasMediumNotification =
-        details.contains(
-            "Mögliche Ursache:",
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.main_label_possible_cause,
             ignoreCase = true
         ) ||
             (
-                details.contains(
-                    "Nachträglich erkannte Ursache:",
+                LocalizedText.containsAny(
+                    details,
+                    context,
+                    R.string.event_label_cause_detected_later,
                     ignoreCase = true
                 ) &&
-                details.contains(
-                    "Sicherheit: mittel",
+                LocalizedText.containsAny(
+                    details,
+                    context,
+                    R.string.service_confidence_medium,
                     ignoreCase = true
                 )
             )
@@ -8628,13 +9680,15 @@ private fun causeAssessmentFor(
             confidence =
                 CauseConfidence.POSSIBLE,
             explanation =
-                "Die Aktivität passt zeitlich zum Display-Aufwecken, ist aber nicht direkt bestätigt."
+                R.string.main_assessment_possible_notification
         )
     }
 
     val hasWakeupAlarm =
-        details.contains(
-            "Wakeup-Alarm-Hinweis:",
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.event_label_wakeup_alarm_hint,
             ignoreCase = true
         )
 
@@ -8643,17 +9697,21 @@ private fun causeAssessmentFor(
             confidence =
                 CauseConfidence.POSSIBLE,
             explanation =
-                "Ein Wakeup-Alarm lag zeitlich nahe am Display-Aufwecken. Das beweist noch keinen direkten Zusammenhang."
+                R.string.main_assessment_possible_wakeup_alarm
         )
     }
 
     val hasStrongWakeLock =
-        details.contains(
-            "Systemhinweis: möglicher Auslöser",
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.event_section_system_hint_possible_trigger,
             ignoreCase = true
         ) ||
-            details.contains(
-                "Systemhinweis: enger zeitlicher Zusammenhang",
+            LocalizedText.containsAny(
+                details,
+                context,
+                R.string.main_match_system_hint_close_relation,
                 ignoreCase = true
             )
 
@@ -8662,21 +9720,27 @@ private fun causeAssessmentFor(
             confidence =
                 CauseConfidence.POSSIBLE,
             explanation =
-                "Ein System-Wakelock trat in engem zeitlichen Zusammenhang auf, wurde aber nicht als direkter Auslöser bestätigt."
+                R.string.main_assessment_possible_wakelock
         )
     }
 
     val hasCompanionActivity =
-        details.contains(
-            "Begleitaktivität:",
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.event_label_companion_activity,
             ignoreCase = true
         ) ||
-            details.contains(
-                "Hintergrundjob-Hinweis:",
+            LocalizedText.containsAny(
+                details,
+                context,
+                R.string.event_label_background_job_hint,
                 ignoreCase = true
             ) ||
-            details.contains(
-                "Systemhinweis: wahrscheinliches Folgeereignis",
+            LocalizedText.containsAny(
+                details,
+                context,
+                R.string.main_match_system_hint_likely_follow_up,
                 ignoreCase = true
             )
 
@@ -8685,7 +9749,7 @@ private fun causeAssessmentFor(
             confidence =
                 CauseConfidence.COMPANION,
             explanation =
-                "Eine technische Aktivität trat zeitnah auf, ist aber nur als Begleitaktivität eingeordnet."
+                R.string.main_assessment_companion
         )
     }
 
@@ -8693,12 +9757,13 @@ private fun causeAssessmentFor(
         confidence =
             CauseConfidence.UNRESOLVED,
         explanation =
-            "Für dieses Display-Aufwecken wurde kein ausreichend belastbarer Auslöser gefunden."
+            R.string.main_assessment_unresolved
     )
 }
 
 
 private fun hasExplanationOrHint(
+    context: Context,
     event: WakeEvent
 ): Boolean {
     if (event.type != "SCREEN_ON") {
@@ -8708,28 +9773,42 @@ private fun hasExplanationOrHint(
     val details = event.details
 
     val hasNotificationCause =
-        details.contains(
-            "Wahrscheinliche Ursache:"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.main_label_likely_cause
         ) ||
-        details.contains(
-            "Mögliche Ursache:"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.main_label_possible_cause
         ) ||
-        details.contains(
-            "Nachträglich erkannte Ursache:"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.event_label_cause_detected_later
         )
 
     val hasSystemHint =
-        details.contains(
-            "Systemhinweis:"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.event_label_system_hint
         ) ||
-        details.contains(
-            "Wakeup-Alarm-Hinweis:"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.event_label_wakeup_alarm_hint
         ) ||
-        details.contains(
-            "Hintergrundjob-Hinweis:"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.event_label_background_job_hint
         ) ||
-        details.contains(
-            "Direkter Aufweckgrund:"
+        LocalizedText.containsAny(
+            details,
+            context,
+            R.string.event_label_direct_wake_reason
         )
 
     return hasNotificationCause ||
@@ -8737,19 +9816,26 @@ private fun hasExplanationOrHint(
 }
 
 private fun isUnexplainedScreenOn(
+    context: Context,
     event: WakeEvent
 ): Boolean {
     if (event.type != "SCREEN_ON") {
         return false
     }
 
-    return event.details.contains(
-        "Ursache: noch unbekannt"
+    return LocalizedText.containsAny(
+        event.details,
+        context,
+        R.string.sleep_marker_cause_unknown
     ) &&
-        !hasExplanationOrHint(event)
+        !hasExplanationOrHint(
+            context,
+            event
+        )
 }
 
 private fun readableWakeReason(
+    context: Context,
     diagnostic: WakeReasonDiagnostic
 ): String {
     val reason =
@@ -8761,7 +9847,9 @@ private fun readableWakeReason(
     return when {
         reason ==
             "WAKE_REASON_POWER_BUTTON" ->
-            "Power-Taste"
+            context.getString(
+                R.string.main_wake_reason_power_button
+            )
 
         details.contains(
             "DoubleTap",
@@ -8771,41 +9859,58 @@ private fun readableWakeReason(
             "blackGestureWake",
             ignoreCase = true
         ) ->
-            "Doppeltipp auf das ausgeschaltete Display"
+            context.getString(
+                R.string.main_wake_reason_double_tap
+            )
 
         reason ==
             "WAKE_REASON_GESTURE" ->
-            "Bildschirmgeste"
+            context.getString(
+                R.string.main_wake_reason_gesture
+            )
 
         reason ==
             "WAKE_REASON_LIFT" ->
-            "Anheben des Geräts"
+            context.getString(
+                R.string.main_wake_reason_lift
+            )
 
         reason ==
             "WAKE_REASON_PLUGGED_IN" ->
-            "Stromversorgung verbunden"
+            context.getString(
+                R.string.main_wake_reason_plugged_in
+            )
 
         reason ==
             "WAKE_REASON_APPLICATION" ->
-            "App oder Systemfunktion"
+            context.getString(
+                R.string.main_wake_reason_application
+            )
 
         reason ==
             "WAKE_REASON_WAKE_KEY" ->
-            "Aufwecktaste"
+            context.getString(
+                R.string.main_wake_reason_wake_key
+            )
 
         reason ==
             "WAKE_REASON_WAKE_MOTION" ->
-            "Bewegungs- oder Sensorsignal"
+            context.getString(
+                R.string.main_wake_reason_motion
+            )
 
         reason.isNotBlank() ->
             reason
 
         else ->
-            "Unbekannt"
+            context.getString(
+                R.string.main_unknown
+            )
     }
 }
 
 private fun compactWakeReasonDetails(
+    context: Context,
     details: String?
 ): String {
     val value =
@@ -8814,7 +9919,9 @@ private fun compactWakeReasonDetails(
             .orEmpty()
 
     if (value.isBlank()) {
-        return "keine"
+        return context.getString(
+            R.string.main_none
+        )
     }
 
     return if (value.length <= 90) {
@@ -8825,6 +9932,7 @@ private fun compactWakeReasonDetails(
 }
 
 private fun compactJobService(
+    context: Context,
     serviceName: String?
 ): String {
     val value =
@@ -8833,7 +9941,9 @@ private fun compactJobService(
             .orEmpty()
 
     if (value.isBlank()) {
-        return "unbekannt"
+        return context.getString(
+            R.string.main_unknown_lowercase
+        )
     }
 
     return if (value.length <= 72) {
@@ -8844,6 +9954,7 @@ private fun compactJobService(
 }
 
 private fun compactAlarmTag(
+    context: Context,
     tag: String?
 ): String {
     val value = tag
@@ -8852,7 +9963,9 @@ private fun compactAlarmTag(
         .orEmpty()
 
     if (value.isBlank()) {
-        return "unbekannt"
+        return context.getString(
+            R.string.main_unknown_lowercase
+        )
     }
 
     return if (value.length <= 72) {
@@ -8863,9 +9976,12 @@ private fun compactAlarmTag(
 }
 
 private fun formatDuration(
+    context: Context,
     millis: Long?
 ): String {
-    val value = millis ?: return "unbekannter Zeit"
+    val value = millis ?: return context.getString(
+        R.string.main_duration_unknown
+    )
 
     val totalSeconds = value / 1_000L
     val days = totalSeconds / 86_400L
@@ -8878,16 +9994,31 @@ private fun formatDuration(
 
     return when {
         days > 0L ->
-            "${days} T ${hours} Std"
+            context.getString(
+                R.string.main_duration_days_hours,
+                days,
+                hours
+            )
 
         hours > 0L ->
-            "${hours} Std ${minutes} Min"
+            context.getString(
+                R.string.main_duration_hours_minutes,
+                hours,
+                minutes
+            )
 
         minutes > 0L ->
-            "${minutes} Min ${seconds} Sek"
+            context.getString(
+                R.string.main_duration_minutes_seconds,
+                minutes,
+                seconds
+            )
 
         else ->
-            "${seconds} Sek"
+            context.getString(
+                R.string.main_duration_seconds,
+                seconds
+            )
     }
 }
 
@@ -8925,6 +10056,7 @@ private fun formatNetworkBytes(
 }
 
 private fun compactWakeLockTag(
+    context: Context,
     tag: String?
 ): String {
     val value = tag
@@ -8932,7 +10064,9 @@ private fun compactWakeLockTag(
         .orEmpty()
 
     if (value.isBlank()) {
-        return "unbekannt"
+        return context.getString(
+            R.string.main_unknown_lowercase
+        )
     }
 
     if (value.length <= 72) {
@@ -8951,10 +10085,15 @@ private fun resolveWakeLockSource(
         .orEmpty()
 
     if (rawName.isBlank()) {
-        return "Unbekannt"
+        return context.getString(
+            R.string.main_unknown
+        )
     }
 
-    readableSystemSource(rawName)?.let {
+    readableSystemSource(
+        context,
+        rawName
+    )?.let {
         return "$it ($rawName)"
     }
 
@@ -8983,6 +10122,7 @@ private fun resolveWakeLockSource(
 }
 
 private fun readableSystemSource(
+    context: Context,
     packageName: String
 ): String? {
     val value = packageName.lowercase(
@@ -8992,53 +10132,72 @@ private fun readableSystemSource(
     return when {
         value == "android" ||
             value == "system" ->
-            "Android-System"
+            context.getString(
+                R.string.main_source_android_system
+            )
 
         value.contains(
             "com.android.mms.service"
         ) ->
-            "Android MMS-/Mobilfunkdienst"
+            context.getString(
+                R.string.main_source_android_mms
+            )
 
         value.contains(
             "com.android.phone"
         ) ->
-            "Android Telefoniedienst"
+            context.getString(
+                R.string.main_source_android_phone
+            )
 
         value.contains(
             "com.android.providers.telephony"
         ) ->
-            "Android Telefonie-Datenspeicher"
+            context.getString(
+                R.string.main_source_android_telephony_provider
+            )
 
         value.contains(
             "com.google.android.ims"
         ) ->
-            "Google Mobilfunk-/IMS-Dienst"
+            context.getString(
+                R.string.main_source_google_ims
+            )
 
         value.contains(
             "com.android.systemui"
         ) ->
-            "Android Systemoberfläche"
+            context.getString(
+                R.string.main_source_android_system_ui
+            )
 
         value.contains(
             "com.android.bluetooth"
         ) ->
-            "Android Bluetooth-Dienst"
+            context.getString(
+                R.string.main_source_android_bluetooth
+            )
 
         value.contains(
             "com.android.networkstack"
         ) ->
-            "Android Netzwerkdienst"
+            context.getString(
+                R.string.main_source_android_network_stack
+            )
 
         value.contains(
             "com.google.android.gms"
         ) ->
-            "Google Play-Dienste"
+            context.getString(
+                R.string.main_source_google_play_services
+            )
 
         else -> null
     }
 }
 
 private fun classifyWakeLockTag(
+    context: Context,
     tag: String?
 ): String {
     val value = tag
@@ -9046,7 +10205,9 @@ private fun classifyWakeLockTag(
         .orEmpty()
 
     if (value.isBlank()) {
-        return "Unbekannter Partial Wakelock"
+        return context.getString(
+            R.string.main_kind_unknown_partial_wakelock
+        )
     }
 
     return when {
@@ -9054,25 +10215,33 @@ private fun classifyWakeLockTag(
             "NetworkStats",
             ignoreCase = true
         ) ->
-            "Netzwerkstatistik"
+            context.getString(
+                R.string.main_kind_network_stats
+            )
 
         value.contains(
             "*alarm*",
             ignoreCase = true
         ) ->
-            "Alarm"
+            context.getString(
+                R.string.main_kind_alarm
+            )
 
         value.contains(
             "*job*",
             ignoreCase = true
         ) ->
-            "Hintergrundjob"
+            context.getString(
+                R.string.main_kind_background_job
+            )
 
         value.contains(
             "*launch*",
             ignoreCase = true
         ) ->
-            "App-Start"
+            context.getString(
+                R.string.main_kind_app_launch
+            )
 
         value.contains(
             "AudioMix",
@@ -9086,7 +10255,9 @@ private fun classifyWakeLockTag(
             "ExoPlayer",
             ignoreCase = true
         ) ->
-            "Audio-Wiedergabe oder Aufnahme"
+            context.getString(
+                R.string.main_kind_audio
+            )
 
         value.contains(
             "SyncManager",
@@ -9096,32 +10267,43 @@ private fun classifyWakeLockTag(
             "*sync*",
             ignoreCase = true
         ) ->
-            "Synchronisierung"
+            context.getString(
+                R.string.main_kind_sync
+            )
 
         value.contains(
             "Icing",
             ignoreCase = true
         ) ->
-            "Suche oder Inhaltsindexierung"
+            context.getString(
+                R.string.main_kind_search_indexing
+            )
 
         value.contains(
             "NotificationManagerService",
             ignoreCase = true
         ) ->
-            "Benachrichtigungsverarbeitung"
+            context.getString(
+                R.string.main_kind_notification_processing
+            )
 
         value.contains(
             "PendingIntentClient",
             ignoreCase = true
         ) ->
-            "Geplante Hintergrundaktion"
+            context.getString(
+                R.string.main_kind_scheduled_background_action
+            )
 
         else ->
-            "Partial Wakelock"
+            context.getString(
+                R.string.main_kind_partial_wakelock
+            )
     }
 }
 
 private fun formatWakeLockTimestamp(
+    context: Context,
     rawTimestamp: String?
 ): String {
     val raw = rawTimestamp
@@ -9129,7 +10311,9 @@ private fun formatWakeLockTimestamp(
         .orEmpty()
 
     if (raw.isBlank()) {
-        return "Unbekannt"
+        return context.getString(
+            R.string.main_unknown
+        )
     }
 
     return runCatching {
@@ -9152,7 +10336,9 @@ private fun formatWakeLockTimestamp(
             parser.parse(
                 "$currentYear-$raw"
             ) ?: error(
-                "Zeitstempel nicht lesbar"
+                context.getString(
+                    R.string.main_error_timestamp_unreadable
+                )
             )
 
         SimpleDateFormat(
@@ -9163,30 +10349,45 @@ private fun formatWakeLockTimestamp(
 }
 
 private fun eventTypeLabel(
+    context: Context,
     type: String
 ): String {
     return when (type) {
         "SCREEN_ON" ->
-            "DISPLAY AN"
+            context.getString(
+                R.string.main_event_type_screen_on
+            )
 
         "SCREEN_OFF" ->
-            "DISPLAY AUS"
+            context.getString(
+                R.string.main_event_type_screen_off
+            )
 
         "CPU_WAKEUP" ->
-            "HINTERGRUND"
+            context.getString(
+                R.string.main_event_type_background
+            )
 
         "SYSTEM_SNAPSHOT" ->
-            "SYSTEM"
+            context.getString(
+                R.string.main_event_type_system
+            )
 
         "EXPERT_SNAPSHOT" ->
-            "EXPERTE"
+            context.getString(
+                R.string.main_event_type_expert
+            )
 
         "NOTIFICATION" ->
-            "HINWEIS"
+            context.getString(
+                R.string.main_event_type_notification
+            )
 
         "MONITOR_START",
         "MONITOR_STOP" ->
-            "MONITOR"
+            context.getString(
+                R.string.main_event_type_monitor
+            )
 
         else ->
             type
@@ -9206,6 +10407,7 @@ private fun formatTimestamp(
 }
 
 private fun formatLiveSessionDuration(
+    context: Context,
     durationMillis: Long
 ): String {
     val totalSeconds =
@@ -9237,9 +10439,8 @@ private fun formatLiveSessionDuration(
 
     return when {
         days > 0L ->
-            String.format(
-                Locale.getDefault(),
-                "%d T · %02d:%02d:%02d",
+            context.getString(
+                R.string.main_live_duration_days,
                 days,
                 hours,
                 minutes,

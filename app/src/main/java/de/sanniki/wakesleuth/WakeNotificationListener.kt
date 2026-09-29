@@ -109,14 +109,17 @@ class WakeNotificationListener :
             context = this,
             type = "NOTIFICATION",
             title =
-                "Benachrichtigung von $appName",
+                getString(
+                    R.string.service_notification_event_title,
+                    appName
+                ),
             details = buildString {
                 if (title.isNotBlank()) {
-                    appendLine("Titel: $title")
+                    appendLine(getString(R.string.service_notification_event_title_line, title))
                 }
 
                 if (text.isNotBlank()) {
-                    appendLine("Text: $text")
+                    appendLine(getString(R.string.service_notification_event_text_line, text))
                 }
 
                 if (
@@ -124,12 +127,17 @@ class WakeNotificationListener :
                     text.isBlank()
                 ) {
                     appendLine(
-                        "Kein auslesbarer Titel oder Text."
+                        getString(
+                            R.string.service_notification_event_no_content
+                        )
                     )
                 }
 
                 append(
-                    "Paket: ${item.packageName}"
+                    getString(
+                        R.string.service_notification_event_package,
+                        item.packageName
+                    )
                 )
             }
         )

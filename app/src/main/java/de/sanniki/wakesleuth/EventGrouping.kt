@@ -1,5 +1,6 @@
 package de.sanniki.wakesleuth
 
+import android.content.Context
 import java.util.Locale
 
 sealed interface EventListItem {
@@ -38,6 +39,7 @@ data class GroupedCpuEventListItem(
 }
 
 fun buildGroupedEventList(
+    context: Context,
     events: List<WakeEvent>
 ): List<EventListItem> {
     val cpuGroups =
@@ -46,7 +48,10 @@ fun buildGroupedEventList(
                 it.type == "CPU_WAKEUP"
             }
             .groupBy {
-                cpuGroupingSource(it)
+                cpuGroupingSource(
+                    context,
+                    it
+                )
             }
 
     val groupedEventIds =
@@ -87,6 +92,7 @@ fun buildGroupedEventList(
             val durations =
                 groupedEvents.mapNotNull {
                     parseCpuDurationMillisForGrouping(
+                        context,
                         it.details
                     )
                 }
@@ -116,6 +122,7 @@ fun buildGroupedEventList(
 }
 
 private fun cpuGroupingSource(
+    context: Context,
     event: WakeEvent
 ): String {
     val detailsSource =
@@ -125,22 +132,32 @@ private fun cpuGroupingSource(
                 it.trim()
             }
             .firstOrNull {
-                it.startsWith(
-                    "Mögliche Quelle:"
+                LocalizedText.startsWithAny(
+                    it,
+                    context,
+                    R.string.timeline_prefix_possible_source
                 )
             }
             ?.substringAfter(":")
             ?.trim()
-            ?.takeUnless {
-                it.isBlank() ||
-                    it.equals(
-                        "nicht eindeutig zuordenbar",
-                        ignoreCase = true
-                    )
+            ?.takeUnless { value ->
+                value.isBlank() ||
+                    LocalizedText
+                        .variants(
+                            context,
+                            R.string.bg_possible_source_ambiguous
+                        )
+                        .any {
+                            value.equals(
+                                it,
+                                ignoreCase = true
+                            )
+                        }
             }
 
     if (detailsSource != null) {
         return sourceDisplayName(
+            context,
             detailsSource
         )
     }
@@ -158,12 +175,18 @@ private fun cpuGroupingSource(
 
     return titleSource
         ?.let {
-            sourceDisplayName(it)
+            sourceDisplayName(
+                context,
+                it
+            )
         }
-        ?: "Nicht eindeutig zuordenbar"
+        ?: context.getString(
+            R.string.grouping_source_ambiguous
+        )
 }
 
 private fun parseCpuDurationMillisForGrouping(
+    context: Context,
     details: String
 ): Long? {
     val value =
@@ -173,8 +196,10 @@ private fun parseCpuDurationMillisForGrouping(
                 it.trim()
             }
             .firstOrNull {
-                it.startsWith(
-                    "CPU-Wachzeit:"
+                LocalizedText.startsWithAny(
+                    it,
+                    context,
+                    R.string.timeline_prefix_cpu_awake_time
                 )
             }
             ?.substringAfter(":")
@@ -207,7 +232,11 @@ private fun parseCpuDurationMillisForGrouping(
         normalized.contains(
             "Sek",
             ignoreCase = true
-        ) ->
+        ) ||
+            normalized.contains(
+                "sec",
+                ignoreCase = true
+            ) ->
             (number * 1_000.0).toLong()
 
         normalized.contains(

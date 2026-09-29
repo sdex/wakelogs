@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Notification channel, foreground notification and listener service -->
+    <string name="service_channel_name">wakelogs monitoring</string>
+    <string name="service_channel_description">Shows that wakelogs is logging device events.</string>
+    <string name="service_notification_running">Analysis running…</string>
+    <string name="service_notification_stop_action">Stop</string>
+    <string name="service_notification_finishing">Finishing measurement…</string>
+    <string name="service_toast_finishing">Finishing measurement…</string>
+    <string name="service_listener_label">wakelogs notification analysis</string>
+
+    <!-- Proximity sensor state -->
+    <string name="service_proximity_not_available">not available</string>
+    <string name="service_proximity_not_present">not present</string>
+    <string name="service_proximity_no_reading">no reading yet</string>
+    <string name="service_proximity_registration_failed">registration failed</string>
+    <string name="service_proximity_covered">occupied / probably covered</string>
+    <string name="service_proximity_clear">clear</string>
+    <string name="service_proximity_line">Proximity sensor: %1$s</string>
+
+    <!-- Screen-on cause -->
+    <string name="service_cause_probable">Likely cause: %1$s</string>
+    <string name="service_cause_possible">Possible cause: %1$s</string>
+    <string name="service_confidence_high">Confidence: high</string>
+    <string name="service_confidence_medium">Confidence: medium</string>
+    <string name="service_time_offset">Time offset: %1$s</string>
+
+    <!-- System events -->
+    <string name="service_event_screen_on">Screen on</string>
+    <string name="service_event_screen_off">Screen off</string>
+    <string name="service_event_power_connected">Power connected</string>
+    <string name="service_event_power_connected_details">A charging or power event was detected.</string>
+    <string name="service_event_power_disconnected">Power disconnected</string>
+    <string name="service_event_power_disconnected_details">External power was removed.</string>
+    <string name="service_event_usb_attached">USB device connected</string>
+    <string name="service_event_usb_detached">USB device disconnected</string>
+    <string name="service_usb_no_info">USB device without readable device information.</string>
+    <string name="service_usb_details">Device ID: %1$d\nVendor ID: %2$d\nProduct ID: %3$d</string>
+
+    <!-- Monitoring start/stop -->
+    <string name="service_event_monitor_start">Monitoring started</string>
+    <string name="service_event_monitor_start_details">Screen, power and USB events are being logged. Proximity sensor: %1$s</string>
+    <string name="service_event_monitor_stop">Monitoring stopped</string>
+    <string name="service_event_monitor_stop_details_complete">Recording was stopped manually. The latest system events were included.</string>
+    <string name="service_event_monitor_stop_details_incomplete">Recording was stopped manually. The final system check could not be fully completed.</string>
+
+    <!-- Session network activity -->
+    <string name="service_event_network_session">Session network activity</string>
+    <string name="service_network_no_baseline">No baseline measurement available. Monitoring itself ended normally.</string>
+    <string name="service_network_end_failed">Final measurement failed: %1$s</string>
+    <string name="service_network_duration">Measurement duration: %1$s</string>
+    <string name="service_network_apps_with_traffic">Apps with data traffic: %1$d</string>
+    <string name="service_network_total">Total: %1$s · Received: %2$s · Sent: %3$s</string>
+    <string name="service_network_no_traffic">No app with measurable data traffic in this session.</string>
+    <string name="service_network_top_apps">Most active apps:</string>
+    <string name="service_network_app_transfer">Received: %1$s · Sent: %2$s</string>
+    <string name="service_network_app_package">Package/UID: %1$s</string>
+
+    <!-- System snapshots -->
+    <string name="service_snapshot_reason_after_screen_on">Snapshot after screen on</string>
+    <string name="service_snapshot_reason_screen_on">Screen on</string>
+    <string name="service_snapshot_reason_after_screen_off">Snapshot after screen off</string>
+    <string name="service_snapshot_reason_start_probe">Start probe after 5 seconds</string>
+    <string name="service_diagnostic_error">Diagnostic error: %1$s</string>
+    <string name="service_event_expert_snapshot">Extended system check</string>
+    <string name="service_event_system_snapshot">System check</string>
+    <string name="service_snapshot_trigger">Trigger: %1$s</string>
+    <string name="service_snapshot_source_compact">Data source: Shizuku compact diagnostics</string>
+    <string name="service_snapshot_source_background">Data source: Shizuku background diagnostics</string>
+    <string name="service_snapshot_status_shizuku_unavailable">Status: Shizuku not available or permission missing</string>
+    <string name="service_snapshot_status_error">Status: Diagnostic error</string>
+    <string name="service_snapshot_error">Error: %1$s</string>
+    <string name="service_snapshot_status_timeout">Status: not available or time limit reached</string>
+    <string name="service_snapshot_no_compact_values">no compact values</string>
+    <string name="service_snapshot_conditions">Conditions: %1$s</string>
+    <string name="service_snapshot_classification">Assessment: %1$s</string>
+    <string name="service_classify_active">Device was active or interactive.</string>
+    <string name="service_classify_deep_idle">Device was in deep idle/Doze.</string>
+    <string name="service_classify_light_idle">Device was in light idle/Doze.</string>
+    <string name="service_classify_vendor_specific">Device was not active, but the idle state is vendor-specific.</string>
+    <string name="service_classify_unclear">Sleep state cannot be clearly classified.</string>
+    <string name="service_unknown">unknown</string>
+
+    <!-- Notification events -->
+    <string name="service_notification_event_title">Notification from %1$s</string>
+    <string name="service_notification_event_title_line">Title: %1$s</string>
+    <string name="service_notification_event_text_line">Text: %1$s</string>
+    <string name="service_notification_event_no_content">No readable title or text.</string>
+    <string name="service_notification_event_package">Package: %1$s</string>
+</resources>

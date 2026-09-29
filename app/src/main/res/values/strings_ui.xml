@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- UiSettings -->
+    <string name="settings_accent_blue">Bright blue</string>
+    <string name="settings_accent_cyan">Cyan blue</string>
+    <string name="settings_accent_teal">Deep teal</string>
+    <string name="settings_accent_green">Medium green</string>
+    <string name="settings_accent_gold">Gold</string>
+    <string name="settings_accent_orange">Sun yellow</string>
+    <string name="settings_accent_red">Coral red</string>
+    <string name="settings_accent_pink">Ice blue</string>
+    <string name="settings_accent_purple">Cornflower blue</string>
+    <string name="settings_accent_indigo">Sage green</string>
+    <string name="settings_density_compact">Compact</string>
+    <string name="settings_density_normal">Normal</string>
+    <string name="settings_density_comfortable">Spacious</string>
+    <string name="settings_level_simple">Simple</string>
+    <string name="settings_level_normal">Normal</string>
+    <string name="settings_level_expert">Expert</string>
+    <string name="settings_profile_analysis">Analysis</string>
+    <string name="settings_profile_simple_description">Home, daily overview and clear hints</string>
+    <string name="settings_profile_sleep_description">Timeline, sleep analysis and cause hints</string>
+    <string name="settings_profile_developer_description">Shizuku, wakelocks, alarms and raw details</string>
+    <string name="settings_profile_simple_preview">Calm · little tech · clear hints</string>
+    <string name="settings_profile_sleep_preview">Timeline · sleep analysis · causes</string>
+    <string name="settings_profile_developer_preview">Shizuku · wakelocks · raw details</string>
+    <string name="settings_profile_active">%1$s · Active</string>
+    <string name="settings_title">Personalization</string>
+    <string name="settings_subtitle">Make wakelogs your own analysis hub.</string>
+    <string name="settings_back_to_dashboard">Back to dashboard</string>
+    <string name="settings_view_modes">View modes</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_accent_color">Accent color</string>
+    <string name="settings_card_layout">Card layout</string>
+    <string name="settings_detail_level">Detail level</string>
+    <string name="settings_advanced_display_options">Advanced display options</string>
+    <string name="settings_advanced_display_options_description">Fine-tune individual dashboard sections. The view modes above set these options automatically.</string>
+    <string name="settings_hide_options">Hide options</string>
+    <string name="settings_show_options">Show options</string>
+    <string name="settings_daily_overview">Daily overview</string>
+    <string name="settings_daily_overview_description">Screen activations and attributions</string>
+    <string name="settings_night_analysis">Night analysis</string>
+    <string name="settings_night_analysis_description">Evaluation of the last monitoring period</string>
+    <string name="settings_most_active_sources">Most active sources</string>
+    <string name="settings_most_active_sources_description">Ranking of apps and system services matched by time</string>
+    <string name="settings_shizuku_diagnostics">Shizuku system diagnostics</string>
+    <string name="settings_shizuku_diagnostics_description">Wakelocks, jobs, alarms and wake reasons</string>
+    <string name="settings_restore_defaults">Default settings</string>
+
+    <!-- Timeline -->
+    <string name="timeline_title">Timeline</string>
+    <string name="timeline_subtitle">Newest events first</string>
+    <plurals name="timeline_event_count">
+        <item quantity="one">%d event</item>
+        <item quantity="other">%d events</item>
+    </plurals>
+    <string name="timeline_type_monitor_start">MONITORING STARTED</string>
+    <string name="timeline_type_monitor_stop">MONITORING STOPPED</string>
+    <string name="timeline_type_screen_on">SCREEN ON</string>
+    <string name="timeline_type_screen_off">SCREEN OFF</string>
+    <string name="timeline_type_cpu_wakeup">CPU WAKEUP</string>
+    <string name="timeline_type_notification">NOTIFICATION</string>
+    <string name="timeline_type_power_connected">POWER CONNECTED</string>
+    <string name="timeline_type_power_disconnected">POWER DISCONNECTED</string>
+    <string name="timeline_type_usb_attached">USB CONNECTED</string>
+    <string name="timeline_type_usb_detached">USB DISCONNECTED</string>
+    <string name="timeline_prefix_direct_wake_reason">Direct wake reason:</string>
+    <string name="timeline_prefix_likely_cause">Likely cause:</string>
+    <string name="timeline_prefix_possible_cause">Possible cause:</string>
+    <string name="timeline_prefix_later_detected_cause">Cause detected later:</string>
+    <string name="timeline_prefix_possible_source">Possible source:</string>
+    <string name="timeline_prefix_system_reason">System reason:</string>
+    <string name="timeline_prefix_cpu_awake_time">CPU awake time:</string>
+    <string name="timeline_prefix_source">Source:</string>
+    <string name="timeline_prefix_kind">Type:</string>
+    <string name="timeline_prefix_cause">Cause:</string>
+    <string name="timeline_gap_days_hours">%1$d d %2$d h later</string>
+    <string name="timeline_gap_hours_minutes">%1$d h %2$d min later</string>
+    <string name="timeline_gap_minutes_seconds">%1$d min %2$d s later</string>
+    <string name="timeline_gap_seconds">%1$d s later</string>
+    <string name="timeline_gap_millis">%1$d ms later</string>
+    <string name="timeline_gap_simultaneous">at the same time</string>
+
+    <!-- AppProfilesCard -->
+    <string name="profiles_title">App profiles</string>
+    <plurals name="profiles_source_count">
+        <item quantity="one">%d source</item>
+        <item quantity="other">%d sources</item>
+    </plurals>
+    <plurals name="profiles_session_count">
+        <item quantity="one">%d session</item>
+        <item quantity="other">%d sessions</item>
+    </plurals>
+    <string name="profiles_sources_across_sessions">%1$s across %2$s</string>
+    <string name="profiles_hide">Hide profiles</string>
+    <string name="profiles_show">Show profiles</string>
+    <string name="profiles_older_sessions_note">Older sessions initially contain only network data. CPU, screen and companion values are added gradually with new measurements.</string>
+    <string name="profiles_sessions">Sessions</string>
+    <string name="profiles_sessions_value">%1$d of %2$d</string>
+    <string name="profiles_network_total">Total network</string>
+    <string name="profiles_network_per_session">Ø network / session</string>
+    <string name="profiles_cpu_attributions">CPU attributions</string>
+    <string name="profiles_screen_attributions">Screen attributions</string>
+    <string name="profiles_companion_activity">Of which companion activity</string>
+    <string name="profiles_longest_cpu_awake_time">Longest CPU awake time</string>
+    <string name="profiles_summary_display">Repeatedly attributed to screen events. The confidence level of each individual event remains decisive.</string>
+    <string name="profiles_summary_cpu">Regularly detected as a possible CPU source; not yet proof of problematic battery drain.</string>
+    <string name="profiles_summary_companion">Repeatedly visible as companion activity, not yet confirmed as a direct main trigger.</string>
+    <string name="profiles_summary_network">Visible with network traffic in several sessions, without automatically proving a wakeup connection.</string>
+    <string name="profiles_summary_technical">Technical source from saved sessions.</string>
+    <string name="profiles_trend_more_active">More often active</string>
+    <string name="profiles_trend_less_active">Less often active</string>
+    <string name="profiles_trend_stable">Similar pattern</string>
+    <string name="profiles_trend_not_enough_data">Not enough sessions yet</string>
+    <string name="profiles_trend_more_active_explanation">This source was recorded more often or more strongly in the more recent sessions.</string>
+    <string name="profiles_trend_less_active_explanation">This source was recorded less often or more weakly in the more recent sessions.</string>
+    <string name="profiles_trend_stable_explanation">There is no clear difference between the more recent and older sessions.</string>
+    <string name="profiles_trend_not_enough_data_explanation">A reliable comparison needs at least four saved sessions.</string>
+</resources>

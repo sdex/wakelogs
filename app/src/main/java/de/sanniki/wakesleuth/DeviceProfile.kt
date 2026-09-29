@@ -1,5 +1,6 @@
 package de.sanniki.wakesleuth
 
+import android.content.Context
 import android.os.Build
 import java.util.Locale
 
@@ -22,13 +23,17 @@ data class DeviceProfile(
     val summary: String
 ) {
     companion object {
-        fun detect(): DeviceProfile {
+        fun detect(
+            context: Context
+        ): DeviceProfile {
             val manufacturer =
                 Build.MANUFACTURER
                     .orEmpty()
                     .trim()
                     .ifBlank {
-                        "Unbekannt"
+                        context.getString(
+                            R.string.device_unknown_manufacturer
+                        )
                     }
 
             val brand =
@@ -44,7 +49,9 @@ data class DeviceProfile(
                     .orEmpty()
                     .trim()
                     .ifBlank {
-                        "Unbekanntes Modell"
+                        context.getString(
+                            R.string.device_unknown_model
+                        )
                     }
 
             val identity =
@@ -64,17 +71,27 @@ data class DeviceProfile(
                         model =
                             model,
                         profileLabel =
-                            "OnePlus-Profil",
+                            context.getString(
+                                R.string.device_profile_oneplus
+                            ),
                         platformLabel =
                             "OxygenOS / OPLUS",
                         displayCoverage =
-                            "hoch",
+                            context.getString(
+                                R.string.device_coverage_high
+                            ),
                         backgroundCoverage =
-                            "gut",
+                            context.getString(
+                                R.string.device_coverage_good
+                            ),
                         wakeLockCoverage =
-                            "gut bis mittel",
+                            context.getString(
+                                R.string.device_coverage_good_to_medium
+                            ),
                         summary =
-                            "Für OnePlus und OxygenOS optimierte Auswertung."
+                            context.getString(
+                                R.string.device_summary_oneplus
+                            )
                     )
                 }
 
@@ -89,17 +106,27 @@ data class DeviceProfile(
                         model =
                             model,
                         profileLabel =
-                            "Samsung-Profil",
+                            context.getString(
+                                R.string.device_profile_samsung
+                            ),
                         platformLabel =
                             "Samsung One UI",
                         displayCoverage =
-                            "gut",
+                            context.getString(
+                                R.string.device_coverage_good
+                            ),
                         backgroundCoverage =
-                            "gut",
+                            context.getString(
+                                R.string.device_coverage_good
+                            ),
                         wakeLockCoverage =
-                            "mittel",
+                            context.getString(
+                                R.string.device_coverage_medium
+                            ),
                         summary =
-                            "Für Samsung One UI angepasste Auswertung; direkte Power-Tasten-Erkennung bleibt geräteabhängig."
+                            context.getString(
+                                R.string.device_summary_samsung
+                            )
                     )
                 }
 
@@ -114,17 +141,27 @@ data class DeviceProfile(
                         model =
                             model,
                         profileLabel =
-                            "Allgemeines Android-Profil",
+                            context.getString(
+                                R.string.device_profile_generic
+                            ),
                         platformLabel =
                             "Android",
                         displayCoverage =
-                            "grundlegend",
+                            context.getString(
+                                R.string.device_coverage_basic
+                            ),
                         backgroundCoverage =
-                            "eingeschränkt",
+                            context.getString(
+                                R.string.device_coverage_limited
+                            ),
                         wakeLockCoverage =
-                            "geräteabhängig",
+                            context.getString(
+                                R.string.device_coverage_device_dependent
+                            ),
                         summary =
-                            "Grundfunktionen verfügbar; die Datenqualität hängt vom Hersteller ab."
+                            context.getString(
+                                R.string.device_summary_generic
+                            )
                     )
                 }
             }

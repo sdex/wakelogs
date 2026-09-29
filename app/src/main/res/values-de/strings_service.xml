@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Notification channel, foreground notification and listener service -->
+    <string name="service_channel_name">wakelogs-Überwachung</string>
+    <string name="service_channel_description">Zeigt an, dass wakelogs Geräteereignisse protokolliert.</string>
+    <string name="service_notification_running">Analyse läuft…</string>
+    <string name="service_notification_stop_action">Stopp</string>
+    <string name="service_notification_finishing">Messung wird abgeschlossen…</string>
+    <string name="service_toast_finishing">Messung wird abgeschlossen …</string>
+    <string name="service_listener_label">wakelogs Benachrichtigungsanalyse</string>
+
+    <!-- Proximity sensor state -->
+    <string name="service_proximity_not_available">nicht verfügbar</string>
+    <string name="service_proximity_not_present">nicht vorhanden</string>
+    <string name="service_proximity_no_reading">noch kein Messwert</string>
+    <string name="service_proximity_registration_failed">Registrierung fehlgeschlagen</string>
+    <string name="service_proximity_covered">belegt / vermutlich abgedeckt</string>
+    <string name="service_proximity_clear">frei</string>
+    <string name="service_proximity_line">Näherungssensor: %1$s</string>
+
+    <!-- Screen-on cause -->
+    <string name="service_cause_probable">Wahrscheinliche Ursache: %1$s</string>
+    <string name="service_cause_possible">Mögliche Ursache: %1$s</string>
+    <string name="service_confidence_high">Sicherheit: hoch</string>
+    <string name="service_confidence_medium">Sicherheit: mittel</string>
+    <string name="service_time_offset">Zeitabstand: %1$s</string>
+
+    <!-- System events -->
+    <string name="service_event_screen_on">Display eingeschaltet</string>
+    <string name="service_event_screen_off">Display ausgeschaltet</string>
+    <string name="service_event_power_connected">Stromversorgung verbunden</string>
+    <string name="service_event_power_connected_details">Ein Lade- oder Stromereignis wurde erkannt.</string>
+    <string name="service_event_power_disconnected">Stromversorgung getrennt</string>
+    <string name="service_event_power_disconnected_details">Die externe Stromversorgung wurde entfernt.</string>
+    <string name="service_event_usb_attached">USB-Gerät verbunden</string>
+    <string name="service_event_usb_detached">USB-Gerät getrennt</string>
+    <string name="service_usb_no_info">USB-Gerät ohne auslesbare Geräteinformationen.</string>
+    <string name="service_usb_details">Geräte-ID: %1$d\nHersteller-ID: %2$d\nProdukt-ID: %3$d</string>
+
+    <!-- Monitoring start/stop -->
+    <string name="service_event_monitor_start">Überwachung gestartet</string>
+    <string name="service_event_monitor_start_details">Display-, Strom- und USB-Ereignisse werden protokolliert. Näherungssensor: %1$s</string>
+    <string name="service_event_monitor_stop">Überwachung gestoppt</string>
+    <string name="service_event_monitor_stop_details_complete">Die Aufzeichnung wurde manuell beendet. Letzte Systemereignisse wurden übernommen.</string>
+    <string name="service_event_monitor_stop_details_incomplete">Die Aufzeichnung wurde manuell beendet. Die abschließende Systemprüfung konnte nicht vollständig beendet werden.</string>
+
+    <!-- Session network activity -->
+    <string name="service_event_network_session">Netzwerkaktivität der Sitzung</string>
+    <string name="service_network_no_baseline">Keine Ausgangsmessung verfügbar. Die Überwachung selbst wurde normal beendet.</string>
+    <string name="service_network_end_failed">Endmessung fehlgeschlagen: %1$s</string>
+    <string name="service_network_duration">Messdauer: %1$s</string>
+    <string name="service_network_apps_with_traffic">Apps mit Datenverkehr: %1$d</string>
+    <string name="service_network_total">Gesamt: %1$s · Empfangen: %2$s · Gesendet: %3$s</string>
+    <string name="service_network_no_traffic">Keine App mit messbarem Datenverkehr in dieser Sitzung.</string>
+    <string name="service_network_top_apps">Aktivste Apps:</string>
+    <string name="service_network_app_transfer">Empfangen: %1$s · Gesendet: %2$s</string>
+    <string name="service_network_app_package">Paket/UID: %1$s</string>
+
+    <!-- System snapshots -->
+    <string name="service_snapshot_reason_after_screen_on">Snapshot nach Display an</string>
+    <string name="service_snapshot_reason_screen_on">Display an</string>
+    <string name="service_snapshot_reason_after_screen_off">Snapshot nach Display aus</string>
+    <string name="service_snapshot_reason_start_probe">Startprobe nach 5 Sekunden</string>
+    <string name="service_diagnostic_error">Diagnosefehler: %1$s</string>
+    <string name="service_event_expert_snapshot">Erweiterte Systemprüfung</string>
+    <string name="service_event_system_snapshot">Systemprüfung</string>
+    <string name="service_snapshot_trigger">Auslöser: %1$s</string>
+    <string name="service_snapshot_source_compact">Datenquelle: Shizuku Kompaktdiagnose</string>
+    <string name="service_snapshot_source_background">Datenquelle: Shizuku Hintergrunddiagnose</string>
+    <string name="service_snapshot_status_shizuku_unavailable">Status: Shizuku nicht verfügbar oder Berechtigung fehlt</string>
+    <string name="service_snapshot_status_error">Status: Diagnosefehler</string>
+    <string name="service_snapshot_error">Fehler: %1$s</string>
+    <string name="service_snapshot_status_timeout">Status: nicht verfügbar oder Zeitlimit erreicht</string>
+    <string name="service_snapshot_no_compact_values">keine kompakten Werte</string>
+    <string name="service_snapshot_conditions">Rahmenzustand: %1$s</string>
+    <string name="service_snapshot_classification">Einordnung: %1$s</string>
+    <string name="service_classify_active">Gerät war aktiv oder interaktiv.</string>
+    <string name="service_classify_deep_idle">Gerät war im tiefen Idle-/Doze-Bereich.</string>
+    <string name="service_classify_light_idle">Gerät war im leichten Idle-/Doze-Bereich.</string>
+    <string name="service_classify_vendor_specific">Gerät war nicht aktiv, Idle-Zustand aber herstellerspezifisch.</string>
+    <string name="service_classify_unclear">Ruhezustand nicht eindeutig klassifizierbar.</string>
+    <string name="service_unknown">unbekannt</string>
+
+    <!-- Notification events -->
+    <string name="service_notification_event_title">Benachrichtigung von %1$s</string>
+    <string name="service_notification_event_title_line">Titel: %1$s</string>
+    <string name="service_notification_event_text_line">Text: %1$s</string>
+    <string name="service_notification_event_no_content">Kein auslesbarer Titel oder Text.</string>
+    <string name="service_notification_event_package">Paket: %1$s</string>
+</resources>

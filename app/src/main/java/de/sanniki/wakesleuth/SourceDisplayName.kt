@@ -1,12 +1,15 @@
 package de.sanniki.wakesleuth
 
+import android.content.Context
+
 private val standaloneUidPattern =
     Regex(
-        """^(?:systemdienst\s*·\s*)?uid\s+(\d+)$""",
+        """^(?:(.+?)\s*·\s*)?uid\s+(\d+)$""",
         RegexOption.IGNORE_CASE
     )
 
 fun sourceDisplayName(
+    context: Context,
     rawName: String
 ): String {
     val cleaned =
@@ -15,6 +18,23 @@ fun sourceDisplayName(
     val uidMatch =
         standaloneUidPattern
             .matchEntire(cleaned)
+            ?.takeIf { match ->
+                val prefix =
+                    match.groupValues[1]
+
+                prefix.isEmpty() ||
+                    LocalizedText
+                        .variants(
+                            context,
+                            R.string.source_system_service
+                        )
+                        .any {
+                            it.equals(
+                                prefix,
+                                ignoreCase = true
+                            )
+                        }
+            }
 
     val lower =
         cleaned.lowercase()
@@ -22,35 +42,53 @@ fun sourceDisplayName(
     return when {
         uidMatch != null -> {
             when (
-                uidMatch.groupValues[1]
+                uidMatch.groupValues[2]
                     .toIntOrNull()
             ) {
                 1000 ->
-                    "Android-System"
+                    context.getString(
+                        R.string.source_android_system
+                    )
 
                 1001 ->
-                    "Telefoniedienst"
+                    context.getString(
+                        R.string.source_phone_service
+                    )
 
                 1002 ->
-                    "Bluetooth-Systemdienst"
+                    context.getString(
+                        R.string.source_bluetooth_system_service
+                    )
 
                 1010 ->
-                    "WLAN-Systemdienst"
+                    context.getString(
+                        R.string.source_wifi_system_service
+                    )
 
                 1013 ->
-                    "Mediendienst"
+                    context.getString(
+                        R.string.source_media_service
+                    )
 
                 1016 ->
-                    "VPN-Systemdienst"
+                    context.getString(
+                        R.string.source_vpn_system_service
+                    )
 
                 1019 ->
-                    "DRM-Systemdienst"
+                    context.getString(
+                        R.string.source_drm_system_service
+                    )
 
                 1020 ->
-                    "Android-Netzwerkdienst"
+                    context.getString(
+                        R.string.source_android_network_service
+                    )
 
                 else ->
-                    "Android-Systemdienst"
+                    context.getString(
+                        R.string.source_android_system_service
+                    )
             }
         }
 
@@ -63,7 +101,9 @@ fun sourceDisplayName(
             lower.contains(
                 "rilj_ack_wl"
             ) ->
-            "Samsung Telefonie-/SIM-Dienst"
+            context.getString(
+                R.string.source_samsung_telephony_sim_service
+            )
 
         lower.contains(
             "fmm-acquirewakelock"
@@ -71,7 +111,9 @@ fun sourceDisplayName(
             lower.contains(
                 "offlinefindtask"
             ) ->
-            "Samsung Offline-Suche"
+            context.getString(
+                R.string.source_samsung_offline_finding
+            )
 
         lower.contains(
             "oplusscreenoffgesturemanager"
@@ -79,7 +121,9 @@ fun sourceDisplayName(
             lower.contains(
                 "manimcpulock"
             ) ->
-            "OnePlus Bildschirmgesten"
+            context.getString(
+                R.string.source_oneplus_screen_gestures
+            )
 
         else ->
             cleaned
@@ -87,6 +131,7 @@ fun sourceDisplayName(
 }
 
 fun sourceDisplayName(
+    context: Context,
     appLabel: String?,
     packageName: String?,
     uid: Int
@@ -104,5 +149,8 @@ fun sourceDisplayName(
                 }
             ?: "UID $uid"
 
-    return sourceDisplayName(preferred)
+    return sourceDisplayName(
+        context,
+        preferred
+    )
 }

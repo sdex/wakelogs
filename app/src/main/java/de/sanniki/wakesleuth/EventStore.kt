@@ -58,6 +58,7 @@ object EventStore {
 
             val events =
                 readEvents(
+                    context,
                     preferences.getString(
                         KEY_EVENTS,
                         null
@@ -109,6 +110,7 @@ object EventStore {
             val nextId = preferences.getLong(KEY_NEXT_ID, 0L) + 1L
 
             val events = readEvents(
+                context,
                 preferences.getString(KEY_EVENTS, null)
             )
 
@@ -138,6 +140,7 @@ object EventStore {
         synchronized(lock) {
             val prefs = preferences(context)
             val events = readEvents(
+                context,
                 prefs.getString(KEY_EVENTS, null)
             )
 
@@ -150,8 +153,10 @@ object EventStore {
                     notification.timestamp - event.timestamp
 
                 distance in 0..LATE_NOTIFICATION_WINDOW_MILLIS &&
-                    event.details.contains(
-                        "Ursache: noch unbekannt"
+                    LocalizedText.containsAny(
+                        event.details,
+                        context,
+                        R.string.sleep_marker_cause_unknown
                     )
             }
 
@@ -165,20 +170,29 @@ object EventStore {
 
             val confidence =
                 if (distance <= HIGH_CONFIDENCE_WINDOW_MILLIS) {
-                    "hoch"
+                    context.getString(
+                        R.string.event_confidence_high
+                    )
                 } else {
-                    "mittel"
+                    context.getString(
+                        R.string.event_confidence_medium
+                    )
                 }
 
             val proximityLine = oldEvent.details
                 .lineSequence()
                 .firstOrNull {
-                    it.startsWith("Näherungssensor:")
+                    LocalizedText.startsWithAny(
+                        it,
+                        context,
+                        R.string.event_label_proximity_sensor
+                    )
                 }
-                ?: "Näherungssensor: unbekannt"
+                ?: unknownProximityLine(context)
 
             val preservedSystemHints =
                 extractSystemHintSections(
+                    context,
                     oldEvent.details
                 )
 
@@ -187,23 +201,36 @@ object EventStore {
                     appendLine(proximityLine)
 
                     appendLine(
-                        "Nachträglich erkannte Ursache: " +
+                        labeledLine(
+                            context,
+                            R.string.event_label_cause_detected_later,
                             notification.appName
+                        )
                     )
 
                     appendLine(
-                        "Sicherheit: $confidence"
+                        labeledLine(
+                            context,
+                            R.string.event_label_confidence,
+                            confidence
+                        )
                     )
 
                     append(
-                        "Hinweis kam ${formatAge(distance)} " +
-                            "nach Display an"
+                        context.getString(
+                            R.string.event_notification_arrived_after_screen_on,
+                            formatAge(context, distance)
+                        )
                     )
 
                     if (notification.title.isNotBlank()) {
                         appendLine()
                         append(
-                            "Titel: ${notification.title}"
+                            labeledLine(
+                                context,
+                                R.string.event_label_title,
+                                notification.title
+                            )
                         )
                     }
 
@@ -239,6 +266,7 @@ object EventStore {
 
             val events =
                 readEvents(
+                    context,
                     prefs.getString(
                         KEY_EVENTS,
                         null
@@ -253,8 +281,10 @@ object EventStore {
                                 powerKeyTimestamp
                         ) <=
                         SCREEN_EVENT_MATCH_WINDOW_MILLIS &&
-                        !event.details.contains(
-                            "Direkter Aufweckgrund:"
+                        !LocalizedText.containsAny(
+                            event.details,
+                            context,
+                            R.string.event_label_direct_wake_reason
                         )
                 }
 
@@ -269,24 +299,39 @@ object EventStore {
                 oldEvent.details
                     .lineSequence()
                     .firstOrNull { line ->
-                        line.startsWith(
-                            "Näherungssensor:"
+                        LocalizedText.startsWithAny(
+                            line,
+                            context,
+                            R.string.event_label_proximity_sensor
                         )
                     }
-                    ?: "Näherungssensor: unbekannt"
+                    ?: unknownProximityLine(context)
 
             val preservedHints =
                 extractSystemHintSections(
+                    context,
                     oldEvent.details
                 )
-                    .replace(
-                        "Systemhinweis: möglicher Auslöser",
-                        "Begleitaktivität: Wakelock"
-                    )
-                    .replace(
-                        "Wakeup-Alarm-Hinweis: möglicher Auslöser",
-                        "Begleitaktivität: Wakeup-Alarm"
-                    )
+                    .let { hints ->
+                        replaceAnyVariant(
+                            text = hints,
+                            context = context,
+                            fromId =
+                                R.string.event_section_system_hint_possible_trigger,
+                            toId =
+                                R.string.event_section_companion_wakelock
+                        )
+                    }
+                    .let { hints ->
+                        replaceAnyVariant(
+                            text = hints,
+                            context = context,
+                            fromId =
+                                R.string.event_section_wakeup_alarm_possible_trigger,
+                            toId =
+                                R.string.event_section_companion_wakeup_alarm
+                        )
+                    }
 
             events[eventIndex] =
                 oldEvent.copy(
@@ -296,20 +341,41 @@ object EventStore {
                         )
 
                         appendLine(
-                            "Direkter Aufweckgrund: Power-Taste"
+                            labeledLine(
+                                context,
+                                R.string.event_label_direct_wake_reason,
+                                context.getString(
+                                    R.string.event_power_button
+                                )
+                            )
                         )
 
                         appendLine(
-                            "Sicherheit: direkt aus Samsung BatteryStats"
+                            labeledLine(
+                                context,
+                                R.string.event_label_confidence,
+                                context.getString(
+                                    R.string.event_confidence_samsung_batterystats
+                                )
+                            )
                         )
 
                         appendLine(
-                            "Zeitabstand: zeitgleich mit Display an"
+                            labeledLine(
+                                context,
+                                R.string.event_label_time_offset,
+                                context.getString(
+                                    R.string.event_time_simultaneous_with_screen_on
+                                )
+                            )
                         )
 
                         appendLine(
-                            "Technischer Grund: " +
+                            labeledLine(
+                                context,
+                                R.string.event_label_technical_reason,
                                 technicalReason
+                            )
                         )
 
                         technicalTag
@@ -318,10 +384,13 @@ object EventStore {
                             }
                             ?.let { tag ->
                                 append(
-                                    "Technischer Tag: " +
+                                    labeledLine(
+                                        context,
+                                        R.string.event_label_technical_tag,
                                         compactWakeLockTag(
                                             tag
                                         )
+                                    )
                                 )
                             }
 
@@ -384,6 +453,7 @@ object EventStore {
             val prefs = preferences(context)
 
             val events = readEvents(
+                context,
                 prefs.getString(
                     KEY_EVENTS,
                     null
@@ -398,8 +468,10 @@ object EventStore {
                                 screenOnTimestamp
                         ) <=
                         SCREEN_EVENT_MATCH_WINDOW_MILLIS &&
-                        !event.details.contains(
-                            "Direkter Aufweckgrund:"
+                        !LocalizedText.containsAny(
+                            event.details,
+                            context,
+                            R.string.event_label_direct_wake_reason
                         )
                 }
 
@@ -413,37 +485,52 @@ object EventStore {
                 oldEvent.details
                     .lineSequence()
                     .firstOrNull { line ->
-                        line.startsWith(
-                            "Näherungssensor:"
+                        LocalizedText.startsWithAny(
+                            line,
+                            context,
+                            R.string.event_label_proximity_sensor
                         )
                     }
-                    ?: "Näherungssensor: unbekannt"
+                    ?: unknownProximityLine(context)
 
             val existingSystemHints =
                 extractSystemHintSections(
+                    context,
                     oldEvent.details
                 )
 
             val directionText =
                 when {
                     distance < 0L ->
-                        "${formatAge(-distance)} vor Display an"
+                        context.getString(
+                            R.string.event_time_before_screen_on,
+                            formatAge(context, -distance)
+                        )
 
                     distance > 0L ->
-                        "${formatAge(distance)} nach Display an"
+                        context.getString(
+                            R.string.event_time_after_screen_on,
+                            formatAge(context, distance)
+                        )
 
                     else ->
-                        "zeitgleich mit Display an"
+                        context.getString(
+                            R.string.event_time_simultaneous_with_screen_on
+                        )
                 }
 
             val technicalReason =
                 diagnostic.reason
-                    ?: "unbekannt"
+                    ?: context.getString(
+                        R.string.event_unknown
+                    )
 
             val technicalDetails =
                 diagnostic.details
                     ?.takeIf { it.isNotBlank() }
-                    ?: "keine"
+                    ?: context.getString(
+                        R.string.event_none
+                    )
 
             events[eventIndex] =
                 oldEvent.copy(
@@ -451,33 +538,53 @@ object EventStore {
                         appendLine(proximityLine)
 
                         appendLine(
-                            "Direkter Aufweckgrund: " +
+                            labeledLine(
+                                context,
+                                R.string.event_label_direct_wake_reason,
                                 readableWakeReason(
+                                    context = context,
                                     reason =
                                         technicalReason,
                                     details =
                                         technicalDetails
                                 )
+                            )
                         )
 
                         appendLine(
-                            "Sicherheit: direkt vom PowerManager"
+                            labeledLine(
+                                context,
+                                R.string.event_label_confidence,
+                                context.getString(
+                                    R.string.event_confidence_power_manager
+                                )
+                            )
                         )
 
                         appendLine(
-                            "Zeitabstand: $directionText"
+                            labeledLine(
+                                context,
+                                R.string.event_label_time_offset,
+                                directionText
+                            )
                         )
 
                         appendLine(
-                            "Technischer Grund: " +
+                            labeledLine(
+                                context,
+                                R.string.event_label_technical_reason,
                                 technicalReason
+                            )
                         )
 
                         append(
-                            "Details: " +
+                            labeledLine(
+                                context,
+                                R.string.event_label_details,
                                 compactWakeReasonDetails(
                                     technicalDetails
                                 )
+                            )
                         )
 
                         if (
@@ -538,6 +645,7 @@ object EventStore {
 
             val events =
                 readEvents(
+                    context,
                     prefs.getString(
                         KEY_EVENTS,
                         null
@@ -566,14 +674,18 @@ object EventStore {
                     ?.takeIf {
                         it.isNotBlank()
                     }
-                    ?: "unbekannt"
+                    ?: context.getString(
+                        R.string.event_unknown
+                    )
 
             val rawTag =
                 diagnostic.lastTag
                     ?.takeIf {
                         it.isNotBlank()
                     }
-                    ?: "unbekannt"
+                    ?: context.getString(
+                        R.string.event_unknown
+                    )
 
             /*
              * Samsungs BatteryStats meldet beim Drücken
@@ -590,8 +702,10 @@ object EventStore {
                 )
             ) {
                 if (
-                    oldEvent.details.contains(
-                        "Direkter Aufweckgrund:"
+                    LocalizedText.containsAny(
+                        oldEvent.details,
+                        context,
+                        R.string.event_label_direct_wake_reason
                     )
                 ) {
                     return false
@@ -599,6 +713,7 @@ object EventStore {
 
                 val cleanedDetails =
                     removeUnknownCauseLine(
+                        context,
                         oldEvent.details
                     )
 
@@ -606,18 +721,22 @@ object EventStore {
                     oldEvent.details
                         .lineSequence()
                         .firstOrNull { line ->
-                            line.startsWith(
-                                "Näherungssensor:"
+                            LocalizedText.startsWithAny(
+                                line,
+                                context,
+                                R.string.event_label_proximity_sensor
                             )
                         }
-                        ?: "Näherungssensor: unbekannt"
+                        ?: unknownProximityLine(context)
 
                 val existingNotificationLines =
                     cleanedDetails
                         .lineSequence()
                         .filterNot { line ->
-                            line.startsWith(
-                                "Näherungssensor:"
+                            LocalizedText.startsWithAny(
+                                line,
+                                context,
+                                R.string.event_label_proximity_sensor
                             )
                         }
                         .joinToString("\n")
@@ -631,30 +750,52 @@ object EventStore {
                             )
 
                             appendLine(
-                                "Direkter Aufweckgrund: Power-Taste"
+                                labeledLine(
+                                    context,
+                                    R.string.event_label_direct_wake_reason,
+                                    context.getString(
+                                        R.string.event_power_button
+                                    )
+                                )
                             )
 
                             appendLine(
-                                "Sicherheit: direkter System-Wakelock"
+                                labeledLine(
+                                    context,
+                                    R.string.event_label_confidence,
+                                    context.getString(
+                                        R.string.event_confidence_system_wakelock
+                                    )
+                                )
                             )
 
                             appendLine(
-                                "Zeitabstand: " +
+                                labeledLine(
+                                    context,
+                                    R.string.event_label_time_offset,
                                     formatScreenRelationship(
+                                        context,
                                         distance
                                     )
+                                )
                             )
 
                             appendLine(
-                                "Technischer Grund: " +
+                                labeledLine(
+                                    context,
+                                    R.string.event_label_technical_reason,
                                     "PhoneWindowManager Power-Key"
+                                )
                             )
 
                             append(
-                                "Technischer Tag: " +
+                                labeledLine(
+                                    context,
+                                    R.string.event_label_technical_tag,
                                     compactWakeLockTag(
                                         rawTag
                                     )
+                                )
                             )
 
                             if (
@@ -692,12 +833,15 @@ object EventStore {
 
             val wakeLockKind =
                 classifyWakeLockTag(
+                    context,
                     rawTag
                 )
 
             val directWakeReasonKnown =
-                oldEvent.details.contains(
-                    "Direkter Aufweckgrund:"
+                LocalizedText.containsAny(
+                    oldEvent.details,
+                    context,
+                    R.string.event_label_direct_wake_reason
                 )
 
             /*
@@ -716,9 +860,13 @@ object EventStore {
 
             val sectionTitle =
                 if (companionActivity) {
-                    "Begleitaktivität: Wakelock"
+                    context.getString(
+                        R.string.event_section_companion_wakelock
+                    )
                 } else {
-                    "Systemhinweis: möglicher Auslöser"
+                    context.getString(
+                        R.string.event_section_system_hint_possible_trigger
+                    )
                 }
 
             /*
@@ -732,6 +880,7 @@ object EventStore {
                         .trimEnd()
                 } else {
                     removeUnknownCauseLine(
+                        context,
                         oldEvent.details
                     ).trimEnd()
                 }
@@ -741,12 +890,17 @@ object EventStore {
              * an denselben Display-Wakeup anhängen.
              */
             if (
-                oldEvent.details.contains(
-                    "Technischer Tag: " +
-                        compactWakeLockTag(
-                            rawTag
-                        )
-                )
+                LocalizedText.variants(
+                    context,
+                    R.string.event_label_technical_tag
+                ).any { label ->
+                    oldEvent.details.contains(
+                        "$label " +
+                            compactWakeLockTag(
+                                rawTag
+                            )
+                    )
+                }
             ) {
                 return false
             }
@@ -770,25 +924,40 @@ object EventStore {
                         )
 
                         appendLine(
-                            "Quelle: $sourceName"
+                            labeledLine(
+                                context,
+                                R.string.event_label_source,
+                                sourceName
+                            )
                         )
 
                         appendLine(
-                            "Art: $wakeLockKind"
+                            labeledLine(
+                                context,
+                                R.string.event_label_kind,
+                                wakeLockKind
+                            )
                         )
 
                         appendLine(
-                            "Zeitabstand: " +
+                            labeledLine(
+                                context,
+                                R.string.event_label_time_offset,
                                 formatScreenRelationship(
+                                    context,
                                     distance
                                 )
+                            )
                         )
 
                         append(
-                            "Technischer Tag: " +
+                            labeledLine(
+                                context,
+                                R.string.event_label_technical_tag,
                                 compactWakeLockTag(
                                     rawTag
                                 )
+                            )
                         )
                     }
                 )
@@ -845,6 +1014,7 @@ object EventStore {
             val prefs = preferences(context)
 
             val events = readEvents(
+                context,
                 prefs.getString(
                     KEY_EVENTS,
                     null
@@ -859,8 +1029,10 @@ object EventStore {
                                 screenOnTimestamp
                         ) <=
                         SCREEN_EVENT_MATCH_WINDOW_MILLIS &&
-                        !event.details.contains(
-                            "Wakeup-Alarm-Hinweis:"
+                        !LocalizedText.containsAny(
+                            event.details,
+                            context,
+                            R.string.event_label_wakeup_alarm_hint
                         )
                 }
 
@@ -886,35 +1058,53 @@ object EventStore {
                 )
 
             val directWakeReasonKnown =
-                oldEvent.details.contains(
-                    "Direkter Aufweckgrund:"
+                LocalizedText.containsAny(
+                    oldEvent.details,
+                    context,
+                    R.string.event_label_direct_wake_reason
                 )
 
-            val relationship =
+            val relationshipLine =
                 when {
                     directWakeReasonKnown ->
-                        "Begleitaktivität"
+                        context.getString(
+                            R.string.event_section_wakeup_alarm_companion
+                        )
 
                     distance < 0L ->
-                        "möglicher Auslöser"
+                        context.getString(
+                            R.string.event_section_wakeup_alarm_possible_trigger
+                        )
 
                     distance == 0L ->
-                        "zeitgleiches Systemereignis"
+                        context.getString(
+                            R.string.event_section_wakeup_alarm_simultaneous
+                        )
 
                     else ->
-                        "enger zeitlicher Zusammenhang"
+                        context.getString(
+                            R.string.event_section_wakeup_alarm_close_relation
+                        )
                 }
 
             val directionText =
                 when {
                     distance < 0L ->
-                        "${formatAge(-distance)} vor Display an"
+                        context.getString(
+                            R.string.event_time_before_screen_on,
+                            formatAge(context, -distance)
+                        )
 
                     distance > 0L ->
-                        "${formatAge(distance)} nach Display an"
+                        context.getString(
+                            R.string.event_time_after_screen_on,
+                            formatAge(context, distance)
+                        )
 
                     else ->
-                        "zeitgleich mit Display an"
+                        context.getString(
+                            R.string.event_time_simultaneous_with_screen_on
+                        )
                 }
 
             val readableTag =
@@ -926,6 +1116,7 @@ object EventStore {
 
             val cleanedDetails =
                 removeUnknownCauseLine(
+                    context,
                     oldEvent.details
                 )
 
@@ -941,32 +1132,46 @@ object EventStore {
 
                         appendLine(
                             if (directWakeReasonKnown) {
-                                "Begleitaktivität: Wakeup-Alarm"
+                                context.getString(
+                                    R.string.event_section_companion_wakeup_alarm
+                                )
                             } else {
-                                "Wakeup-Alarm-Hinweis: " +
-                                    relationship
+                                relationshipLine
                             }
                         )
 
                         appendLine(
-                            "Quelle: $sourceName"
+                            labeledLine(
+                                context,
+                                R.string.event_label_source,
+                                sourceName
+                            )
                         )
 
                         appendLine(
-                            "Zeitabstand: " +
+                            labeledLine(
+                                context,
+                                R.string.event_label_time_offset,
                                 directionText
+                            )
                         )
 
                         appendLine(
-                            "Alarm-Wakeups seit Statistikstart: " +
-                                diagnostic.wakeCount
+                            labeledLine(
+                                context,
+                                R.string.event_label_alarm_wakeups_since_stats_start,
+                                diagnostic.wakeCount.toString()
+                            )
                         )
 
                         append(
-                            "Technischer Tag: " +
+                            labeledLine(
+                                context,
+                                R.string.event_label_technical_tag,
                                 compactWakeLockTag(
                                     readableTag
                                 )
+                            )
                         )
                     }
                 )
@@ -1022,6 +1227,7 @@ object EventStore {
             val prefs = preferences(context)
 
             val events = readEvents(
+                context,
                 prefs.getString(
                     KEY_EVENTS,
                     null
@@ -1036,8 +1242,10 @@ object EventStore {
                                 screenOnTimestamp
                         ) <=
                         SCREEN_EVENT_MATCH_WINDOW_MILLIS &&
-                        !event.details.contains(
-                            "Hintergrundjob-Hinweis:"
+                        !LocalizedText.containsAny(
+                            event.details,
+                            context,
+                            R.string.event_label_background_job_hint
                         )
                 }
 
@@ -1063,31 +1271,46 @@ object EventStore {
                 )
 
             val directWakeReasonKnown =
-                oldEvent.details.contains(
-                    "Direkter Aufweckgrund:"
+                LocalizedText.containsAny(
+                    oldEvent.details,
+                    context,
+                    R.string.event_label_direct_wake_reason
                 )
 
             val directionText =
                 when {
                     distance < 0L ->
-                        "${formatAge(-distance)} vor Display an"
+                        context.getString(
+                            R.string.event_time_before_screen_on,
+                            formatAge(context, -distance)
+                        )
 
                     distance > 0L ->
-                        "${formatAge(distance)} nach Display an"
+                        context.getString(
+                            R.string.event_time_after_screen_on,
+                            formatAge(context, distance)
+                        )
 
                     else ->
-                        "zeitgleich mit Display an"
+                        context.getString(
+                            R.string.event_time_simultaneous_with_screen_on
+                        )
                 }
 
             val startType =
                 if (diagnostic.prioritized) {
-                    "priorisiert"
+                    context.getString(
+                        R.string.event_start_type_prioritized
+                    )
                 } else {
-                    "regulär"
+                    context.getString(
+                        R.string.event_start_type_regular
+                    )
                 }
 
             val cleanedDetails =
                 removeUnknownCauseLine(
+                    context,
                     oldEvent.details
                 )
 
@@ -1103,30 +1326,48 @@ object EventStore {
 
                         appendLine(
                             if (directWakeReasonKnown) {
-                                "Begleitaktivität: Hintergrundjob"
+                                context.getString(
+                                    R.string.event_section_companion_background_job
+                                )
                             } else {
-                                "Hintergrundjob-Hinweis: " +
-                                    "zeitlicher Zusammenhang"
+                                context.getString(
+                                    R.string.event_section_background_job_time_relation
+                                )
                             }
                         )
 
                         appendLine(
-                            "Quelle: $sourceName"
+                            labeledLine(
+                                context,
+                                R.string.event_label_source,
+                                sourceName
+                            )
                         )
 
                         appendLine(
-                            "Zeitabstand: $directionText"
+                            labeledLine(
+                                context,
+                                R.string.event_label_time_offset,
+                                directionText
+                            )
                         )
 
                         appendLine(
-                            "Starttyp: $startType"
+                            labeledLine(
+                                context,
+                                R.string.event_label_start_type,
+                                startType
+                            )
                         )
 
                         append(
-                            "Dienst: " +
+                            labeledLine(
+                                context,
+                                R.string.event_label_service,
                                 compactWakeLockTag(
                                     serviceName
                                 )
+                            )
                         )
                     }
                 )
@@ -1145,19 +1386,80 @@ object EventStore {
     }
 
     private fun removeUnknownCauseLine(
+        context: Context,
         details: String
     ): String {
         return details
             .lineSequence()
             .filterNot { line ->
-                line.trim() ==
-                    "Ursache: noch unbekannt"
+                LocalizedText.equalsAny(
+                    line.trim(),
+                    context,
+                    R.string.sleep_marker_cause_unknown
+                )
             }
             .joinToString("\n")
             .trimEnd()
     }
 
+    private fun labeledLine(
+        context: Context,
+        labelId: Int,
+        value: String
+    ): String {
+        return context.getString(labelId) +
+            " " +
+            value
+    }
+
+    private fun unknownProximityLine(
+        context: Context
+    ): String {
+        return labeledLine(
+            context,
+            R.string.event_label_proximity_sensor,
+            context.getString(
+                R.string.event_unknown
+            )
+        )
+    }
+
+    private fun replaceAnyVariant(
+        text: String,
+        context: Context,
+        fromId: Int,
+        toId: Int
+    ): String {
+        val replacement =
+            context.getString(toId)
+
+        return LocalizedText.variants(
+            context,
+            fromId
+        ).fold(text) { result, variant ->
+            result.replace(
+                variant,
+                replacement
+            )
+        }
+    }
+
+    private fun formatPrefixVariants(
+        context: Context,
+        formatId: Int
+    ): List<String> {
+        return LocalizedText.variants(
+            context,
+            formatId
+        ).map { format ->
+            format
+                .substringBefore("%1\$s")
+                .trimEnd()
+        }
+    }
+
     private fun extractSystemHintSections(
+        context: Context,
         details: String
     ): String {
         val lines = details.lines()
@@ -1168,17 +1470,25 @@ object EventStore {
             val trimmed = line.trim()
 
             if (
-                trimmed.startsWith(
-                    "Systemhinweis:"
+                LocalizedText.startsWithAny(
+                    trimmed,
+                    context,
+                    R.string.event_label_system_hint
                 ) ||
-                trimmed.startsWith(
-                    "Wakeup-Alarm-Hinweis:"
+                LocalizedText.startsWithAny(
+                    trimmed,
+                    context,
+                    R.string.event_label_wakeup_alarm_hint
                 ) ||
-                trimmed.startsWith(
-                    "Hintergrundjob-Hinweis:"
+                LocalizedText.startsWithAny(
+                    trimmed,
+                    context,
+                    R.string.event_label_background_job_hint
                 ) ||
-                trimmed.startsWith(
-                    "Begleitaktivität:"
+                LocalizedText.startsWithAny(
+                    trimmed,
+                    context,
+                    R.string.event_label_companion_activity
                 )
             ) {
                 collecting = true
@@ -1244,17 +1554,26 @@ object EventStore {
     }
 
     private fun formatScreenRelationship(
+        context: Context,
         distance: Long
     ): String {
         return when {
             distance < 0L ->
-                "${formatAge(-distance)} vor Display an"
+                context.getString(
+                    R.string.event_time_before_screen_on,
+                    formatAge(context, -distance)
+                )
 
             distance > 0L ->
-                "${formatAge(distance)} nach Display an"
+                context.getString(
+                    R.string.event_time_after_screen_on,
+                    formatAge(context, distance)
+                )
 
             else ->
-                "zeitgleich mit Display an"
+                context.getString(
+                    R.string.event_time_simultaneous_with_screen_on
+                )
         }
     }
 
@@ -1263,6 +1582,7 @@ object EventStore {
     )
 
     private fun assessWakeLockRelationship(
+        context: Context,
         distance: Long,
         tag: String
     ): WakeLockAssessment {
@@ -1294,31 +1614,40 @@ object EventStore {
         ) {
             return WakeLockAssessment(
                 title =
-                    "wahrscheinliches Folgeereignis"
+                    context.getString(
+                        R.string.event_relation_likely_follow_up
+                    )
             )
         }
 
         return when {
             distance < 0L ->
                 WakeLockAssessment(
-                    title = "möglicher Auslöser"
+                    title = context.getString(
+                        R.string.event_relation_possible_trigger
+                    )
                 )
 
             distance <= 1_000L ->
                 WakeLockAssessment(
                     title =
-                        "enger zeitlicher Zusammenhang"
+                        context.getString(
+                            R.string.event_relation_close
+                        )
                 )
 
             else ->
                 WakeLockAssessment(
                     title =
-                        "wahrscheinliches Folgeereignis"
+                        context.getString(
+                            R.string.event_relation_likely_follow_up
+                        )
                 )
         }
     }
 
     private fun classifyWakeLockTag(
+        context: Context,
         tag: String
     ): String {
         return when {
@@ -1326,37 +1655,49 @@ object EventStore {
                 "UserPresent",
                 ignoreCase = true
             ) ->
-                "Reaktion auf Benutzerpräsenz"
+                context.getString(
+                    R.string.event_kind_user_presence
+                )
 
             tag.contains(
                 "NetworkStats",
                 ignoreCase = true
             ) ->
-                "Netzwerkstatistik"
+                context.getString(
+                    R.string.event_kind_network_stats
+                )
 
             tag.contains(
                 "NotificationManagerService:post",
                 ignoreCase = true
             ) ->
-                "Benachrichtigungsverarbeitung"
+                context.getString(
+                    R.string.event_kind_notification_processing
+                )
 
             tag.contains(
                 "*alarm*",
                 ignoreCase = true
             ) ->
-                "Alarm"
+                context.getString(
+                    R.string.event_kind_alarm
+                )
 
             tag.contains(
                 "*job*",
                 ignoreCase = true
             ) ->
-                "Hintergrundjob"
+                context.getString(
+                    R.string.event_kind_background_job
+                )
 
             tag.contains(
                 "*launch*",
                 ignoreCase = true
             ) ->
-                "App-Start"
+                context.getString(
+                    R.string.event_kind_app_launch
+                )
 
             tag.contains(
                 "AudioMix",
@@ -1370,7 +1711,9 @@ object EventStore {
                 "ExoPlayer",
                 ignoreCase = true
             ) ->
-                "Audio-Wiedergabe oder Aufnahme"
+                context.getString(
+                    R.string.event_kind_audio
+                )
 
             tag.contains(
                 "SyncManager",
@@ -1380,22 +1723,30 @@ object EventStore {
                 "*sync*",
                 ignoreCase = true
             ) ->
-                "Synchronisierung"
+                context.getString(
+                    R.string.event_kind_sync
+                )
 
             tag.contains(
                 "Icing",
                 ignoreCase = true
             ) ->
-                "Suche oder Inhaltsindexierung"
+                context.getString(
+                    R.string.event_kind_search_indexing
+                )
 
             tag.contains(
                 "PendingIntentClient",
                 ignoreCase = true
             ) ->
-                "Geplante Hintergrundaktion"
+                context.getString(
+                    R.string.event_kind_scheduled_background_action
+                )
 
             else ->
-                "Partial Wakelock"
+                context.getString(
+                    R.string.event_kind_partial_wakelock
+                )
         }
     }
 
@@ -1403,7 +1754,7 @@ object EventStore {
         context: Context,
         packageName: String
     ): String {
-        readableSystemSource(packageName)?.let {
+        readableSystemSource(context, packageName)?.let {
             return "$it ($packageName)"
         }
 
@@ -1432,6 +1783,7 @@ object EventStore {
     }
 
     private fun readableSystemSource(
+        context: Context,
         packageName: String
     ): String? {
         val value = packageName.lowercase(
@@ -1441,65 +1793,88 @@ object EventStore {
         return when {
             value == "android" ||
                 value == "system" ->
-                "Android-System"
+                context.getString(
+                    R.string.source_android_system
+                )
 
             value.contains(
                 "com.android.mms.service"
             ) ->
-                "Android MMS-/Mobilfunkdienst"
+                context.getString(
+                    R.string.source_android_mms_cellular_service
+                )
 
             value.contains(
                 "com.android.stk2"
             ) ->
-                "Samsung Telefonie-/SIM-Dienst"
+                context.getString(
+                    R.string.source_samsung_telephony_sim_service
+                )
 
             value.contains(
                 "com.android.phone"
             ) ->
-                "Android Telefoniedienst"
+                context.getString(
+                    R.string.source_android_phone_service
+                )
 
             value.contains(
                 "com.android.providers.telephony"
             ) ->
-                "Android Telefonie-Datenspeicher"
+                context.getString(
+                    R.string.source_android_telephony_storage
+                )
 
             value.contains(
                 "com.google.android.ims"
             ) ->
-                "Google Mobilfunk-/IMS-Dienst"
+                context.getString(
+                    R.string.source_google_cellular_ims_service
+                )
 
             value.contains(
                 "com.android.systemui"
             ) ->
-                "Android Systemoberfläche"
+                context.getString(
+                    R.string.source_android_system_ui
+                )
 
             value.contains(
                 "com.android.bluetooth"
             ) ->
-                "Android Bluetooth-Dienst"
+                context.getString(
+                    R.string.source_android_bluetooth_service
+                )
 
             value.contains(
                 "com.android.networkstack"
             ) ->
-                "Android Netzwerkdienst"
+                context.getString(
+                    R.string.source_android_networkstack_service
+                )
 
             value.contains(
                 "com.google.android.gms"
             ) ->
-                "Google Play-Dienste"
+                context.getString(
+                    R.string.source_google_play_services
+                )
 
             else -> null
         }
     }
 
     private fun readableWakeReason(
+        context: Context,
         reason: String,
         details: String
     ): String {
         return when {
             reason ==
                 "WAKE_REASON_POWER_BUTTON" ->
-                "Power-Taste"
+                context.getString(
+                    R.string.event_power_button
+                )
 
             details.contains(
                 "DoubleTap",
@@ -1509,31 +1884,45 @@ object EventStore {
                 "blackGestureWake",
                 ignoreCase = true
             ) ->
-                "Doppeltipp auf das ausgeschaltete Display"
+                context.getString(
+                    R.string.event_wake_reason_double_tap
+                )
 
             reason ==
                 "WAKE_REASON_GESTURE" ->
-                "Bildschirmgeste"
+                context.getString(
+                    R.string.event_wake_reason_gesture
+                )
 
             reason ==
                 "WAKE_REASON_LIFT" ->
-                "Anheben des Geräts"
+                context.getString(
+                    R.string.event_wake_reason_lift
+                )
 
             reason ==
                 "WAKE_REASON_PLUGGED_IN" ->
-                "Stromversorgung verbunden"
+                context.getString(
+                    R.string.event_wake_reason_plugged_in
+                )
 
             reason ==
                 "WAKE_REASON_WAKE_KEY" ->
-                "Aufwecktaste"
+                context.getString(
+                    R.string.event_wake_reason_wake_key
+                )
 
             reason ==
                 "WAKE_REASON_WAKE_MOTION" ->
-                "Bewegungs- oder Sensorsignal"
+                context.getString(
+                    R.string.event_wake_reason_motion
+                )
 
             reason ==
                 "WAKE_REASON_APPLICATION" ->
-                "App oder Systemfunktion"
+                context.getString(
+                    R.string.event_wake_reason_application
+                )
 
             else ->
                 reason
@@ -1565,6 +1954,7 @@ object EventStore {
     fun getEvents(context: Context): List<WakeEvent> {
         synchronized(lock) {
             return readEvents(
+                context,
                 preferences(context).getString(KEY_EVENTS, null)
             )
         }
@@ -1767,44 +2157,66 @@ object EventStore {
 
         return buildString {
             appendLine("wakelogs v${BuildConfig.VERSION_NAME} · dernikiausd")
-            appendLine("Lokaler Ereignisexport")
+            appendLine(
+                context.getString(
+                    R.string.event_export_title
+                )
+            )
             appendLine()
             appendLine(
-                "Export erstellt: ${
+                context.getString(
+                    R.string.event_export_created,
                     formatter.format(Date())
-                }"
+                )
             )
             appendLine(
-                "Überwachung: ${
+                context.getString(
+                    R.string.event_export_monitoring,
                     if (isMonitoring(context)) {
-                        "aktiv"
+                        context.getString(
+                            R.string.event_export_monitoring_active
+                        )
                     } else {
-                        "gestoppt"
+                        context.getString(
+                            R.string.event_export_monitoring_stopped
+                        )
                     }
-                }"
+                )
             )
             appendLine(
-                "Gespeicherte Ereignisse: ${events.size}"
+                context.getString(
+                    R.string.event_export_stored_events,
+                    events.size
+                )
             )
 
             val exportHighlights =
-                buildExportHighlights(events)
+                buildExportHighlights(context, events)
 
             val exportSummary =
                 buildExportSummary(
+                    context = context,
                     events = events,
                     highlights = exportHighlights
                 )
 
             appendLine()
-            appendLine("Kurzfazit")
+            appendLine(
+                context.getString(
+                    R.string.event_export_summary_heading
+                )
+            )
 
             exportSummary.forEach { line ->
                 appendLine(line)
             }
 
             appendLine()
-            appendLine("Auffälligkeiten")
+            appendLine(
+                context.getString(
+                    R.string.event_export_highlights_heading
+                )
+            )
 
             exportHighlights.forEach { highlight ->
                 appendLine("• $highlight")
@@ -1816,51 +2228,73 @@ object EventStore {
                 )
 
             appendLine()
-            appendLine("Hintergrund-Parserdiagnose")
             appendLine(
-                "BatteryStats-Zeilen: " +
+                context.getString(
+                    R.string.event_export_parser_diagnostics_heading
+                )
+            )
+            appendLine(
+                context.getString(
+                    R.string.event_export_batterystats_lines,
                     parserDiagnostics.parsedLines
+                )
             )
             appendLine(
-                "Wake-Reasons: " +
+                context.getString(
+                    R.string.event_export_wake_reasons,
                     parserDiagnostics.wakeReasons
+                )
             )
             appendLine(
-                "CPU-Starts (+running): " +
+                context.getString(
+                    R.string.event_export_cpu_starts,
                     parserDiagnostics.runningStarts
+                )
             )
             appendLine(
-                "Wakelocks: " +
+                context.getString(
+                    R.string.event_export_wakelocks,
                     parserDiagnostics.wakeLocks
+                )
             )
             appendLine(
-                "Jobs: " +
+                context.getString(
+                    R.string.event_export_jobs,
                     parserDiagnostics.jobs
+                )
             )
             appendLine(
-                "Synchronisierungen: " +
+                context.getString(
+                    R.string.event_export_syncs,
                     parserDiagnostics.syncs
+                )
             )
             appendLine(
-                "Erkannte Kandidaten im letzten Poll: " +
+                context.getString(
+                    R.string.event_export_candidates_last_poll,
                     parserDiagnostics.candidates
+                )
             )
             appendLine(
-                "Erzeugte CPU-Wakeups im letzten Poll: " +
+                context.getString(
+                    R.string.event_export_cpu_wakeups_last_poll,
                     parserDiagnostics.eventsCreated
+                )
             )
 
             if (
                 parserDiagnostics.lastPollMillis > 0L
             ) {
                 appendLine(
-                    "Letzter Parserlauf: " +
+                    context.getString(
+                        R.string.event_export_last_parser_run,
                         formatter.format(
                             Date(
                                 parserDiagnostics
                                     .lastPollMillis
                             )
                         )
+                    )
                 )
             }
 
@@ -1872,7 +2306,9 @@ object EventStore {
 
             appendLine()
             appendLine(
-                "Hintergrund-Rohdaten"
+                context.getString(
+                    R.string.event_export_raw_data_heading
+                )
             )
 
             val parserFoundFreshRawData =
@@ -1887,11 +2323,15 @@ object EventStore {
 
             if (!parserFoundFreshRawData) {
                 appendLine(
-                    "Keine neuen Rohdaten im letzten Parserlauf."
+                    context.getString(
+                        R.string.event_export_no_new_raw_data
+                    )
                 )
             } else if (rawDiagnosticLines.isEmpty()) {
                 appendLine(
-                    "Keine passenden BatteryStats-Rohzeilen gespeichert."
+                    context.getString(
+                        R.string.event_export_no_raw_lines
+                    )
                 )
             } else {
                 rawDiagnosticLines.forEach { line ->
@@ -1906,7 +2346,9 @@ object EventStore {
 
             if (events.isEmpty()) {
                 appendLine(
-                    "Noch keine Ereignisse gespeichert."
+                    context.getString(
+                        R.string.event_export_no_events
+                    )
                 )
             } else {
                 events.forEach { event ->
@@ -1917,12 +2359,12 @@ object EventStore {
                     )
 
                     appendLine(
-                        "${eventLabel(event.type)} – " +
+                        "${eventLabel(context, event.type)} – " +
                             event.title
                     )
 
                     val exportDetails =
-                        exportDetailsForEvent(event)
+                        exportDetailsForEvent(context, event)
 
                     if (exportDetails.isNotBlank()) {
                         appendLine(exportDetails)
@@ -1937,6 +2379,7 @@ object EventStore {
     }
 
     private fun exportDetailsForEvent(
+        context: Context,
         event: WakeEvent
     ): String {
         if (event.type != "EXPERT_SNAPSHOT") {
@@ -1950,11 +2393,15 @@ object EventStore {
                 .toList()
 
         fun sectionItems(
-            title: String
+            titleId: Int
         ): List<String> {
             val start =
                 lines.indexOfFirst { line ->
-                    line.trim() == title
+                    LocalizedText.equalsAny(
+                        line.trim(),
+                        context,
+                        titleId
+                    )
                 }
 
             if (start < 0) {
@@ -1968,10 +2415,26 @@ object EventStore {
                         line.trim()
 
                     trimmed.isNotBlank() &&
-                        trimmed != "Standort / Bewegung" &&
-                        trimmed != "Sensorik" &&
-                        trimmed != "Funk / Netzwerk" &&
-                        !trimmed.startsWith("Hinweis:")
+                        !LocalizedText.equalsAny(
+                            trimmed,
+                            context,
+                            R.string.shizuku_snapshot_section_location
+                        ) &&
+                        !LocalizedText.equalsAny(
+                            trimmed,
+                            context,
+                            R.string.shizuku_snapshot_section_sensors
+                        ) &&
+                        !LocalizedText.equalsAny(
+                            trimmed,
+                            context,
+                            R.string.shizuku_snapshot_section_network
+                        ) &&
+                        !LocalizedText.startsWithAny(
+                            trimmed,
+                            context,
+                            R.string.shizuku_snapshot_note_label
+                        )
                 }
                 .filter { line ->
                     line.trim().startsWith("•")
@@ -1979,17 +2442,25 @@ object EventStore {
         }
 
         val locationItems =
-            sectionItems("Standort / Bewegung")
+            sectionItems(
+                R.string.shizuku_snapshot_section_location
+            )
 
         val sensorItems =
-            sectionItems("Sensorik")
+            sectionItems(
+                R.string.shizuku_snapshot_section_sensors
+            )
 
         val networkItems =
-            sectionItems("Funk / Netzwerk")
+            sectionItems(
+                R.string.shizuku_snapshot_section_network
+            )
 
         val locationText =
             if (locationItems.isEmpty()) {
-                "keine auffälligen Hinweise"
+                context.getString(
+                    R.string.event_expert_no_notable_hints
+                )
             } else {
                 locationItems
                     .take(3)
@@ -2000,7 +2471,9 @@ object EventStore {
 
         val sensorText =
             if (sensorItems.isEmpty()) {
-                "keine auffälligen Hinweise"
+                context.getString(
+                    R.string.event_expert_no_notable_hints
+                )
             } else {
                 sensorItems
                     .take(3)
@@ -2011,7 +2484,9 @@ object EventStore {
 
         val networkText =
             if (networkItems.isEmpty()) {
-                "keine auffälligen Hinweise"
+                context.getString(
+                    R.string.event_expert_no_notable_hints
+                )
             } else {
                 networkItems
                     .take(3)
@@ -2021,18 +2496,48 @@ object EventStore {
             }
 
         return buildString {
-            appendLine("Auslöser: Display an")
-            appendLine("Datenquelle: Shizuku Kompaktdiagnose")
+            appendLine(
+                context.getString(
+                    R.string.service_snapshot_trigger,
+                    context.getString(
+                        R.string.service_snapshot_reason_screen_on
+                    )
+                )
+            )
+            appendLine(
+                context.getString(
+                    R.string.service_snapshot_source_compact
+                )
+            )
             appendLine()
-            appendLine("Expertenkontext kurz:")
-            appendLine("• Standort / Bewegung: $locationText")
-            appendLine("• Sensorik: $sensorText")
-            appendLine("• Funk / Netzwerk: $networkText")
+            appendLine(
+                context.getString(
+                    R.string.event_expert_context_heading
+                )
+            )
+            appendLine(
+                context.getString(
+                    R.string.event_expert_location_line,
+                    locationText
+                )
+            )
+            appendLine(
+                context.getString(
+                    R.string.event_expert_sensors_line,
+                    sensorText
+                )
+            )
+            appendLine(
+                context.getString(
+                    R.string.event_expert_network_line,
+                    networkText
+                )
+            )
             appendLine()
             append(
-                "Hinweis: Experten-Rohdaten werden im Export " +
-                    "bewusst verdichtet; Standortkoordinaten " +
-                    "werden nicht exportiert."
+                context.getString(
+                    R.string.event_expert_export_note
+                )
             )
         }
     }
@@ -2063,6 +2568,7 @@ object EventStore {
     }
 
     private fun buildExportSummary(
+        context: Context,
         events: List<WakeEvent>,
         highlights: List<String>
     ): List<String> {
@@ -2080,8 +2586,10 @@ object EventStore {
                     "WAKE_REASON_POWER_BUTTON",
                     ignoreCase = true
                 ) ||
-                    event.details.contains(
-                        "Power-Taste",
+                    LocalizedText.containsAny(
+                        event.details,
+                        context,
+                        R.string.event_power_button,
                         ignoreCase = true
                     )
             }
@@ -2089,22 +2597,30 @@ object EventStore {
         when {
             screenOnEvents.isEmpty() ->
                 summary.add(
-                    "In diesem Export wurden keine Display-Weckungen gespeichert."
+                    context.getString(
+                        R.string.event_summary_no_screen_wakeups
+                    )
                 )
 
             powerButtonWakeups == screenOnEvents.size ->
                 summary.add(
-                    "Das Display wurde in diesem Lauf nicht verdächtig von Apps geweckt."
+                    context.getString(
+                        R.string.event_summary_not_woken_by_apps
+                    )
                 )
 
             powerButtonWakeups > 0 ->
                 summary.add(
-                    "Ein Teil der Display-Weckungen wurde klar als Power-Taste erkannt."
+                    context.getString(
+                        R.string.event_summary_some_power_button
+                    )
                 )
 
             else ->
                 summary.add(
-                    "Es gab Display-Weckungen ohne eindeutige Power-Tasten-Erkennung."
+                    context.getString(
+                        R.string.event_summary_no_clear_power_button
+                    )
                 )
         }
 
@@ -2113,47 +2629,63 @@ object EventStore {
             powerButtonWakeups == screenOnEvents.size
         ) {
             summary.add(
-                "Alle Display-Weckungen wurden als Power-Taste erkannt."
+                context.getString(
+                    R.string.event_summary_all_power_button
+                )
             )
         }
 
         val frequentSourcesLine =
             highlights.firstOrNull { line ->
                 line.startsWith(
-                    "Häufige technische Quellen:"
+                    context.getString(
+                        R.string.event_highlight_frequent_sources_label
+                    )
                 )
             }
 
         when {
             frequentSourcesLine?.contains(
-                "Funk/Netzwerk",
+                context.getString(
+                    R.string.event_source_radio_network
+                ),
                 ignoreCase = true
             ) == true ->
                 summary.add(
-                    "Im Hintergrund gab es viele Funk-/Netzwerk-Aktivitäten."
+                    context.getString(
+                        R.string.event_summary_much_radio_network
+                    )
                 )
 
             frequentSourcesLine != null ->
                 summary.add(
-                    "Im Hintergrund wurden wiederkehrende technische Aktivitäten erkannt."
+                    context.getString(
+                        R.string.event_summary_recurring_technical
+                    )
                 )
         }
 
         val longestWakeupLine =
             highlights.firstOrNull { line ->
                 line.startsWith(
-                    "Längster CPU-Wakeup:"
+                    context.getString(
+                        R.string.event_highlight_longest_cpu_wakeup_label
+                    )
                 )
             }
 
         if (longestWakeupLine != null) {
             summary.add(
-                "Auffälligster längerer CPU-Wakeup: " +
+                context.getString(
+                    R.string.event_summary_most_notable_cpu_wakeup,
                     longestWakeupLine
                         .removePrefix(
-                            "Längster CPU-Wakeup: "
-                        ) +
-                    "."
+                            context.getString(
+                                R.string.event_highlight_longest_cpu_wakeup_label
+                            )
+                        )
+                        .trimStart()
+                )
             )
         }
 
@@ -2171,11 +2703,11 @@ object EventStore {
 
         if (lockGlowWakeups > 0) {
             summary.add(
-                if (lockGlowWakeups == 1) {
-                    "Eine Display-Weckung wurde durch LockGlow ausgelöst."
-                } else {
-                    "$lockGlowWakeups Display-Weckungen wurden durch LockGlow ausgelöst."
-                }
+                context.resources.getQuantityString(
+                    R.plurals.event_summary_lockglow_wakeups,
+                    lockGlowWakeups,
+                    lockGlowWakeups
+                )
             )
         }
 
@@ -2186,13 +2718,17 @@ object EventStore {
 
         if (notificationCount > 0) {
             summary.add(
-                "Benachrichtigungen wurden erfasst, aber nicht automatisch als Hauptauslöser gewertet."
+                context.getString(
+                    R.string.event_summary_notifications_not_main_trigger
+                )
             )
         }
 
         if (summary.isEmpty()) {
             summary.add(
-                "Keine besonderen Muster in den gespeicherten Ereignissen erkannt."
+                context.getString(
+                    R.string.event_no_special_patterns
+                )
             )
         }
 
@@ -2200,6 +2736,7 @@ object EventStore {
     }
 
     private fun buildExportHighlights(
+        context: Context,
         events: List<WakeEvent>
     ): List<String> {
         val highlights =
@@ -2213,6 +2750,7 @@ object EventStore {
         val longestCpuWakeup =
             cpuEvents.mapNotNull { event ->
                 parseCpuWakeDurationMillis(
+                    context,
                     event.details
                 )?.let { durationMillis ->
                     event to durationMillis
@@ -2223,34 +2761,46 @@ object EventStore {
 
         if (longestCpuWakeup != null) {
             highlights.add(
-                "Längster CPU-Wakeup: " +
+                context.getString(
+                    R.string.event_highlight_longest_cpu_wakeup,
                     cleanExportTitle(
+                        context,
                         longestCpuWakeup.first.title
-                    ) +
-                    " · " +
+                    ),
                     formatExportDuration(
                         longestCpuWakeup.second
                     )
+                )
             )
         }
 
         val frequentSources =
             events.flatMap { event ->
-                extractExportSources(event)
+                extractExportSources(context, event)
             }
                 .map { source ->
-                    compactExportSource(source)
+                    compactExportSource(context, source)
                 }
                 .filter { source ->
                     source.isNotBlank() &&
-                        !source.equals(
-                            "nicht eindeutig zuordenbar",
-                            ignoreCase = true
-                        ) &&
-                        !source.equals(
-                            "unbekannte Quelle",
-                            ignoreCase = true
-                        )
+                        LocalizedText.variants(
+                            context,
+                            R.string.bg_possible_source_ambiguous
+                        ).none { variant ->
+                            source.equals(
+                                variant,
+                                ignoreCase = true
+                            )
+                        } &&
+                        LocalizedText.variants(
+                            context,
+                            R.string.event_unknown_source
+                        ).none { variant ->
+                            source.equals(
+                                variant,
+                                ignoreCase = true
+                            )
+                        }
                 }
                 .groupingBy { source ->
                     source
@@ -2268,11 +2818,13 @@ object EventStore {
 
         if (frequentSources.isNotEmpty()) {
             highlights.add(
-                "Häufige technische Quellen: " +
+                context.getString(
+                    R.string.event_highlight_frequent_sources,
                     frequentSources.joinToString(", ") {
                             pair ->
                         "${pair.first} (${pair.second}×)"
                     }
+                )
             )
         }
 
@@ -2287,8 +2839,10 @@ object EventStore {
                     "WAKE_REASON_POWER_BUTTON",
                     ignoreCase = true
                 ) ||
-                    event.details.contains(
-                        "Power-Taste",
+                    LocalizedText.containsAny(
+                        event.details,
+                        context,
+                        R.string.event_power_button,
                         ignoreCase = true
                     )
             }
@@ -2299,23 +2853,25 @@ object EventStore {
                 screenOnEvents.size
             ) {
                 highlights.add(
-                    "Display-Weckungen: alle " +
-                        screenOnEvents.size +
-                        " als Power-Taste erkannt"
+                    context.getString(
+                        R.string.event_highlight_screen_wakeups_all_power_button,
+                        screenOnEvents.size
+                    )
                 )
             } else if (powerButtonWakeups > 0) {
                 highlights.add(
-                    "Display-Weckungen: " +
-                        powerButtonWakeups +
-                        " von " +
-                        screenOnEvents.size +
-                        " als Power-Taste erkannt"
+                    context.getString(
+                        R.string.event_highlight_screen_wakeups_some_power_button,
+                        powerButtonWakeups,
+                        screenOnEvents.size
+                    )
                 )
             } else {
                 highlights.add(
-                    "Display-Weckungen: " +
-                        screenOnEvents.size +
-                        " erkannt, ohne eindeutige Power-Taste"
+                    context.getString(
+                        R.string.event_highlight_screen_wakeups_no_power_button,
+                        screenOnEvents.size
+                    )
                 )
             }
         }
@@ -2327,30 +2883,37 @@ object EventStore {
 
         if (notificationCount > 0) {
             highlights.add(
-                "Benachrichtigungen: " +
-                    notificationCount +
-                    " erkannt, aber nicht automatisch als Hauptauslöser gewertet"
+                context.getString(
+                    R.string.event_highlight_notifications,
+                    notificationCount
+                )
             )
         }
 
         val unclearCpuWakeups =
             cpuEvents.count { event ->
-                event.details.contains(
-                    "nicht eindeutig zuordenbar",
+                LocalizedText.containsAny(
+                    event.details,
+                    context,
+                    R.string.bg_possible_source_ambiguous,
                     ignoreCase = true
                 )
             }
 
         if (unclearCpuWakeups > 0) {
             highlights.add(
-                "Nicht eindeutig zugeordnete CPU-Wakeups: " +
+                context.getString(
+                    R.string.event_highlight_unattributed_cpu_wakeups,
                     unclearCpuWakeups
+                )
             )
         }
 
         if (highlights.isEmpty()) {
             highlights.add(
-                "Keine besonderen Muster in den gespeicherten Ereignissen erkannt."
+                context.getString(
+                    R.string.event_no_special_patterns
+                )
             )
         }
 
@@ -2358,13 +2921,22 @@ object EventStore {
     }
 
     private fun parseCpuWakeDurationMillis(
+        context: Context,
         details: String
     ): Long? {
+        val labels =
+            formatPrefixVariants(
+                context,
+                R.string.bg_detail_cpu_awake_time
+            )
+
         val line =
             details.lines().firstOrNull { value ->
-                value.trim().startsWith(
-                    "CPU-Wachzeit:"
-                )
+                labels.any { label ->
+                    value.trim().startsWith(
+                        label
+                    )
+                }
             } ?: return null
 
         val value =
@@ -2372,12 +2944,45 @@ object EventStore {
                 .trim()
 
         if (
-            value.contains(
-                "nicht ermittelbar",
+            LocalizedText.containsAny(
+                value,
+                context,
+                R.string.bg_duration_not_determinable,
                 ignoreCase = true
             )
         ) {
             return null
+        }
+
+        val minutesMatch =
+            Regex(
+                """(\d+)\s+(\S+)\s+(\d+)"""
+            ).find(value)
+
+        if (
+            minutesMatch != null &&
+            LocalizedText.variants(
+                context,
+                R.string.event_minutes_word
+            ).any { word ->
+                word.equals(
+                    minutesMatch.groupValues[2],
+                    ignoreCase = true
+                )
+            }
+        ) {
+            val minutes =
+                minutesMatch.groupValues[1]
+                    .toLongOrNull()
+                    ?: return null
+
+            val seconds =
+                minutesMatch.groupValues[3]
+                    .toLongOrNull()
+                    ?: return null
+
+            return minutes * 60_000L +
+                seconds * 1_000L
         }
 
         val number =
@@ -2394,7 +2999,12 @@ object EventStore {
             value.contains("ms") ->
                 number.roundToLong()
 
-            value.contains("Sekunde") ->
+            LocalizedText.containsAny(
+                value,
+                context,
+                R.string.event_seconds_word,
+                ignoreCase = true
+            ) ->
                 (number * 1000.0).roundToLong()
 
             else ->
@@ -2417,22 +3027,29 @@ object EventStore {
     }
 
     private fun chooseExportWakeupTitle(
+        context: Context,
         event: WakeEvent
     ): String {
         val title =
             event.title
 
         val titleLooksUnknown =
-            title.contains(
-                "CPU im Hintergrund aufgeweckt",
+            LocalizedText.containsAny(
+                title,
+                context,
+                R.string.bg_title_cpu_woken_background,
                 ignoreCase = true
             ) ||
-                title.contains(
-                    "unbekannte Quelle",
+                LocalizedText.containsAny(
+                    title,
+                    context,
+                    R.string.event_unknown_source,
                     ignoreCase = true
                 ) ||
-                title.contains(
-                    "nicht eindeutig",
+                LocalizedText.containsAny(
+                    title,
+                    context,
+                    R.string.event_not_clearly,
                     ignoreCase = true
                 )
 
@@ -2442,7 +3059,9 @@ object EventStore {
                 event.details
             )
         ) {
-            return "Funk/Netzwerk"
+            return context.getString(
+                R.string.event_source_radio_network
+            )
         }
 
         if (
@@ -2480,19 +3099,58 @@ object EventStore {
     }
 
     private fun cleanExportTitle(
+        context: Context,
         title: String
     ): String {
-        return title
-            .removePrefix("CPU-Wakeup · ")
-            .removePrefix("CPU im Hintergrund aufgeweckt")
+        return removeAnyFormatPrefix(
+            title,
+            context,
+            R.string.bg_title_cpu_wakeup_source
+        )
+            .let { value ->
+                LocalizedText.removeAnyPrefix(
+                    value,
+                    context,
+                    R.string.bg_title_cpu_woken_background
+                )
+            }
             .ifBlank {
-                "unbekannte Quelle"
+                context.getString(
+                    R.string.event_unknown_source
+                )
             }
     }
 
+    private fun removeAnyFormatPrefix(
+        text: String,
+        context: Context,
+        formatId: Int
+    ): String {
+        val prefix =
+            formatPrefixVariants(
+                context,
+                formatId
+            ).firstOrNull { value ->
+                value.isNotEmpty() &&
+                    text.startsWith(value)
+            }
+                ?: return text
+
+        return text
+            .removePrefix(prefix)
+            .trimStart()
+    }
+
     private fun extractExportSources(
+        context: Context,
         event: WakeEvent
     ): List<String> {
+        val possibleSourceLabels =
+            formatPrefixVariants(
+                context,
+                R.string.bg_detail_possible_source
+            )
+
         val sources =
             mutableListOf<String>()
 
@@ -2503,7 +3161,13 @@ object EventStore {
             val line =
                 rawLine.trim()
 
-            if (line == "Technische Quellen:") {
+            if (
+                LocalizedText.equalsAny(
+                    line,
+                    context,
+                    R.string.bg_detail_technical_sources
+                )
+            ) {
                 inTechnicalSources = true
                 return@forEach
             }
@@ -2522,17 +3186,27 @@ object EventStore {
             }
 
             when {
-                line.startsWith("Mögliche Quelle:") ->
+                possibleSourceLabels.any { label ->
+                    line.startsWith(label)
+                } ->
                     sources.add(
                         line.substringAfter(":").trim()
                     )
 
-                line.startsWith("Quelle:") ->
+                LocalizedText.startsWithAny(
+                    line,
+                    context,
+                    R.string.event_label_source
+                ) ->
                     sources.add(
                         line.substringAfter(":").trim()
                     )
 
-                line.startsWith("Technischer Tag:") ->
+                LocalizedText.startsWithAny(
+                    line,
+                    context,
+                    R.string.event_label_technical_tag
+                ) ->
                     sources.add(
                         line.substringAfter(":").trim()
                     )
@@ -2543,6 +3217,7 @@ object EventStore {
     }
 
     private fun compactExportSource(
+        context: Context,
         source: String
     ): String {
         val cleaned =
@@ -2563,16 +3238,27 @@ object EventStore {
             lower.contains("com.android.stk2") ||
                 lower.contains("telephony-sem-radio") ||
                 lower.contains("rilj_ack_wl") ->
-                "Samsung Telefonie-/SIM-Dienst"
+                context.getString(
+                    R.string.source_samsung_telephony_sim_service
+                )
 
             lower.contains("fmm-acquirewakelock") ||
                 lower.contains("offlinefindtask") ->
-                "Samsung Offline-Suche"
+                context.getString(
+                    R.string.source_samsung_offline_finding
+                )
 
             lower.contains("com.android.phone") ||
-                lower.contains("android telefoniedienst") ||
+                LocalizedText.containsAny(
+                    lower,
+                    context,
+                    R.string.bg_source_android_phone_service,
+                    ignoreCase = true
+                ) ||
                 lower.contains("*telephony-radio*") ->
-                "Android Telefoniedienst"
+                context.getString(
+                    R.string.source_android_phone_service
+                )
 
             lower.contains("ipa_client") ||
                 lower.contains("rmnet") ||
@@ -2584,7 +3270,9 @@ object EventStore {
                 lower.contains("rilj_ack_wl") ||
                 lower.contains("cellular") ||
                 lower.contains("radio") ->
-                "Funk/Netzwerk"
+                context.getString(
+                    R.string.event_source_radio_network
+                )
 
             lower.contains("time_tick") ->
                 "Android TIME_TICK"
@@ -2592,10 +3280,17 @@ object EventStore {
             lower.contains("systemui.aod") ||
                 lower.contains("aod.hide_time") ||
                 lower.contains("oplusscreenoffgesture") ->
-                "Android Systemoberfläche"
+                context.getString(
+                    R.string.source_android_system_ui
+                )
 
             lower.contains("com.google.android.gms") ||
-                lower.contains("google play-dienste") ||
+                LocalizedText.containsAny(
+                    lower,
+                    context,
+                    R.string.bg_source_google_play_services,
+                    ignoreCase = true
+                ) ||
                 lower.contains("gms_scheduler") ||
                 lower.contains("callbackrunner") ||
                 lower.contains("cmwakelock") ||
@@ -2607,7 +3302,9 @@ object EventStore {
                 lower.contains("gmsalarm") ||
                 lower.contains("com.google.android.location") ||
                 lower.contains("activity_detection") ->
-                "Google-Dienste"
+                context.getString(
+                    R.string.event_source_google_services
+                )
 
             lower.contains("whatsapp") ->
                 "WhatsApp"
@@ -2615,13 +3312,30 @@ object EventStore {
             lower.contains("oplus") ||
                 lower.contains("oneplus") ||
                 lower.contains("athena") ->
-                "OnePlus-System"
+                context.getString(
+                    R.string.event_source_oneplus_system
+                )
 
             else ->
-                cleaned
-                    .removePrefix("CPU-Wakeup · ")
-                    .removePrefix("Wakeup-Alarm: ")
-                    .removePrefix("Partial Wakelock: ")
+                removeAnyFormatPrefix(
+                    cleaned,
+                    context,
+                    R.string.bg_title_cpu_wakeup_source
+                )
+                    .let { value ->
+                        removeAnyTypePrefix(
+                            value,
+                            context,
+                            R.string.bg_type_wakeup_alarm
+                        )
+                    }
+                    .let { value ->
+                        removeAnyTypePrefix(
+                            value,
+                            context,
+                            R.string.bg_type_partial_wakelock
+                        )
+                    }
                     .substringBefore("/androidx.work.impl")
                     .substringBefore(":android")
                     .substringBefore(" (")
@@ -2632,30 +3346,59 @@ object EventStore {
 
 
 
-    private fun formatAge(milliseconds: Long): String {
-        return String.format(
-            Locale.getDefault(),
-            "%.1f Sekunden",
+    private fun removeAnyTypePrefix(
+        text: String,
+        context: Context,
+        typeId: Int
+    ): String {
+        val prefix =
+            LocalizedText.variants(
+                context,
+                typeId
+            )
+                .map { type ->
+                    "$type: "
+                }
+                .firstOrNull { value ->
+                    text.startsWith(value)
+                }
+                ?: return text
+
+        return text.removePrefix(prefix)
+    }
+
+    private fun formatAge(
+        context: Context,
+        milliseconds: Long
+    ): String {
+        return context.getString(
+            R.string.event_age_seconds,
             milliseconds / 1000.0
         )
     }
 
-    private fun eventLabel(type: String): String {
-        return when (type) {
-            "MONITOR_START" -> "MONITOR"
-            "MONITOR_STOP" -> "MONITOR"
-            "NETWORK_SESSION" ->
-                "NETZWERK-SITZUNG"
-            "SCREEN_ON" -> "DISPLAY AN"
-            "SCREEN_OFF" -> "DISPLAY AUS"
-            "POWER_CONNECTED" -> "STROM VERBUNDEN"
-            "POWER_DISCONNECTED" -> "STROM GETRENNT"
-            "USB_ATTACHED" -> "USB VERBUNDEN"
-            "USB_DETACHED" -> "USB GETRENNT"
-            "NOTIFICATION" -> "BENACHRICHTIGUNG"
-            "CPU_WAKEUP" -> "CPU-HINTERGRUND-WAKEUP"
-            else -> type
-        }
+    private fun eventLabel(
+        context: Context,
+        type: String
+    ): String {
+        val labelId =
+            when (type) {
+                "MONITOR_START" -> R.string.event_type_monitor
+                "MONITOR_STOP" -> R.string.event_type_monitor
+                "NETWORK_SESSION" ->
+                    R.string.event_type_network_session
+                "SCREEN_ON" -> R.string.event_type_screen_on
+                "SCREEN_OFF" -> R.string.event_type_screen_off
+                "POWER_CONNECTED" -> R.string.event_type_power_connected
+                "POWER_DISCONNECTED" -> R.string.event_type_power_disconnected
+                "USB_ATTACHED" -> R.string.event_type_usb_attached
+                "USB_DETACHED" -> R.string.event_type_usb_detached
+                "NOTIFICATION" -> R.string.event_type_notification
+                "CPU_WAKEUP" -> R.string.event_type_cpu_wakeup
+                else -> return type
+            }
+
+        return context.getString(labelId)
     }
 
     private fun preferences(context: Context) =
@@ -2665,6 +3408,7 @@ object EventStore {
         )
 
     private fun readEvents(
+        context: Context,
         rawJson: String?
     ): MutableList<WakeEvent> {
         if (rawJson.isNullOrBlank()) {
@@ -2695,7 +3439,9 @@ object EventStore {
                         ),
                         title = item.optString(
                             "title",
-                            "Unbekanntes Ereignis"
+                            context.getString(
+                                R.string.event_unknown_event
+                            )
                         ),
                         details = item.optString(
                             "details",

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bg_title_cpu_wakeup_source">CPU wakeup · %1$s</string>
+    <string name="bg_title_cpu_woken_background">CPU woken in background</string>
+
+    <string name="bg_wake_reason_cpu_activity_no_reason">CPU activity detected; no wake reason reported</string>
+    <string name="bg_unspecified">Unspecified</string>
+
+    <string name="bg_detail_display_stayed_off">Display: stayed off</string>
+    <string name="bg_detail_system_reason">System reason: %1$s</string>
+    <string name="bg_detail_detection">Detection: %1$s</string>
+    <string name="bg_detail_cpu_awake_time">CPU awake time: %1$s</string>
+    <string name="bg_detail_return_to_sleep">Return to sleep: %1$s</string>
+    <string name="bg_return_to_sleep_detected">detected</string>
+    <string name="bg_return_to_sleep_not_determined">not determined in current history</string>
+    <string name="bg_detail_possible_source">Possible source: %1$s</string>
+    <string name="bg_possible_source_ambiguous">not clearly attributable</string>
+    <string name="bg_detail_activity">Activity: %1$s</string>
+    <string name="bg_detail_assessment_correlated">Assessment: correlated in time, not proven as sole cause</string>
+    <string name="bg_detail_related_activities">Related activities:</string>
+    <string name="bg_detail_no_related_activity">• No app or service activity found in the short time window</string>
+    <string name="bg_detail_evidence_item">• %1$s: %2$s</string>
+    <string name="bg_detail_technical_wake_reason">Technical wake reason: %1$s</string>
+    <string name="bg_technical_wake_reason_missing">not provided by BatteryStats</string>
+    <string name="bg_detail_technical_sources">Technical sources:</string>
+    <string name="bg_detail_data_source">Data source: Android BatteryStats history</string>
+
+    <string name="bg_detection_reason_and_cpu_start">Wake reason and CPU start</string>
+    <string name="bg_detection_reason_only">Wake reason without separate CPU start entry</string>
+    <string name="bg_detection_cpu_start_only">CPU start without reported wake reason</string>
+    <string name="bg_detection_batterystats_activity">BatteryStats activity</string>
+
+    <string name="bg_type_sync">Sync</string>
+    <string name="bg_type_wakeup_alarm">Wakeup alarm</string>
+    <string name="bg_type_job_wakelock">Job wakelock</string>
+    <string name="bg_type_partial_wakelock">Partial wakelock</string>
+
+    <string name="bg_source_android_system">Android system</string>
+    <string name="bg_source_google_play_services">Google Play services</string>
+    <string name="bg_source_android_system_ui">Android System UI</string>
+    <string name="bg_source_samsung_telephony_sim">Samsung phone/SIM service</string>
+    <string name="bg_source_android_phone_service">Android phone service</string>
+    <string name="bg_source_android_contacts">Android Contacts</string>
+    <string name="bg_source_android_calendar">Android Calendar</string>
+    <string name="bg_source_samsung_system_service">Samsung system service</string>
+    <string name="bg_source_oneplus_system_service">OnePlus system service</string>
+    <string name="bg_source_samsung_offline_finding">Samsung Offline Finding</string>
+    <string name="bg_source_unknown_system">Unknown system source</string>
+
+    <string name="bg_duration_not_determinable">not determinable</string>
+    <string name="bg_duration_seconds">%1$.1f seconds</string>
+    <string name="bg_duration_minutes_seconds">%1$d min %2$d sec</string>
+
+    <string name="bg_wake_reason_failed_suspend">Failed suspend attempt</string>
+    <string name="bg_wake_reason_scheduled_system_alarm">Scheduled system alarm</string>
+    <string name="bg_wake_reason_qualcomm_radio">Qualcomm radio/modem activity</string>
+    <string name="bg_wake_reason_timer_scheduler">Android timer/scheduler activity</string>
+    <string name="bg_wake_reason_system_activity">Android system activity</string>
+    <string name="bg_wake_reason_kernel_hardware_interrupt">Kernel or hardware interrupt</string>
+    <string name="bg_wake_reason_kernel_system_signal">Kernel/system signal</string>
+    <string name="bg_wake_reason_hardware_interrupt_signal">Hardware or interrupt signal</string>
+</resources>

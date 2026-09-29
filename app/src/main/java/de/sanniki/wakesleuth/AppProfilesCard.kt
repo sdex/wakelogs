@@ -19,6 +19,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +48,7 @@ fun AppProfilesCard(
     val profiles =
         remember(sessions) {
             buildAppProfiles(
+                context,
                 sessions
             )
         }
@@ -90,7 +93,7 @@ fun AppProfilesCard(
         ) {
             Text(
                 text =
-                    "App-Steckbriefe",
+                    stringResource(R.string.profiles_title),
                 style =
                     MaterialTheme
                         .typography
@@ -106,19 +109,19 @@ fun AppProfilesCard(
 
             Text(
                 text =
-                    profiles.size
-                        .toString() +
-                        if (
-                            profiles.size == 1
-                        ) {
-                            " Quelle über " +
-                                sessions.size +
-                                " Sitzungen"
-                        } else {
-                            " Quellen über " +
-                                sessions.size +
-                                " Sitzungen"
-                        },
+                    stringResource(
+                        R.string.profiles_sources_across_sessions,
+                        pluralStringResource(
+                            R.plurals.profiles_source_count,
+                            profiles.size,
+                            profiles.size
+                        ),
+                        pluralStringResource(
+                            R.plurals.profiles_session_count,
+                            sessions.size,
+                            sessions.size
+                        )
+                    ),
                 color =
                     MaterialTheme
                         .colorScheme
@@ -145,9 +148,9 @@ fun AppProfilesCard(
                 Text(
                     text =
                         if (expanded.value) {
-                            "Steckbriefe ausblenden"
+                            stringResource(R.string.profiles_hide)
                         } else {
-                            "Steckbriefe anzeigen"
+                            stringResource(R.string.profiles_show)
                         }
                 )
             }
@@ -195,7 +198,7 @@ fun AppProfilesCard(
 
                 Text(
                     text =
-                        "Ältere Sitzungen enthalten zunächst nur Netzwerkdaten. CPU-, Display- und Begleitwerte werden mit neuen Messungen schrittweise ergänzt.",
+                        stringResource(R.string.profiles_older_sessions_note),
                     color =
                         MaterialTheme
                             .colorScheme
@@ -268,15 +271,18 @@ private fun AppProfileEntry(
 
         AppProfileValueRow(
             label =
-                "Sitzungen",
+                stringResource(R.string.profiles_sessions),
             value =
-                "${profile.sessionsSeen} von " +
+                stringResource(
+                    R.string.profiles_sessions_value,
+                    profile.sessionsSeen,
                     profile.totalSessions
+                )
         )
 
         AppProfileValueRow(
             label =
-                "Netzwerk gesamt",
+                stringResource(R.string.profiles_network_total),
             value =
                 formatAppProfileBytes(
                     profile
@@ -289,7 +295,7 @@ private fun AppProfileEntry(
         ) {
             AppProfileValueRow(
                 label =
-                    "Ø Netzwerk / Sitzung",
+                    stringResource(R.string.profiles_network_per_session),
                 value =
                     formatAppProfileBytes(
                         profile
@@ -300,7 +306,7 @@ private fun AppProfileEntry(
 
         AppProfileValueRow(
             label =
-                "CPU-Zuordnungen",
+                stringResource(R.string.profiles_cpu_attributions),
             value =
                 profile.cpuCount
                     .toString()
@@ -308,7 +314,7 @@ private fun AppProfileEntry(
 
         AppProfileValueRow(
             label =
-                "Display-Zuordnungen",
+                stringResource(R.string.profiles_screen_attributions),
             value =
                 profile.displayCount
                     .toString()
@@ -320,7 +326,7 @@ private fun AppProfileEntry(
         ) {
             AppProfileValueRow(
                 label =
-                    "Davon Begleitaktivität",
+                    stringResource(R.string.profiles_companion_activity),
                 value =
                     profile.companionCount
                         .toString()
@@ -330,7 +336,7 @@ private fun AppProfileEntry(
                 ?.let { duration ->
                     AppProfileValueRow(
                         label =
-                            "Längste CPU-Wachzeit",
+                            stringResource(R.string.profiles_longest_cpu_awake_time),
                         value =
                             formatAppProfileDuration(
                                 duration
@@ -341,6 +347,7 @@ private fun AppProfileEntry(
     }
 }
 
+@Composable
 private fun appProfileSummary(
     profile: AppProfileData
 ): String {
@@ -348,19 +355,19 @@ private fun appProfileSummary(
         profile.displayCount > 0 &&
             profile.companionCount <
                 profile.displayCount ->
-            "Mehrfach bei Display-Ereignissen zugeordnet. Die Vertrauensstufe der einzelnen Ereignisse bleibt entscheidend."
+            stringResource(R.string.profiles_summary_display)
 
         profile.cpuCount >= 3 ->
-            "Regelmäßig als mögliche CPU-Quelle erkannt; noch kein Beweis für problematischen Akkuverbrauch."
+            stringResource(R.string.profiles_summary_cpu)
 
         profile.companionCount > 0 ->
-            "Wiederholt als Begleitaktivität sichtbar, bislang nicht als direkter Hauptauslöser bestätigt."
+            stringResource(R.string.profiles_summary_companion)
 
         profile.networkTotalBytes > 0L ->
-            "In mehreren Sitzungen mit Netzwerkverkehr sichtbar, ohne automatisch einen Wakeup-Zusammenhang zu beweisen."
+            stringResource(R.string.profiles_summary_network)
 
         else ->
-            "Technische Quelle aus gespeicherten Sitzungen."
+            stringResource(R.string.profiles_summary_technical)
     }
 }
 
@@ -371,31 +378,31 @@ private fun AppProfileTrendCard(
     val title =
         when (profile.trend) {
             AppProfileTrend.MORE_ACTIVE ->
-                "Häufiger aktiv"
+                stringResource(R.string.profiles_trend_more_active)
 
             AppProfileTrend.LESS_ACTIVE ->
-                "Seltener aktiv"
+                stringResource(R.string.profiles_trend_less_active)
 
             AppProfileTrend.STABLE ->
-                "Ähnlicher Verlauf"
+                stringResource(R.string.profiles_trend_stable)
 
             AppProfileTrend.NOT_ENOUGH_DATA ->
-                "Noch nicht genug Sitzungen"
+                stringResource(R.string.profiles_trend_not_enough_data)
         }
 
     val explanation =
         when (profile.trend) {
             AppProfileTrend.MORE_ACTIVE ->
-                "In den jüngeren Sitzungen wurde diese Quelle häufiger oder stärker erfasst."
+                stringResource(R.string.profiles_trend_more_active_explanation)
 
             AppProfileTrend.LESS_ACTIVE ->
-                "In den jüngeren Sitzungen wurde diese Quelle seltener oder schwächer erfasst."
+                stringResource(R.string.profiles_trend_less_active_explanation)
 
             AppProfileTrend.STABLE ->
-                "Zwischen den jüngeren und älteren Sitzungen besteht kein deutlicher Unterschied."
+                stringResource(R.string.profiles_trend_stable_explanation)
 
             AppProfileTrend.NOT_ENOUGH_DATA ->
-                "Für einen belastbaren Vergleich werden mindestens vier gespeicherte Sitzungen benötigt."
+                stringResource(R.string.profiles_trend_not_enough_data_explanation)
         }
 
     val titleColor =

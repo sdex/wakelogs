@@ -5,6 +5,11 @@ import java.io.InputStreamReader
 
 class WakeSleuthUserService : IWakeSleuthShell.Stub() {
 
+    companion object {
+        const val EXIT_CODE_ERROR_PREFIX =
+            "wakelogs_shell_exit_code:"
+    }
+
     override fun runCommand(command: String): String {
         val process = Runtime.getRuntime().exec(
             arrayOf(
@@ -31,7 +36,7 @@ class WakeSleuthUserService : IWakeSleuthShell.Stub() {
         if (exitCode != 0) {
             throw IllegalStateException(
                 stderr.ifBlank {
-                    "Shell-Befehl fehlgeschlagen: $exitCode"
+                    EXIT_CODE_ERROR_PREFIX + exitCode
                 }
             )
         }

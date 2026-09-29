@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shizuku_error_not_running">Shizuku is not running.</string>
+    <string name="shizuku_error_permission_missing">Shizuku permission missing.</string>
+    <string name="shizuku_error_unknown">Unknown Shizuku error</string>
+    <string name="shizuku_error_unknown_alarm">Unknown alarm diagnostics error</string>
+    <string name="shizuku_error_unknown_jobscheduler">Unknown JobScheduler error</string>
+    <string name="shizuku_error_unknown_netstats">Unknown NetStats error</string>
+    <string name="shizuku_error_unknown_wake_reason">Unknown wake reason error</string>
+    <string name="shizuku_error_diagnostics_unavailable">Shizuku system diagnostics not available.</string>
+    <string name="shizuku_error_diagnostic_command_failed">Diagnostic command failed.</string>
+    <string name="shizuku_error_user_service_not_responding">Shizuku UserService is not responding.</string>
+    <string name="shizuku_error_shell_command_failed">Shell command failed: %1$s</string>
+    <string name="shizuku_error_alarm_stats_not_found">Alarm statistics not found.</string>
+
+    <string name="shizuku_wakelock_type_screen_bright">Screen bright</string>
+    <string name="shizuku_wakelock_type_screen_dim">Screen dimmed</string>
+    <string name="shizuku_wakelock_type_full">Full</string>
+    <string name="shizuku_wakelock_type_partial">Partial</string>
+    <string name="shizuku_wakelock_type_unknown">Unknown</string>
+
+    <string name="shizuku_snapshot_no_hits">no notable compact matches</string>
+    <string name="shizuku_snapshot_section_location">Location / motion</string>
+    <string name="shizuku_snapshot_section_sensors">Sensors</string>
+    <string name="shizuku_snapshot_section_network">Radio / network</string>
+    <string name="shizuku_snapshot_note_label">Note:</string>
+    <string name="shizuku_snapshot_note">Note: Raw data was intentionally condensed; location coordinates are not exported.</string>
+
+    <string name="shizuku_hint_fused_location">Google Fused Location active/present</string>
+    <string name="shizuku_hint_network_location">Network location active/present</string>
+    <string name="shizuku_hint_gnss_location">GNSS/GPS location service present</string>
+    <string name="shizuku_hint_activity_recognition">Motion detection / Activity Recognition visible</string>
+    <string name="shizuku_hint_geofencing">Geofencing indicators visible</string>
+    <string name="shizuku_hint_weather_passive_location">Weather service uses passive location data</string>
+    <string name="shizuku_hint_oplus_location_services">OnePlus/Oplus location or sensor services visible</string>
+    <string name="shizuku_hint_proximity_wakeup">Wakeup proximity sensor present/can be enabled</string>
+    <string name="shizuku_hint_pick_up_detection">Pick-up/lift detection present</string>
+    <string name="shizuku_hint_aod_light_wakeup">AOD/light sensor wakeup present</string>
+    <string name="shizuku_hint_oplus_activity_sensor">Oplus Activity Recognition sensor present</string>
+    <string name="shizuku_hint_samsung_activity_detection">Samsung motion/activity detection present</string>
+    <string name="shizuku_hint_activity_detection">Motion/activity detection present</string>
+    <string name="shizuku_hint_step_sensors">Step/motion sensors visible</string>
+    <string name="shizuku_hint_significant_motion">Significant motion detection present</string>
+    <string name="shizuku_hint_wifi_connected">Wi-Fi active/connected</string>
+    <string name="shizuku_hint_cellular_ims">Cellular/IMS context visible</string>
+    <string name="shizuku_hint_telephony_requests">Telephony network requests visible</string>
+    <string name="shizuku_hint_qualcomm_network_optimization">Qualcomm/OEM network optimization visible</string>
+</resources>

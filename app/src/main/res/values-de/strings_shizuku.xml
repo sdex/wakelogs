@@ -23,7 +23,6 @@
     <string name="shizuku_snapshot_section_location">Standort / Bewegung</string>
     <string name="shizuku_snapshot_section_sensors">Sensorik</string>
     <string name="shizuku_snapshot_section_network">Funk / Netzwerk</string>
-    <string name="shizuku_snapshot_note_label">Hinweis:</string>
     <string name="shizuku_snapshot_note">Hinweis: Rohdaten wurden bewusst verdichtet; Standortkoordinaten werden nicht exportiert.</string>
 
     <string name="shizuku_hint_fused_location">Google Fused Location aktiv/vorhanden</string>

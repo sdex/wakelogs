@@ -6,6 +6,10 @@ import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.IBinder
 import androidx.annotation.StringRes
+import de.sanniki.wakesleuth.domain.DiagnosticError
+import de.sanniki.wakesleuth.domain.ExpertSignal
+import de.sanniki.wakesleuth.domain.ExpertSnapshot
+import de.sanniki.wakesleuth.domain.ExpertSnapshotStatus
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -76,12 +80,18 @@ data class NetworkTrafficEntry(
     val appLabel: String?,
     val rxBytes: Long,
     val txBytes: Long,
-    val totalBytes: Long
+    val totalBytes: Long,
+    val rxPackets: Long? = null,
+    val txPackets: Long? = null
 )
 
 data class NetworkStatsDiagnostic(
     val entries: List<NetworkTrafficEntry>,
-    val error: String? = null
+    /** Localized message for the manual diagnostics card. */
+    val error: String? = null,
+    val errorCode: DiagnosticError? = null,
+    /** Raw exception or shell message, never localized. */
+    val errorDetail: String? = null
 )
 
 private data class ParsedWakeupAlarm(
@@ -388,7 +398,8 @@ object ShizukuDiagnostics {
                 return@withContext networkStatsErrorResult(
                     context.getString(
                         R.string.shizuku_error_not_running
-                    )
+                    ),
+                    DiagnosticError.SHIZUKU_UNAVAILABLE
                 )
             }
 
@@ -399,7 +410,8 @@ object ShizukuDiagnostics {
                 return@withContext networkStatsErrorResult(
                     context.getString(
                         R.string.shizuku_error_permission_missing
-                    )
+                    ),
+                    DiagnosticError.PERMISSION_DENIED
                 )
             }
 
@@ -435,6 +447,10 @@ object ShizukuDiagnostics {
                         throwable = throwable,
                         fallback =
                             R.string.shizuku_error_unknown_netstats
+                    ),
+                    failureCode(throwable),
+                    throwable.message?.removePrefix(
+                        WakeSleuthUserService.EXIT_CODE_ERROR_PREFIX
                     )
                 )
             }
@@ -606,6 +622,23 @@ object ShizukuDiagnostics {
             )
         }
     }
+
+    private fun failureCode(
+        throwable: Throwable
+    ): DiagnosticError =
+        when {
+            throwable is TimeoutCancellationException ->
+                DiagnosticError.TIMEOUT
+
+            throwable.message
+                ?.startsWith(
+                    WakeSleuthUserService.EXIT_CODE_ERROR_PREFIX
+                ) == true ->
+                DiagnosticError.SHELL_FAILED
+
+            else ->
+                DiagnosticError.UNKNOWN
+        }
 
     private fun failureMessage(
         context: Context,
@@ -1548,6 +1581,16 @@ object ShizukuDiagnostics {
                             ?.toLongOrNull()
                             ?: 0L
 
+                    val rxPackets =
+                        match.groups["rxPackets"]
+                            ?.value
+                            ?.toLongOrNull()
+
+                    val txPackets =
+                        match.groups["txPackets"]
+                            ?.value
+                            ?.toLongOrNull()
+
                     val packagesFromManager =
                         runCatching {
                             packageManager
@@ -1631,7 +1674,9 @@ object ShizukuDiagnostics {
                         appLabel = appLabel,
                         rxBytes = rxBytes,
                         txBytes = txBytes,
-                        totalBytes = totalBytes
+                        totalBytes = totalBytes,
+                        rxPackets = rxPackets,
+                        txPackets = txPackets
                     )
                 }
                 .sortedByDescending {
@@ -1798,11 +1843,15 @@ object ShizukuDiagnostics {
     }
 
     private fun networkStatsErrorResult(
-        message: String
+        message: String,
+        code: DiagnosticError,
+        detail: String? = null
     ): NetworkStatsDiagnostic {
         return NetworkStatsDiagnostic(
             entries = emptyList(),
-            error = message
+            error = message,
+            errorCode = code,
+            errorDetail = detail
         )
     }
 
@@ -1893,9 +1942,14 @@ object ShizukuDiagnostics {
         Regex(
             """(?<timestamp>\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+-\s+\d+\s+\((?<package>[^)]+)\)\s+-\s+(?<action>ACQ|REL)\s+(?<tail>.+)"""
         )
+    /**
+     * Compact location, sensor and network context right after a
+     * screen-on. Only which signals are visible is kept; raw dumps and
+     * coordinates are never stored.
+     */
     suspend fun readCompactExpertSnapshot(
         context: Context
-    ): String {
+    ): ExpertSnapshot {
         val deviceFamily =
             DeviceProfile.detect(context).family
 
@@ -1904,370 +1958,122 @@ object ShizukuDiagnostics {
             vararg needles: String
         ): Boolean {
             val lower =
-                text.lowercase(Locale.getDefault())
+                text.lowercase(Locale.ROOT)
 
             return needles.any {
                 lower.contains(
-                    it.lowercase(Locale.getDefault())
+                    it.lowercase(Locale.ROOT)
                 )
             }
         }
 
-        fun compactLineList(
-            lines: List<String>,
-            maxItems: Int = 8
-        ): String {
-            val cleaned =
-                lines
-                    .map { it.trim() }
-                    .filter { it.isNotBlank() }
-                    .distinct()
-                    .take(maxItems)
-
-            return if (cleaned.isEmpty()) {
-                context.getString(
-                    R.string.shizuku_snapshot_no_hits
+        suspend fun dump(command: String): String? =
+            runCatching {
+                runDiagnosticCommand(
+                    context = context,
+                    command = command
                 )
-            } else {
-                cleaned.joinToString(
-                    separator = "\n"
-                ) { "• $it" }
-            }
-        }
+            }.getOrNull()
 
         val locationRaw =
-            runCatching {
-                runDiagnosticCommand(
-                    context = context,
-                    command = "timeout 3s dumpsys location"
-                )
-            }.getOrElse { "" }
+            dump("timeout 3s dumpsys location")
 
         val sensorRaw =
-            runCatching {
-                runDiagnosticCommand(
-                    context = context,
-                    command = "timeout 3s dumpsys sensorservice"
-                )
-            }.getOrElse { "" }
+            dump("timeout 3s dumpsys sensorservice")
 
         val connectivityRaw =
-            runCatching {
-                runDiagnosticCommand(
-                    context = context,
-                    command = "timeout 3s dumpsys connectivity"
-                )
-            }.getOrElse { "" }
+            dump("timeout 3s dumpsys connectivity")
 
-        val locationHints =
-            mutableListOf<String>()
+        val location =
+            locationRaw.orEmpty()
 
-        if (
-            hasAny(
-                locationRaw,
-                "fused_location_provider",
-                "fused provider",
-                "FusedLocationService"
-            )
-        ) {
-            locationHints.add(
-                context.getString(
-                    R.string.shizuku_hint_fused_location
-                )
-            )
-        }
+        val sensors =
+            sensorRaw.orEmpty()
 
-        if (
-            hasAny(
-                locationRaw,
-                "network_location_provider",
-                "NetworkLocationService",
-                "network provider"
-            )
-        ) {
-            locationHints.add(
-                context.getString(
-                    R.string.shizuku_hint_network_location
-                )
-            )
-        }
+        val connectivity =
+            connectivityRaw.orEmpty()
 
-        if (
-            hasAny(
-                locationRaw,
-                "gnss_location_provider",
-                "GnssService",
-                "gps provider"
-            )
-        ) {
-            locationHints.add(
-                context.getString(
-                    R.string.shizuku_hint_gnss_location
-                )
-            )
-        }
-
-        if (
-            hasAny(
-                locationRaw,
-                "activity_recognition_provider",
-                "ALARM_WAKEUP_ACTIVITY_DETECTION",
-                "activity"
-            )
-        ) {
-            locationHints.add(
-                context.getString(
-                    R.string.shizuku_hint_activity_recognition
-                )
-            )
-        }
-
-        if (
-            hasAny(
-                locationRaw,
-                "geofencer_provider",
-                "geofence",
-                "Geofencer"
-            )
-        ) {
-            locationHints.add(
-                context.getString(
-                    R.string.shizuku_hint_geofencing
-                )
-            )
-        }
-
-        if (
-            hasAny(
-                locationRaw,
-                "com.coloros.weather",
-                "weather"
-            )
-        ) {
-            locationHints.add(
-                context.getString(
-                    R.string.shizuku_hint_weather_passive_location
-                )
-            )
-        }
-
-        if (
-            deviceFamily ==
-                DeviceFamily.ONEPLUS &&
-            hasAny(
-                locationRaw,
-                "com.oplus.nas",
-                "com.oplus.nhs",
-                "OplusLBS",
-                "SensorNotificationService"
-            )
-        ) {
-            locationHints.add(
-                context.getString(
-                    R.string.shizuku_hint_oplus_location_services
-                )
-            )
-        }
-
-        val sensorHints =
-            mutableListOf<String>()
-
-        if (
-            hasAny(
-                sensorRaw,
-                "Proximity Sensor Wakeup",
-                "android.sensor.proximity"
-            )
-        ) {
-            sensorHints.add(
-                context.getString(
-                    R.string.shizuku_hint_proximity_wakeup
-                )
-            )
-        }
-
-        if (
-            hasAny(
-                sensorRaw,
-                "pick_up_motion",
-                "tilt_detector"
-            )
-        ) {
-            sensorHints.add(
-                context.getString(
-                    R.string.shizuku_hint_pick_up_detection
-                )
-            )
-        }
-
-        if (
-            hasAny(
-                sensorRaw,
-                "lux_aod",
-                "aod"
-            )
-        ) {
-            sensorHints.add(
-                context.getString(
-                    R.string.shizuku_hint_aod_light_wakeup
-                )
-            )
-        }
-
-        if (
-            hasAny(
-                sensorRaw,
-                "oplus_activity_recognition",
-                "activity_recognition"
-            )
-        ) {
-            sensorHints.add(
-                when (deviceFamily) {
-                    DeviceFamily.ONEPLUS ->
-                        context.getString(
-                            R.string.shizuku_hint_oplus_activity_sensor
-                        )
-
-                    DeviceFamily.SAMSUNG ->
-                        context.getString(
-                            R.string.shizuku_hint_samsung_activity_detection
-                        )
-
-                    DeviceFamily.GENERIC_ANDROID ->
-                        context.getString(
-                            R.string.shizuku_hint_activity_detection
-                        )
+        val signals =
+            buildSet {
+                if (hasAny(location, "fused_location_provider", "fused provider", "FusedLocationService")) {
+                    add(ExpertSignal.FUSED_LOCATION)
                 }
-            )
-        }
 
-        if (
-            hasAny(
-                sensorRaw,
-                "pedometer_minute",
-                "step_counter",
-                "step_detector"
-            )
-        ) {
-            sensorHints.add(
-                context.getString(
-                    R.string.shizuku_hint_step_sensors
-                )
-            )
-        }
+                if (hasAny(location, "network_location_provider", "NetworkLocationService", "network provider")) {
+                    add(ExpertSignal.NETWORK_LOCATION)
+                }
 
-        if (
-            hasAny(
-                sensorRaw,
-                "significant_motion",
-                "motion_detect"
-            )
-        ) {
-            sensorHints.add(
-                context.getString(
-                    R.string.shizuku_hint_significant_motion
-                )
-            )
-        }
+                if (hasAny(location, "gnss_location_provider", "GnssService", "gps provider")) {
+                    add(ExpertSignal.GNSS_LOCATION)
+                }
 
-        val networkHints =
-            mutableListOf<String>()
+                if (hasAny(location, "activity_recognition_provider", "ALARM_WAKEUP_ACTIVITY_DETECTION", "activity")) {
+                    add(ExpertSignal.ACTIVITY_RECOGNITION)
+                }
 
-        if (
-            hasAny(
-                connectivityRaw,
-                "WIFI CONNECTED",
-                "Transports: WIFI",
-                "wlan0"
-            )
-        ) {
-            networkHints.add(
-                context.getString(
-                    R.string.shizuku_hint_wifi_connected
-                )
-            )
-        }
+                if (hasAny(location, "geofencer_provider", "geofence", "Geofencer")) {
+                    add(ExpertSignal.GEOFENCING)
+                }
 
-        if (
-            hasAny(
-                connectivityRaw,
-                "MOBILE",
-                "CELLULAR",
-                "rmnet"
-            )
-        ) {
-            networkHints.add(
-                context.getString(
-                    R.string.shizuku_hint_cellular_ims
-                )
-            )
-        }
+                if (hasAny(location, "com.coloros.weather", "weather")) {
+                    add(ExpertSignal.WEATHER_PASSIVE_LOCATION)
+                }
 
-        if (
-            hasAny(
-                connectivityRaw,
-                "com.android.phone",
-                "TelephonyNetworkSpecifier"
-            )
-        ) {
-            networkHints.add(
-                context.getString(
-                    R.string.shizuku_hint_telephony_requests
-                )
-            )
-        }
+                if (
+                    deviceFamily == DeviceFamily.ONEPLUS &&
+                    hasAny(location, "com.oplus.nas", "com.oplus.nhs", "OplusLBS", "SensorNotificationService")
+                ) {
+                    add(ExpertSignal.OPLUS_LOCATION_SERVICES)
+                }
 
-        if (
-            hasAny(
-                connectivityRaw,
-                "com.qualcomm",
-                "qti",
-                "cne"
-            )
-        ) {
-            networkHints.add(
-                context.getString(
-                    R.string.shizuku_hint_qualcomm_network_optimization
-                )
-            )
-        }
+                if (hasAny(sensors, "Proximity Sensor Wakeup", "android.sensor.proximity")) {
+                    add(ExpertSignal.PROXIMITY_WAKEUP)
+                }
 
-        return buildString {
-            appendLine(
-                context.getString(
-                    R.string.shizuku_snapshot_section_location
-                )
-            )
-            appendLine(
-                compactLineList(locationHints)
-            )
-            appendLine()
-            appendLine(
-                context.getString(
-                    R.string.shizuku_snapshot_section_sensors
-                )
-            )
-            appendLine(
-                compactLineList(sensorHints)
-            )
-            appendLine()
-            appendLine(
-                context.getString(
-                    R.string.shizuku_snapshot_section_network
-                )
-            )
-            appendLine(
-                compactLineList(networkHints)
-            )
-            appendLine()
-            appendLine(
-                context.getString(
-                    R.string.shizuku_snapshot_note
-                )
-            )
-        }
+                if (hasAny(sensors, "pick_up_motion", "tilt_detector")) {
+                    add(ExpertSignal.PICK_UP_DETECTION)
+                }
+
+                if (hasAny(sensors, "lux_aod", "aod")) {
+                    add(ExpertSignal.AOD_LIGHT_WAKEUP)
+                }
+
+                if (hasAny(sensors, "oplus_activity_recognition", "activity_recognition")) {
+                    add(ExpertSignal.ACTIVITY_SENSOR)
+                }
+
+                if (hasAny(sensors, "pedometer_minute", "step_counter", "step_detector")) {
+                    add(ExpertSignal.STEP_SENSORS)
+                }
+
+                if (hasAny(sensors, "significant_motion", "motion_detect")) {
+                    add(ExpertSignal.SIGNIFICANT_MOTION)
+                }
+
+                if (hasAny(connectivity, "WIFI CONNECTED", "Transports: WIFI", "wlan0")) {
+                    add(ExpertSignal.WIFI_CONNECTED)
+                }
+
+                if (hasAny(connectivity, "MOBILE", "CELLULAR", "rmnet")) {
+                    add(ExpertSignal.CELLULAR_IMS)
+                }
+
+                if (hasAny(connectivity, "com.android.phone", "TelephonyNetworkSpecifier")) {
+                    add(ExpertSignal.TELEPHONY_REQUESTS)
+                }
+
+                if (hasAny(connectivity, "com.qualcomm", "qti", "cne")) {
+                    add(ExpertSignal.QUALCOMM_NETWORK_OPTIMIZATION)
+                }
+            }
+
+        return ExpertSnapshot(
+            screenOnEventId = null,
+            status = ExpertSnapshotStatus.OK,
+            locationAvailable = locationRaw != null,
+            sensorsAvailable = sensorRaw != null,
+            networkAvailable = connectivityRaw != null,
+            signals = signals
+        )
     }
-
-
-
 }

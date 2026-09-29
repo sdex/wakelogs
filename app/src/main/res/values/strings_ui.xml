@@ -64,16 +64,6 @@
     <string name="timeline_type_power_disconnected">POWER DISCONNECTED</string>
     <string name="timeline_type_usb_attached">USB CONNECTED</string>
     <string name="timeline_type_usb_detached">USB DISCONNECTED</string>
-    <string name="timeline_prefix_direct_wake_reason">Direct wake reason:</string>
-    <string name="timeline_prefix_likely_cause">Likely cause:</string>
-    <string name="timeline_prefix_possible_cause">Possible cause:</string>
-    <string name="timeline_prefix_later_detected_cause">Cause detected later:</string>
-    <string name="timeline_prefix_possible_source">Possible source:</string>
-    <string name="timeline_prefix_system_reason">System reason:</string>
-    <string name="timeline_prefix_cpu_awake_time">CPU awake time:</string>
-    <string name="timeline_prefix_source">Source:</string>
-    <string name="timeline_prefix_kind">Type:</string>
-    <string name="timeline_prefix_cause">Cause:</string>
     <string name="timeline_gap_days_hours">%1$d d %2$d h later</string>
     <string name="timeline_gap_hours_minutes">%1$d h %2$d min later</string>
     <string name="timeline_gap_minutes_seconds">%1$d min %2$d s later</string>

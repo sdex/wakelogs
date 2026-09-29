@@ -23,7 +23,6 @@
     <string name="shizuku_snapshot_section_location">Location / motion</string>
     <string name="shizuku_snapshot_section_sensors">Sensors</string>
     <string name="shizuku_snapshot_section_network">Radio / network</string>
-    <string name="shizuku_snapshot_note_label">Note:</string>
     <string name="shizuku_snapshot_note">Note: Raw data was intentionally condensed; location coordinates are not exported.</string>
 
     <string name="shizuku_hint_fused_location">Google Fused Location active/present</string>

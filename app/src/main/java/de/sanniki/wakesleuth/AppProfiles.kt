@@ -1,6 +1,6 @@
 package de.sanniki.wakesleuth
 
-import android.content.Context
+import de.sanniki.wakesleuth.domain.SourceRef
 
 enum class AppProfileTrend {
     MORE_ACTIVE,
@@ -10,6 +10,7 @@ enum class AppProfileTrend {
 }
 
 data class AppProfileData(
+    val source: SourceRef,
     val name: String,
     val sessionsSeen: Int,
     val totalSessions: Int,
@@ -33,11 +34,16 @@ data class AppProfileData(
             }
 }
 
+/**
+ * Activity of every source across the archived sessions. Network traffic
+ * and wakeups of the same source are merged by its identity.
+ */
 fun buildAppProfiles(
-    context: Context,
     sessions: List<ArchivedSession>
 ): List<AppProfileData> {
     data class MutableProfile(
+        val source: SourceRef,
+        val name: String,
         val sessionIds:
             MutableSet<Long> =
             linkedSetOf(),
@@ -57,15 +63,12 @@ fun buildAppProfiles(
 
     sessions.forEach { session ->
         session.topApps.forEach { app ->
-            val name =
-                sourceDisplayName(
-                    context,
-                    app.name
-                )
-
             val item =
-                profiles.getOrPut(name) {
-                    MutableProfile()
+                profiles.getOrPut(app.source.groupKey) {
+                    MutableProfile(
+                        source = app.source,
+                        name = app.name
+                    )
                 }
 
             item.sessionIds.add(
@@ -82,15 +85,12 @@ fun buildAppProfiles(
         }
 
         session.sources.forEach { source ->
-            val name =
-                sourceDisplayName(
-                    context,
-                    source.name
-                )
-
             val item =
-                profiles.getOrPut(name) {
-                    MutableProfile()
+                profiles.getOrPut(source.source.groupKey) {
+                    MutableProfile(
+                        source = source.source,
+                        name = source.name
+                    )
                 }
 
             item.sessionIds.add(
@@ -124,13 +124,13 @@ fun buildAppProfiles(
 
         val trendData =
             calculateAppProfileTrend(
-                context = context,
-                name = entry.key,
+                groupKey = entry.key,
                 sessions = sessions
             )
 
         AppProfileData(
-            name = entry.key,
+            source = entry.value.source,
+            name = entry.value.name,
             sessionsSeen =
                 entry.value
                     .sessionIds.size,
@@ -185,8 +185,7 @@ private data class AppProfileTrendData(
 )
 
 private fun calculateAppProfileTrend(
-    context: Context,
-    name: String,
+    groupKey: String,
     sessions: List<ArchivedSession>
 ): AppProfileTrendData {
     if (sessions.size < 4) {
@@ -244,9 +243,8 @@ private fun calculateAppProfileTrend(
         recent
             .map {
                 appActivityScore(
-                    context = context,
                     session = it,
-                    name = name
+                    groupKey = groupKey
                 )
             }
             .average()
@@ -255,9 +253,8 @@ private fun calculateAppProfileTrend(
         previous
             .map {
                 appActivityScore(
-                    context = context,
                     session = it,
-                    name = name
+                    groupKey = groupKey
                 )
             }
             .average()
@@ -300,39 +297,22 @@ private fun calculateAppProfileTrend(
 }
 
 private fun appActivityScore(
-    context: Context,
     session: ArchivedSession,
-    name: String
+    groupKey: String
 ): Double {
-    val normalizedName =
-        sourceDisplayName(
-            context,
-            name
-        )
-
     val source =
         session.sources
             .firstOrNull {
-                sourceDisplayName(
-                    context,
-                    it.name
-                ).equals(
-                    normalizedName,
-                    ignoreCase = true
-                )
+                it.source.groupKey == groupKey
             }
 
     val network =
         session.topApps
-            .firstOrNull {
-                sourceDisplayName(
-                    context,
-                    it.name
-                ).equals(
-                    normalizedName,
-                    ignoreCase = true
-                )
+            .filter {
+                it.source.groupKey == groupKey
             }
+            .takeIf { it.isNotEmpty() }
+            ?.sumOf { it.totalBytes }
 
     val cpuScore =
         (
@@ -357,15 +337,15 @@ private fun appActivityScore(
             network == null ->
                 0.0
 
-            network.totalBytes >=
+            network >=
                 50L * 1024L * 1024L ->
                 2.0
 
-            network.totalBytes >=
+            network >=
                 5L * 1024L * 1024L ->
                 1.0
 
-            network.totalBytes > 0L ->
+            network > 0L ->
                 0.5
 
             else ->

@@ -3,6 +3,8 @@ package de.sanniki.wakesleuth
 import android.app.Notification
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import de.sanniki.wakesleuth.data.WakelogsData
+import kotlinx.coroutines.launch
 
 class WakeNotificationListener :
     NotificationListenerService() {
@@ -59,93 +61,24 @@ class WakeNotificationListener :
             .trim()
             .take(MAX_TEXT_LENGTH)
 
-        val appName = runCatching {
-            val info =
-                packageManager.getApplicationInfo(
-                    item.packageName,
-                    0
-                )
+        val postedAt =
+            System.currentTimeMillis()
 
-            packageManager
-                .getApplicationLabel(info)
-                .toString()
-        }.getOrElse {
-            item.packageName
-        }
+        // Recording only happens while a session is open; the recorder
+        // drops the call otherwise, so no separate monitoring flag is
+        // needed here.
+        val data =
+            WakelogsData.get(this)
 
-        val duplicate =
-            NotificationStore.isDuplicate(
-                context = this,
+        data.scope.launch {
+            data.recorder.recordNotification(
+                at = postedAt,
                 packageName = item.packageName,
-                title = title,
-                text = text,
-                notificationKey = item.key
-            )
-
-        if (duplicate) {
-            return
-        }
-
-        val recentNotification =
-            RecentNotification(
-                timestamp =
-                    System.currentTimeMillis(),
-                packageName = item.packageName,
-                appName = appName,
+                notificationKey = item.key,
                 title = title,
                 text = text
             )
-
-        NotificationStore.save(
-            context = this,
-            notification = recentNotification
-        )
-
-        if (!EventStore.isMonitoring(this)) {
-            return
         }
-
-        EventStore.addEvent(
-            context = this,
-            type = "NOTIFICATION",
-            title =
-                getString(
-                    R.string.service_notification_event_title,
-                    appName
-                ),
-            details = buildString {
-                if (title.isNotBlank()) {
-                    appendLine(getString(R.string.service_notification_event_title_line, title))
-                }
-
-                if (text.isNotBlank()) {
-                    appendLine(getString(R.string.service_notification_event_text_line, text))
-                }
-
-                if (
-                    title.isBlank() &&
-                    text.isBlank()
-                ) {
-                    appendLine(
-                        getString(
-                            R.string.service_notification_event_no_content
-                        )
-                    )
-                }
-
-                append(
-                    getString(
-                        R.string.service_notification_event_package,
-                        item.packageName
-                    )
-                )
-            }
-        )
-
-        EventStore.attachLateNotificationToScreenOn(
-            context = this,
-            notification = recentNotification
-        )
     }
 
     companion object {

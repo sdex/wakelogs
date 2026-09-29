@@ -111,7 +111,6 @@
     <!-- SleepReport: analysis window -->
     <string name="sleep_window_running_analysis">Laufende Geräteruhe-Analyse</string>
     <string name="sleep_window_last_analysis">Letzte Geräteruhe-Analyse</string>
-    <string name="sleep_window_recorded_period">Aufgezeichneter Zeitraum</string>
     <string name="sleep_window_running">%1$s · läuft</string>
 
     <!-- SleepReport: rating and summary -->
@@ -149,31 +148,9 @@
     <string name="sleep_hint_long_quiet">Es gab mindestens eine längere ununterbrochene Ruhephase.</string>
     <string name="sleep_hint_busiest_hours">Die meiste Aktivität trat zwischen %1$s:00 und %2$s:00 Uhr auf.</string>
 
-    <!-- SleepReport: source names -->
-    <string name="sleep_system_service_uid">Systemdienst · UID %1$s</string>
-    <string name="sleep_google_services">Google-Dienste</string>
-    <string name="sleep_oneplus_system">OnePlus-System</string>
-
     <!-- SleepReport: labels parsed from stored event details -->
-    <string name="sleep_label_possible_source">Mögliche Quelle:</string>
-    <string name="sleep_label_cpu_wakeup_prefix">CPU-Wakeup ·</string>
-    <string name="sleep_label_total">Gesamt:</string>
-    <string name="sleep_label_received">Empfangen:</string>
-    <string name="sleep_label_sent">Gesendet:</string>
-    <string name="sleep_label_apps_with_traffic">Apps mit Datenverkehr:</string>
-    <string name="sleep_label_measurement_duration">Messdauer:</string>
-    <string name="sleep_marker_no_baseline">Keine Ausgangsmessung verfügbar</string>
-    <string name="sleep_marker_end_measurement_failed">Endmessung fehlgeschlagen</string>
-    <string name="sleep_marker_no_app_traffic">Keine App mit messbarem Datenverkehr</string>
     <string name="sleep_network_no_baseline_message">Für diese Sitzung war keine Ausgangsmessung verfügbar.</string>
     <string name="sleep_network_no_app_traffic_message">Keine App verursachte messbaren Datenverkehr.</string>
-    <string name="sleep_label_direct_wake_reason">Direkter Aufweckgrund:</string>
-    <string name="sleep_label_likely_cause">Wahrscheinliche Ursache:</string>
-    <string name="sleep_label_possible_cause">Mögliche Ursache:</string>
-    <string name="sleep_label_later_detected_cause">Nachträglich erkannte Ursache:</string>
-    <string name="sleep_label_system_hint">Systemhinweis:</string>
-    <string name="sleep_label_wakeup_alarm_hint">Wakeup-Alarm-Hinweis:</string>
-    <string name="sleep_label_background_job_hint">Hintergrundjob-Hinweis:</string>
     <string name="sleep_marker_cause_unknown">Ursache: noch unbekannt</string>
 
     <!-- SleepReport: durations -->

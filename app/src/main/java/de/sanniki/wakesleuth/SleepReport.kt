@@ -31,6 +31,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import de.sanniki.wakesleuth.data.db.entity.MonitoringSessionEntity
+import de.sanniki.wakesleuth.domain.CauseAssessment
+import de.sanniki.wakesleuth.domain.CpuWakeupEvent
+import de.sanniki.wakesleuth.domain.NetworkMeasurement
+import de.sanniki.wakesleuth.domain.NetworkMeasurementStatus
+import de.sanniki.wakesleuth.domain.NetworkSessionEvent
+import de.sanniki.wakesleuth.domain.RecordedEvent
+import de.sanniki.wakesleuth.domain.ScreenOnEvent
+import de.sanniki.wakesleuth.domain.SourceClassifier
+import de.sanniki.wakesleuth.domain.SourceRef
+import de.sanniki.wakesleuth.domain.primarySource
+import de.sanniki.wakesleuth.ui.AnalysisWindow
+import de.sanniki.wakesleuth.ui.render.EventTextRenderer
+import de.sanniki.wakesleuth.ui.render.SourceLabelResolver
+import de.sanniki.wakesleuth.ui.render.rememberEventTextRenderer
+import de.sanniki.wakesleuth.ui.render.rememberSourceLabelResolver
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -72,6 +88,7 @@ private data class HourActivity(
 }
 
 private data class NetworkSessionApp(
+    val source: SourceRef,
     val name: String,
     val total: String,
     val received: String?,
@@ -103,6 +120,7 @@ private enum class SuspicionLevel(
 }
 
 private data class SuspicionCandidate(
+    val groupKey: String,
     val name: String,
     val level: SuspicionLevel,
     val explanation: String,
@@ -135,22 +153,32 @@ private data class SleepAnalysisData(
 
 @Composable
 fun SleepReportCard(
-    events: List<WakeEvent>,
+    events: List<RecordedEvent>,
+    session: MonitoringSessionEntity?,
     monitoring: Boolean,
     detailLevel: DetailLevel
 ) {
     val context =
         LocalContext.current
 
+    val renderer =
+        rememberEventTextRenderer()
+
+    val labels =
+        rememberSourceLabelResolver()
+
     val analysis =
         remember(
             events,
-            monitoring
+            session,
+            renderer
         ) {
             buildSleepAnalysis(
                 context = context,
+                renderer = renderer,
+                labels = labels,
                 events = events,
-                monitoring = monitoring
+                session = session
             )
         }
 
@@ -1241,10 +1269,7 @@ private fun NetworkSessionSection(
                     ) {
                         Text(
                             text =
-                                sourceDisplayName(
-                                    LocalContext.current,
-                                    app.name
-                                ),
+                                app.name,
                             modifier =
                                 Modifier.weight(1f),
                             color =
@@ -2117,82 +2142,75 @@ private fun SleepValueRow(
 
 private fun buildSleepAnalysis(
     context: Context,
-    events: List<WakeEvent>,
-    monitoring: Boolean
+    renderer: EventTextRenderer,
+    labels: SourceLabelResolver,
+    events: List<RecordedEvent>,
+    session: MonitoringSessionEntity?
 ): SleepAnalysisData {
     val window =
-        calculateSleepAnalysisWindow(
+        sleepAnalysisWindow(
             context = context,
-            events = events,
-            monitoring = monitoring
+            session = session
         )
+
+    // The final network measurement is written just after the stop
+    // request, so it belongs to the session even outside its bounds.
+    val networkSession =
+        events
+            .filterIsInstance<NetworkSessionEvent>()
+            .maxByOrNull { it.occurredAt }
+            ?.let {
+                networkSessionSummary(
+                    context = context,
+                    renderer = renderer,
+                    labels = labels,
+                    measurement = it.measurement
+                )
+            }
 
     val relevantEvents =
         events
             .asSequence()
             .filter { event ->
-                event.timestamp >=
+                event.occurredAt >=
                     window.startMillis &&
-                    event.timestamp <=
+                    event.occurredAt <=
                         window.endMillis
             }
             .sortedBy {
-                it.timestamp
+                it.occurredAt
             }
             .toList()
 
     val displayEvents =
-        relevantEvents.filter {
-            it.type == "SCREEN_ON"
-        }
+        relevantEvents.filterIsInstance<ScreenOnEvent>()
 
     val cpuEvents =
-        relevantEvents.filter {
-            it.type == "CPU_WAKEUP"
-        }
+        relevantEvents.filterIsInstance<CpuWakeupEvent>()
 
     val wakeEvents =
         relevantEvents.filter {
-            it.type == "SCREEN_ON" ||
-                it.type == "CPU_WAKEUP"
+            it is ScreenOnEvent ||
+                it is CpuWakeupEvent
         }
-
-    val networkSession =
-        relevantEvents
-            .lastOrNull {
-                it.type ==
-                    "NETWORK_SESSION"
-            }
-            ?.let {
-                parseNetworkSessionSummary(
-                    context,
-                    it.details
-                )
-            }
 
     val suspicionCandidates =
         buildSuspicionCandidates(
             context = context,
-            relevantEvents =
-                relevantEvents,
+            labels = labels,
+            cpuEvents = cpuEvents,
             networkSession =
                 networkSession
         )
 
     val explainedDisplay =
         displayEvents.count {
-            hasTechnicalExplanation(
-                context,
-                it
-            )
+            CauseAssessment.hasExplanationOrHint(it)
         }
 
     val unexplainedDisplay =
         displayEvents.count {
-            isTechnicallyUnexplained(
-                context,
-                it
-            )
+            CauseAssessment.isUnexplained(it)
         }
 
     val quietPhases =
@@ -2225,8 +2243,8 @@ private fun buildSleepAnalysis(
             .map {
                 (first, second) ->
 
-                second.timestamp -
-                    first.timestamp
+                second.occurredAt -
+                    first.occurredAt
             }
             .takeIf {
                 it.isNotEmpty()
@@ -2367,47 +2385,20 @@ private fun buildSleepAnalysis(
     )
 }
 
+/**
+ * Sources that were active during the analysis window. CPU wakeups and
+ * network traffic are matched by source identity.
+ */
 private fun buildSuspicionCandidates(
     context: Context,
-    relevantEvents: List<WakeEvent>,
+    labels: SourceLabelResolver,
+    cpuEvents: List<CpuWakeupEvent>,
     networkSession: NetworkSessionSummary?
 ): List<SuspicionCandidate> {
     val cpuSources =
-        relevantEvents
-            .filter {
-                it.type == "CPU_WAKEUP"
-            }
-            .mapNotNull { event ->
-                extractCpuPossibleSource(
-                    context,
-                    event
-                )
-            }
-            .map {
-                normalizeSuspicionSource(
-                    context,
-                    it
-                )
-            }
-            .filter { source ->
-                source.isNotBlank() &&
-                    LocalizedText
-                        .variants(
-                            context,
-                            R.string.bg_possible_source_ambiguous
-                        )
-                        .none {
-                            source.equals(
-                                it,
-                                ignoreCase = true
-                            )
-                        }
-            }
-
-    val cpuCounts =
-        cpuSources
-            .groupingBy { it }
-            .eachCount()
+        cpuEvents
+            .mapNotNull { it.primarySource() }
+            .groupBy { it.groupKey }
 
     val networkApps =
         networkSession
@@ -2417,16 +2408,13 @@ private fun buildSuspicionCandidates(
     val result =
         mutableListOf<SuspicionCandidate>()
 
-    cpuCounts.forEach {
-            (cpuSource, cpuCount) ->
+    cpuSources.forEach { (groupKey, sources) ->
+        val cpuCount =
+            sources.size
 
         val matchingNetwork =
             networkApps.firstOrNull {
-                sourcesLikelyMatch(
-                    context,
-                    cpuSource,
-                    it.name
-                )
+                it.source.groupKey == groupKey
             }
 
         val level =
@@ -2470,7 +2458,8 @@ private fun buildSuspicionCandidates(
 
         result.add(
             SuspicionCandidate(
-                name = cpuSource,
+                groupKey = groupKey,
+                name = labels.label(sources.first()),
                 level = level,
                 explanation = explanation,
                 cpuOccurrences =
@@ -2484,21 +2473,15 @@ private fun buildSuspicionCandidates(
     networkApps.forEach { app ->
         val alreadyIncluded =
             result.any { candidate ->
-                sourcesLikelyMatch(
-                    context,
-                    candidate.name,
-                    app.name
-                )
+                candidate.groupKey ==
+                    app.source.groupKey
             }
 
         if (!alreadyIncluded) {
             result.add(
                 SuspicionCandidate(
-                    name =
-                        sourceDisplayName(
-                            context,
-                            app.name
-                        ),
+                    groupKey = app.source.groupKey,
+                    name = app.name,
                     level =
                         SuspicionLevel
                             .COMPANION_ACTIVITY,
@@ -2515,12 +2498,6 @@ private fun buildSuspicionCandidates(
     }
 
     return result
-        .distinctBy {
-            normalizeComparisonSource(
-                context,
-                it.name
-            )
-        }
         .sortedWith(
             compareBy<SuspicionCandidate> {
                 when (it.level) {
@@ -2542,493 +2519,140 @@ private fun buildSuspicionCandidates(
         )
 }
 
-private fun extractCpuPossibleSource(
+private fun networkSessionSummary(
     context: Context,
-    event: WakeEvent
-): String? {
-    return event.details
-        .lineSequence()
-        .map {
-            it.trim()
-        }
-        .firstOrNull {
-            LocalizedText.startsWithAny(
-                it,
-                context,
-                R.string.sleep_label_possible_source
-            )
-        }
-        ?.substringAfter(":")
-        ?.trim()
-        ?.ifBlank { null }
-}
-
-private fun normalizeSuspicionSource(
-    context: Context,
-    source: String
-): String {
-    val cleaned =
-        LocalizedText
-            .removeAnyPrefix(
-                source
-                    .trim()
-                    .trimStart('*')
-                    .trimEnd('*'),
-                context,
-                R.string.sleep_label_cpu_wakeup_prefix
-            )
-            .trimStart()
-            .removePrefix(
-                "Wakeup-Alarm: "
-            )
-            .removePrefix(
-                "Partial Wakelock: "
-            )
-            .trim()
-
-    val lower =
-        cleaned.lowercase(
-            Locale.getDefault()
-        )
-
-    val uidMatch =
-        Regex(
-            """^uid\s+(\d+)$""",
-            RegexOption.IGNORE_CASE
-        ).matchEntire(cleaned)
-
-    return when {
-        uidMatch != null ->
-            context.getString(
-                R.string.sleep_system_service_uid,
-                uidMatch.groupValues[1]
-            )
-
-        lower.contains(
-            "com.google.android.gms"
-        ) ||
-            lower.contains(
-                "com.google.android.location"
-            ) ||
-            lower.contains(
-                "activity_detection"
-            ) ||
-            lower.contains(
-                "callbackrunner"
-            ) ||
-            lower.contains(
-                "gms"
-            ) ->
-            context.getString(
-                R.string.sleep_google_services
-            )
-
-        lower.contains("whatsapp") ->
-            "WhatsApp"
-
-        lower.contains("oplus") ||
-            lower.contains("oneplus") ||
-            lower.contains("athena") ->
-            context.getString(
-                R.string.sleep_oneplus_system
-            )
-
-        lower.contains("samsung browser") ||
-            lower.contains(
-                "com.sec.android.app.sbrowser"
-            ) ->
-            "Samsung Browser"
-
-        lower.contains("revanced") ||
-            lower.contains(
-                "anddea.yrf.tube"
-            ) ->
-            "ReVanced Advanced"
-
-        else ->
-            cleaned
-                .substringBefore(
-                    "/androidx.work.impl"
-                )
-                .substringBefore(":android")
-                .substringBefore(" (")
-                .take(80)
-                .trim()
-    }
-}
-
-private fun sourcesLikelyMatch(
-    context: Context,
-    first: String,
-    second: String
-): Boolean {
-    val a =
-        normalizeComparisonSource(
-            context,
-            first
-        )
-
-    val b =
-        normalizeComparisonSource(
-            context,
-            second
-        )
-
-    if (
-        a.isBlank() ||
-        b.isBlank()
-    ) {
-        return false
-    }
-
-    if (a == b) {
-        return true
-    }
-
-    return (
-        a.length >= 5 &&
-        b.contains(a)
-    ) || (
-        b.length >= 5 &&
-        a.contains(b)
-    )
-}
-
-private fun normalizeComparisonSource(
-    context: Context,
-    value: String
-): String {
-    return normalizeSuspicionSource(
-        context,
-        value
-    )
-        .lowercase(
-            Locale.getDefault()
-        )
-        .replace(
-            Regex("""[^a-z0-9äöüß]+"""),
-            ""
-        )
-}
-
-private fun parseNetworkSessionSummary(
-    context: Context,
-    details: String
+    renderer: EventTextRenderer,
+    labels: SourceLabelResolver,
+    measurement: NetworkMeasurement?
 ): NetworkSessionSummary {
-    val lines =
-        details.lines()
-            .map {
-                it.trim()
-            }
-
-    fun valueAfter(
-        @StringRes prefixRes: Int
-    ): String? {
-        return lines
-            .firstOrNull {
-                LocalizedText.startsWithAny(
-                    it,
-                    context,
-                    prefixRes
-                )
-            }
-            ?.let {
-                LocalizedText.removeAnyPrefix(
-                    it,
-                    context,
-                    prefixRes
-                )
-            }
-            ?.trim()
-            ?.ifBlank { null }
-    }
-
-    val trafficLine =
-        valueAfter(
-            R.string.sleep_label_total
-        )
-
-    val total =
-        trafficLine
-            ?.substringBefore("·")
-            ?.trim()
-            ?.ifBlank { null }
-
-    val received =
-        trafficLine
-            ?.let {
-                LocalizedText.substringAfterAny(
-                    it,
-                    context,
-                    R.string.sleep_label_received,
-                    missing = ""
-                )
-            }
-            ?.substringBefore("·")
-            ?.trim()
-            ?.ifBlank { null }
-
-    val sent =
-        trafficLine
-            ?.let {
-                LocalizedText.substringAfterAny(
-                    it,
-                    context,
-                    R.string.sleep_label_sent,
-                    missing = ""
-                )
-            }
-            ?.trim()
-            ?.ifBlank { null }
-
-    val activeApps =
-        valueAfter(
-            R.string.sleep_label_apps_with_traffic
-        )?.toIntOrNull()
-
-    val topApps =
-        buildList {
-            lines.forEachIndexed {
-                    index,
-                    line ->
-
-                if (!line.startsWith("• ")) {
-                    return@forEachIndexed
-                }
-
-                val headline =
-                    line.removePrefix("• ")
-                        .trim()
-
-                val separator =
-                    headline.lastIndexOf(" · ")
-
-                if (separator <= 0) {
-                    return@forEachIndexed
-                }
-
-                val name =
-                    headline
-                        .substring(
-                            0,
-                            separator
-                        )
-                        .trim()
-
-                val appTotal =
-                    headline
-                        .substring(
-                            separator + 3
-                        )
-                        .trim()
-
-                val transferLine =
-                    lines.getOrNull(
-                        index + 1
-                    ).orEmpty()
-
-                val appReceived =
-                    transferLine
-                        .takeIf {
-                            LocalizedText.startsWithAny(
-                                it,
-                                context,
-                                R.string.sleep_label_received
-                            )
-                        }
-                        ?.let {
-                            LocalizedText.substringAfterAny(
-                                it,
-                                context,
-                                R.string.sleep_label_received
-                            )
-                        }
-                        ?.substringBefore("·")
-                        ?.trim()
-                        ?.ifBlank { null }
-
-                val appSent =
-                    transferLine
-                        .takeIf {
-                            LocalizedText.containsAny(
-                                it,
-                                context,
-                                R.string.sleep_label_sent
-                            )
-                        }
-                        ?.let {
-                            LocalizedText.substringAfterAny(
-                                it,
-                                context,
-                                R.string.sleep_label_sent
-                            )
-                        }
-                        ?.trim()
-                        ?.ifBlank { null }
-
-                if (
-                    name.isNotBlank() &&
-                    appTotal.isNotBlank()
-                ) {
-                    add(
-                        NetworkSessionApp(
-                            name = name,
-                            total = appTotal,
-                            received =
-                                appReceived,
-                            sent = appSent
-                        )
-                    )
-                }
-            }
-        }
-
-    val message =
-        when {
-            LocalizedText.containsAny(
-                details,
-                context,
-                R.string.sleep_marker_no_baseline,
-                ignoreCase = true
-            ) ->
+    if (
+        measurement == null ||
+        measurement.status ==
+            NetworkMeasurementStatus.NO_BASELINE
+    ) {
+        return NetworkSessionSummary(
+            duration = null,
+            activeApps = null,
+            total = null,
+            received = null,
+            sent = null,
+            topApps = emptyList(),
+            message =
                 context.getString(
                     R.string.sleep_network_no_baseline_message
                 )
+        )
+    }
 
-            LocalizedText.containsAny(
-                details,
-                context,
-                R.string.sleep_marker_end_measurement_failed,
-                ignoreCase = true
-            ) ->
-                lines.firstOrNull {
-                    LocalizedText.containsAny(
-                        it,
-                        context,
-                        R.string.sleep_marker_end_measurement_failed,
-                        ignoreCase = true
-                    )
-                }
-
-            LocalizedText.containsAny(
-                details,
-                context,
-                R.string.sleep_marker_no_app_traffic,
-                ignoreCase = true
-            ) ->
+    if (
+        measurement.status ==
+        NetworkMeasurementStatus.END_FAILED
+    ) {
+        return NetworkSessionSummary(
+            duration = null,
+            activeApps = null,
+            total = null,
+            received = null,
+            sent = null,
+            topApps = emptyList(),
+            message =
                 context.getString(
-                    R.string.sleep_network_no_app_traffic_message
+                    R.string.service_network_end_failed,
+                    renderer.diagnosticErrorLabel(
+                        measurement.errorCode,
+                        measurement.errorDetail
+                    )
                 )
-
-            else ->
-                null
-        }
+        )
+    }
 
     return NetworkSessionSummary(
         duration =
-            valueAfter(
-                R.string.sleep_label_measurement_duration
-            ),
+            measurement.durationMs
+                ?.let(renderer::sessionDuration),
         activeApps =
-            activeApps,
-        total = total,
-        received = received,
-        sent = sent,
-        topApps = topApps,
-        message = message
+            measurement.usage.size,
+        total =
+            renderer.bytes(measurement.totalBytes),
+        received =
+            renderer.bytes(measurement.rxBytes),
+        sent =
+            renderer.bytes(measurement.txBytes),
+        topApps =
+            measurement.usage
+                .take(EventTextRenderer.NETWORK_TOP_APPS)
+                .map { usage ->
+                    NetworkSessionApp(
+                        source =
+                            usage.packageName
+                                ?.let { SourceClassifier.classify(it) }
+                                ?: SourceClassifier.forUid(usage.uid),
+                        name =
+                            labels.networkLabel(
+                                usage.packageName,
+                                usage.uid
+                            ),
+                        total =
+                            renderer.bytes(usage.totalBytes),
+                        received =
+                            renderer.bytes(usage.rxBytes),
+                        sent =
+                            renderer.bytes(usage.txBytes)
+                    )
+                },
+        message =
+            if (measurement.usage.isEmpty()) {
+                context.getString(
+                    R.string.sleep_network_no_app_traffic_message
+                )
+            } else {
+                null
+            }
     )
 }
 
-private fun calculateSleepAnalysisWindow(
+private fun sleepAnalysisWindow(
     context: Context,
-    events: List<WakeEvent>,
-    monitoring: Boolean
+    session: MonitoringSessionEntity?
 ): SleepAnalysisWindow {
     val now =
         System.currentTimeMillis()
 
-    val sorted =
-        events.sortedBy {
-            it.timestamp
-        }
-
-    val latestStart =
-        sorted.lastOrNull {
-            it.type == "MONITOR_START"
-        }
-
-    if (latestStart != null) {
-        if (monitoring) {
-            return SleepAnalysisWindow(
-                startMillis =
-                    latestStart.timestamp,
+    val window =
+        AnalysisWindow.of(
+            session = session,
+            now = now
+        )
+            ?: return SleepAnalysisWindow(
+                startMillis = now,
                 endMillis = now,
-                ongoing = true,
+                ongoing = false,
                 title =
                     context.getString(
-                        R.string.sleep_window_running_analysis
+                        R.string.sleep_no_analysis_yet
                     )
             )
-        }
 
-        val stopAfterStart =
-            sorted.firstOrNull { event ->
-                event.type ==
-                    "MONITOR_STOP" &&
-                    event.timestamp >=
-                        latestStart.timestamp
-            }
-
-        val finalSessionEvent =
-            sorted.lastOrNull { event ->
-                event.timestamp >=
-                    latestStart.timestamp
-            }
-
-        return SleepAnalysisWindow(
-            startMillis =
-                latestStart.timestamp,
-            endMillis =
-                stopAfterStart?.timestamp
-                    ?: finalSessionEvent
-                        ?.timestamp
-                    ?: latestStart.timestamp,
-            ongoing = false,
-            title =
+    return SleepAnalysisWindow(
+        startMillis = window.startMillis,
+        endMillis = window.endMillis,
+        ongoing = window.ongoing,
+        title =
+            if (window.ongoing) {
+                context.getString(
+                    R.string.sleep_window_running_analysis
+                )
+            } else {
                 context.getString(
                     R.string.sleep_window_last_analysis
                 )
-        )
-    }
-
-    if (sorted.isNotEmpty()) {
-        return SleepAnalysisWindow(
-            startMillis =
-                sorted.first().timestamp,
-            endMillis =
-                sorted.last().timestamp,
-            ongoing = false,
-            title =
-                context.getString(
-                    R.string.sleep_window_recorded_period
-                )
-        )
-    }
-
-    return SleepAnalysisWindow(
-        startMillis = now,
-        endMillis = now,
-        ongoing = false,
-        title =
-            context.getString(
-                R.string.sleep_no_analysis_yet
-            )
+            }
     )
 }
 
 private fun buildQuietPhases(
     window: SleepAnalysisWindow,
-    wakeEvents: List<WakeEvent>
+    wakeEvents: List<RecordedEvent>
 ): List<QuietPhase> {
     if (
         window.endMillis <=
@@ -3040,7 +2664,7 @@ private fun buildQuietPhases(
     val timestamps =
         wakeEvents
             .map {
-                it.timestamp
+                it.occurredAt
             }
             .filter {
                 it in
@@ -3074,8 +2698,8 @@ private fun buildQuietPhases(
 
 private fun buildHourlyActivity(
     window: SleepAnalysisWindow,
-    displayEvents: List<WakeEvent>,
-    cpuEvents: List<WakeEvent>
+    displayEvents: List<RecordedEvent>,
+    cpuEvents: List<RecordedEvent>
 ): List<HourActivity> {
     if (
         window.endMillis <=
@@ -3132,17 +2756,17 @@ private fun buildHourlyActivity(
 
         val displayCount =
             displayEvents.count {
-                it.timestamp >=
+                it.occurredAt >=
                     hourStart &&
-                    it.timestamp <
+                    it.occurredAt <
                         hourEnd
             }
 
         val cpuCount =
             cpuEvents.count {
-                it.timestamp >=
+                it.occurredAt >=
                     hourStart &&
-                    it.timestamp <
+                    it.occurredAt <
                         hourEnd
             }
 
@@ -3483,54 +3107,6 @@ private fun buildSleepHints(
         }
 
     return hints.distinct()
-}
-
-private fun hasTechnicalExplanation(
-    context: Context,
-    event: WakeEvent
-): Boolean {
-    if (
-        event.type !=
-        "SCREEN_ON"
-    ) {
-        return false
-    }
-
-    val details =
-        event.details
-
-    return listOf(
-        R.string.sleep_label_direct_wake_reason,
-        R.string.sleep_label_likely_cause,
-        R.string.sleep_label_possible_cause,
-        R.string.sleep_label_later_detected_cause,
-        R.string.sleep_label_system_hint,
-        R.string.sleep_label_wakeup_alarm_hint,
-        R.string.sleep_label_background_job_hint
-    ).any {
-        LocalizedText.containsAny(
-            details,
-            context,
-            it
-        )
-    }
-}
-
-private fun isTechnicallyUnexplained(
-    context: Context,
-    event: WakeEvent
-): Boolean {
-    return event.type ==
-        "SCREEN_ON" &&
-        LocalizedText.containsAny(
-            event.details,
-            context,
-            R.string.sleep_marker_cause_unknown
-        ) &&
-        !hasTechnicalExplanation(
-            context,
-            event
-        )
 }
 
 @Composable

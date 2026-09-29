@@ -1,6 +1,13 @@
 package de.sanniki.wakesleuth
 
 import android.content.Context
+import de.sanniki.wakesleuth.data.CpuWakeupCandidate
+import de.sanniki.wakesleuth.data.EvidenceCandidate
+import de.sanniki.wakesleuth.data.WakelogsData
+import de.sanniki.wakesleuth.domain.CpuEvidenceRules
+import de.sanniki.wakesleuth.domain.EvidenceOrigin
+import de.sanniki.wakesleuth.domain.EvidenceType
+import de.sanniki.wakesleuth.domain.PowerKeySignal
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -228,7 +235,7 @@ object BackgroundWakeMonitor {
         )
     }
 
-    private fun processHistory(
+    private suspend fun processHistory(
         context: Context,
         history: String
     ): Int {
@@ -491,7 +498,7 @@ object BackgroundWakeMonitor {
                                 )
                             }
 
-                    val technicalReason =
+                    val pmicReason =
                         powerEvidenceLines
                             .asSequence()
                             .mapNotNull { evidenceLine ->
@@ -510,26 +517,30 @@ object BackgroundWakeMonitor {
                                     ignoreCase = true
                                 )
                             }
-                            ?: when {
-                                hasSamsungPolicyPower ->
-                                    "android.policy:POWER"
 
-                                hasDisplayReasonKey ->
-                                    "Display reason=KEY"
+                    val signal =
+                        when {
+                            pmicReason != null ->
+                                PowerKeySignal.PMIC_PWRKEY
 
-                                else ->
-                                    "Samsung Power-Key"
-                            }
+                            hasSamsungPolicyPower ->
+                                PowerKeySignal.POLICY_POWER
 
-                    EventStore
-                        .attachBatteryStatsPowerKeyToScreenOn(
-                            context = context,
-                            powerKeyTimestamp =
+                            hasDisplayReasonKey ->
+                                PowerKeySignal.DISPLAY_REASON_KEY
+
+                            else ->
+                                PowerKeySignal.POWER_KEY_WAKELOCK
+                        }
+
+                    WakelogsData.get(context)
+                        .recorder
+                        .attachBatteryStatsPowerKey(
+                            powerKeyAt =
                                 line.timestampMillis,
-                            technicalReason =
-                                technicalReason,
-                            technicalTag =
-                                technicalTag
+                            signal = signal,
+                            rawReason = pmicReason,
+                            rawTag = technicalTag
                         )
                 }
             }
@@ -669,10 +680,11 @@ object BackgroundWakeMonitor {
                 return@forEach
             }
 
-            addGroupedWakeEvent(
-                context = context,
-                candidate = candidate
-            )
+            WakelogsData.get(context)
+                .recorder
+                .recordCpuWakeup(
+                    toCpuWakeupCandidate(candidate)
+                )
 
             added += 1
         }
@@ -780,39 +792,18 @@ object BackgroundWakeMonitor {
             durationMillis < 250L
     }
 
-    private fun addGroupedWakeEvent(
-        context: Context,
+    private fun toCpuWakeupCandidate(
         candidate: WakeCandidate
-    ) {
+    ): CpuWakeupCandidate {
         val sortedLines =
             candidate.lines
                 .sortedBy {
                     it.timestampMillis
                 }
 
-        val wakeLocks =
+        fun sources(regex: Regex): List<String> =
             sortedLines.mapNotNull { line ->
-                wakeLockRegex
-                    .find(line.raw)
-                    ?.groups
-                    ?.get("source")
-                    ?.value
-                    ?.let(::cleanSource)
-            }.distinct()
-
-        val jobs =
-            sortedLines.mapNotNull { line ->
-                jobRegex
-                    .find(line.raw)
-                    ?.groups
-                    ?.get("source")
-                    ?.value
-                    ?.let(::cleanSource)
-            }.distinct()
-
-        val syncs =
-            sortedLines.mapNotNull { line ->
-                syncRegex
+                regex
                     .find(line.raw)
                     ?.groups
                     ?.get("source")
@@ -822,11 +813,12 @@ object BackgroundWakeMonitor {
 
         val evidence =
             buildList {
-                wakeLocks.forEach { source ->
+                sources(wakeLockRegex).forEach { source ->
                     add(
-                        BackgroundEvidence(
+                        EvidenceCandidate(
+                            origin = EvidenceOrigin.WAKELOCK,
                             type =
-                                classifyWakeLock(
+                                CpuEvidenceRules.typeOfWakeLock(
                                     source
                                 ),
                             rawSource = source
@@ -834,776 +826,41 @@ object BackgroundWakeMonitor {
                     )
                 }
 
-                jobs.forEach { source ->
+                sources(jobRegex).forEach { source ->
                     add(
-                        BackgroundEvidence(
+                        EvidenceCandidate(
+                            origin = EvidenceOrigin.JOB,
                             type =
-                                classifyJob(source),
-                            rawSource = source
-                        )
-                    )
-                }
-
-                syncs.forEach { source ->
-                    add(
-                        BackgroundEvidence(
-                            type =
-                                "Synchronisierung",
-                            rawSource = source
-                        )
-                    )
-                }
-            }.distinctBy {
-                it.type to it.rawSource
-            }
-
-        val resolvedEvidence =
-            evidence.map { item ->
-                ResolvedEvidence(
-                    type = item.type,
-                    source =
-                        resolveReadableSource(
-                            context = context,
-                            rawSource =
-                                item.rawSource
-                        ),
-                    technicalSource =
-                        item.rawSource
-                )
-            }
-
-        val possibleSource =
-            choosePossibleSource(
-                resolvedEvidence
-            )
-
-        val cpuAwakeDurationMillis =
-            candidate.cpuSleepTimestampMillis
-                ?.minus(
-                    candidate.timestampMillis
-                )
-                ?.takeIf {
-                    it >= 0L
-                }
-
-        val title =
-            if (possibleSource != null) {
-                context.getString(
-                    R.string.bg_title_cpu_wakeup_source,
-                    possibleSource.source
-                )
-            } else {
-                context.getString(
-                    R.string.bg_title_cpu_woken_background
-                )
-            }
-
-        val wakeReasonText =
-            candidate.wakeReason
-                ?.let { rawReason ->
-                    readableWakeReason(
-                        context = context,
-                        rawReason = rawReason
-                    )
-                }
-                ?: if (
-                    candidate.runningObserved
-                ) {
-                    context.getString(
-                        R.string.bg_wake_reason_cpu_activity_no_reason
-                    )
-                } else {
-                    context.getString(
-                        R.string.bg_unspecified
-                    )
-                }
-
-        EventStore.addEventAt(
-            context = context,
-            timestamp =
-                candidate.timestampMillis,
-            type = "CPU_WAKEUP",
-            title = title,
-            details = buildString {
-                appendLine(
-                    context.getString(
-                        R.string.bg_detail_display_stayed_off
-                    )
-                )
-
-                appendLine(
-                    context.getString(
-                        R.string.bg_detail_system_reason,
-                        wakeReasonText
-                    )
-                )
-
-                appendLine(
-                    context.getString(
-                        R.string.bg_detail_detection,
-                        buildDetectionDescription(
-                            context = context,
-                            candidate = candidate
-                        )
-                    )
-                )
-
-                appendLine(
-                    context.getString(
-                        R.string.bg_detail_cpu_awake_time,
-                        formatCpuAwakeDuration(
-                            context = context,
-                            durationMillis =
-                                cpuAwakeDurationMillis
-                        )
-                    )
-                )
-
-                appendLine(
-                    context.getString(
-                        R.string.bg_detail_return_to_sleep,
-                        if (
-                            cpuAwakeDurationMillis != null
-                        ) {
-                            context.getString(
-                                R.string.bg_return_to_sleep_detected
-                            )
-                        } else {
-                            context.getString(
-                                R.string.bg_return_to_sleep_not_determined
-                            )
-                        }
-                    )
-                )
-
-                if (possibleSource != null) {
-                    appendLine(
-                        context.getString(
-                            R.string.bg_detail_possible_source,
-                            possibleSource.source
-                        )
-                    )
-
-                    appendLine(
-                        context.getString(
-                            R.string.bg_detail_activity,
-                            evidenceTypeLabel(
-                                context = context,
-                                type = possibleSource.type
-                            )
-                        )
-                    )
-
-                    appendLine(
-                        context.getString(
-                            R.string.bg_detail_assessment_correlated
-                        )
-                    )
-                } else {
-                    appendLine(
-                        context.getString(
-                            R.string.bg_detail_possible_source,
-                            context.getString(
-                                R.string.bg_possible_source_ambiguous
-                            )
-                        )
-                    )
-                }
-
-                appendLine()
-                appendLine(
-                    context.getString(
-                        R.string.bg_detail_related_activities
-                    )
-                )
-
-                if (resolvedEvidence.isEmpty()) {
-                    appendLine(
-                        context.getString(
-                            R.string.bg_detail_no_related_activity
-                        )
-                    )
-                } else {
-                    resolvedEvidence.forEach { item ->
-                        appendLine(
-                            context.getString(
-                                R.string.bg_detail_evidence_item,
-                                evidenceTypeLabel(
-                                    context = context,
-                                    type = item.type
+                                CpuEvidenceRules.typeOfJob(
+                                    source
                                 ),
-                                item.source
-                            )
-                        )
-                    }
-                }
-
-                appendLine()
-
-                if (candidate.wakeReason != null) {
-                    appendLine(
-                        context.getString(
-                            R.string.bg_detail_technical_wake_reason,
-                            candidate.wakeReason
-                        )
-                    )
-                } else {
-                    appendLine(
-                        context.getString(
-                            R.string.bg_detail_technical_wake_reason,
-                            context.getString(
-                                R.string.bg_technical_wake_reason_missing
-                            )
+                            rawSource = source
                         )
                     )
                 }
 
-                val technicalSources =
-                    resolvedEvidence
-                        .map {
-                            it.technicalSource
-                        }
-                        .distinct()
-
-                if (technicalSources.isNotEmpty()) {
-                    appendLine(
-                        context.getString(
-                            R.string.bg_detail_technical_sources
+                sources(syncRegex).forEach { source ->
+                    add(
+                        EvidenceCandidate(
+                            origin = EvidenceOrigin.SYNC,
+                            type = EvidenceType.SYNC,
+                            rawSource = source
                         )
                     )
-
-                    technicalSources.forEach {
-                        appendLine("• $it")
-                    }
                 }
-
-                append(
-                    context.getString(
-                        R.string.bg_detail_data_source
-                    )
-                )
             }
+
+        return CpuWakeupCandidate(
+            occurredAt =
+                candidate.timestampMillis,
+            rawWakeReason =
+                candidate.wakeReason,
+            runningObserved =
+                candidate.runningObserved,
+            returnedToSleepAt =
+                candidate.cpuSleepTimestampMillis,
+            evidence = evidence
         )
-    }
-
-    private fun buildDetectionDescription(
-        context: Context,
-        candidate: WakeCandidate
-    ): String {
-        return when {
-            candidate.wakeReason != null &&
-                candidate.runningObserved ->
-                context.getString(
-                    R.string.bg_detection_reason_and_cpu_start
-                )
-
-            candidate.wakeReason != null ->
-                context.getString(
-                    R.string.bg_detection_reason_only
-                )
-
-            candidate.runningObserved ->
-                context.getString(
-                    R.string.bg_detection_cpu_start_only
-                )
-
-            else ->
-                context.getString(
-                    R.string.bg_detection_batterystats_activity
-                )
-        }
-    }
-
-    private fun evidenceTypeLabel(
-        context: Context,
-        type: String
-    ): String {
-        return when (type) {
-            "Synchronisierung" ->
-                context.getString(
-                    R.string.bg_type_sync
-                )
-
-            "Wakeup-Alarm" ->
-                context.getString(
-                    R.string.bg_type_wakeup_alarm
-                )
-
-            "Job-Wakelock" ->
-                context.getString(
-                    R.string.bg_type_job_wakelock
-                )
-
-            "Partial Wakelock" ->
-                context.getString(
-                    R.string.bg_type_partial_wakelock
-                )
-
-            else ->
-                type
-        }
-    }
-
-    private fun choosePossibleSource(
-        evidence: List<ResolvedEvidence>
-    ): ResolvedEvidence? {
-        return evidence.firstOrNull {
-            it.type == "Synchronisierung"
-        } ?: evidence.firstOrNull {
-            it.type == "WorkManager"
-        } ?: evidence.firstOrNull {
-            it.type == "JobScheduler"
-        } ?: evidence.firstOrNull {
-            it.type == "Wakeup-Alarm"
-        } ?: evidence.firstOrNull {
-            it.type == "Job-Wakelock"
-        } ?: evidence.firstOrNull {
-            it.type == "Partial Wakelock"
-        } ?: evidence.firstOrNull()
-    }
-
-    private fun classifyJob(
-        source: String
-    ): String {
-        return when {
-            source.contains(
-                "SyncManager",
-                ignoreCase = true
-            ) ->
-                "Synchronisierung"
-
-            source.contains(
-                "androidx.work",
-                ignoreCase = true
-            ) ||
-            source.contains(
-                "SystemJobService",
-                ignoreCase = true
-            ) ->
-                "WorkManager"
-
-            else ->
-                "JobScheduler"
-        }
-    }
-
-    private fun classifyWakeLock(
-        source: String
-    ): String {
-        return when {
-            source.contains(
-                "*alarm*",
-                ignoreCase = true
-            ) ||
-            source.contains(
-                "alarm",
-                ignoreCase = true
-            ) ->
-                "Wakeup-Alarm"
-
-            source.contains(
-                "SyncManager",
-                ignoreCase = true
-            ) ||
-            source.contains(
-                "*sync*",
-                ignoreCase = true
-            ) ->
-                "Synchronisierung"
-
-            source.contains(
-                "*job*",
-                ignoreCase = true
-            ) ->
-                "Job-Wakelock"
-
-            else ->
-                "Partial Wakelock"
-        }
-    }
-
-    private fun resolveReadableSource(
-        context: Context,
-        rawSource: String
-    ): String {
-        val packageName =
-            extractPackageName(
-                rawSource
-            )
-
-        if (packageName == null) {
-            return readableTechnicalSource(
-                context = context,
-                rawSource = rawSource
-            )
-        }
-
-        readableKnownPackage(
-            context = context,
-            packageName = packageName
-        )?.let {
-            return it
-        }
-
-        val appName =
-            runCatching {
-                val info =
-                    context.packageManager
-                        .getApplicationInfo(
-                            packageName,
-                            0
-                        )
-
-                context.packageManager
-                    .getApplicationLabel(info)
-                    .toString()
-                    .trim()
-            }.getOrNull()
-
-        return if (
-            appName.isNullOrBlank()
-        ) {
-            readableTechnicalSource(
-                context = context,
-                rawSource = rawSource
-            )
-        } else {
-            appName
-        }
-    }
-
-    private fun extractPackageName(
-        rawSource: String
-    ): String? {
-        return Regex(
-            """([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_]+){1,})"""
-        ).find(rawSource)
-            ?.groupValues
-            ?.getOrNull(1)
-    }
-
-    private fun readableKnownPackage(
-        context: Context,
-        packageName: String
-    ): String? {
-        val value =
-            packageName.lowercase(
-                Locale.ROOT
-            )
-
-        return when {
-            value == "android" ->
-                context.getString(
-                    R.string.bg_source_android_system
-                )
-
-            value == "com.whatsapp" ->
-                "WhatsApp"
-
-            value == "com.google.android.gm" ->
-                "Gmail"
-
-            value.startsWith(
-                "com.google.android.gms"
-            ) ->
-                context.getString(
-                    R.string.bg_source_google_play_services
-                )
-
-            value.startsWith(
-                "com.android.vending"
-            ) ->
-                "Google Play Store"
-
-            value.startsWith(
-                "com.android.systemui"
-            ) ->
-                context.getString(
-                    R.string.bg_source_android_system_ui
-                )
-
-            value == "com.android.stk2" ->
-                context.getString(
-                    R.string.bg_source_samsung_telephony_sim
-                )
-
-            value.startsWith(
-                "com.android.phone"
-            ) ->
-                context.getString(
-                    R.string.bg_source_android_phone_service
-                )
-
-            value.startsWith(
-                "com.android.providers.contacts"
-            ) ->
-                context.getString(
-                    R.string.bg_source_android_contacts
-                )
-
-            value.startsWith(
-                "com.android.providers.calendar"
-            ) ->
-                context.getString(
-                    R.string.bg_source_android_calendar
-                )
-
-            value.startsWith(
-                "com.samsung."
-            ) ||
-            value.startsWith(
-                "com.sec."
-            ) ->
-                context.getString(
-                    R.string.bg_source_samsung_system_service
-                )
-
-            value.startsWith(
-                "com.oplus."
-            ) ||
-            value.startsWith(
-                "com.coloros."
-            ) ||
-            value.startsWith(
-                "com.heytap."
-            ) ->
-                context.getString(
-                    R.string.bg_source_oneplus_system_service
-                )
-
-            else ->
-                null
-        }
-    }
-
-    private fun readableTechnicalSource(
-        context: Context,
-        rawSource: String
-    ): String {
-        return when {
-            rawSource.contains(
-                "com.android.stk2",
-                ignoreCase = true
-            ) ||
-                rawSource.contains(
-                    "telephony-sem-radio",
-                    ignoreCase = true
-                ) ||
-                rawSource.contains(
-                    "RILJ_ACK_WL",
-                    ignoreCase = true
-                ) ->
-                context.getString(
-                    R.string.bg_source_samsung_telephony_sim
-                )
-
-            rawSource.contains(
-                "FMM-acquireWakeLock",
-                ignoreCase = true
-            ) ||
-                rawSource.contains(
-                    "OfflineFindTask",
-                    ignoreCase = true
-                ) ->
-                context.getString(
-                    R.string.bg_source_samsung_offline_finding
-                )
-
-            rawSource.contains(
-                "gmail-ls",
-                ignoreCase = true
-            ) ->
-                "Gmail"
-
-            rawSource.contains(
-                "com.whatsapp",
-                ignoreCase = true
-            ) ->
-                "WhatsApp"
-
-            rawSource.contains(
-                "com.google.android.gms",
-                ignoreCase = true
-            ) ->
-                context.getString(
-                    R.string.bg_source_google_play_services
-                )
-
-            rawSource.contains(
-                "com.android.vending",
-                ignoreCase = true
-            ) ->
-                "Google Play Store"
-
-            rawSource.contains(
-                "android/com.android.server",
-                ignoreCase = true
-            ) ->
-                context.getString(
-                    R.string.bg_source_android_system
-                )
-
-            rawSource.contains(
-                "com.samsung.",
-                ignoreCase = true
-            ) ||
-            rawSource.contains(
-                "com.sec.",
-                ignoreCase = true
-            ) ->
-                context.getString(
-                    R.string.bg_source_samsung_system_service
-                )
-
-            else ->
-                rawSource
-                    .substringBefore('/')
-                    .takeIf {
-                        it.isNotBlank()
-                    }
-                    ?: context.getString(
-                        R.string.bg_source_unknown_system
-                    )
-        }
-    }
-
-    private fun formatCpuAwakeDuration(
-        context: Context,
-        durationMillis: Long?
-    ): String {
-        val value =
-            durationMillis
-                ?: return context.getString(
-                    R.string.bg_duration_not_determinable
-                )
-
-        return when {
-            value < 1_000L ->
-                "${value} ms"
-
-            value < 60_000L ->
-                context.getString(
-                    R.string.bg_duration_seconds,
-                    value / 1_000.0
-                )
-
-            else -> {
-                val minutes =
-                    value / 60_000L
-
-                val seconds =
-                    value % 60_000L / 1_000L
-
-                context.getString(
-                    R.string.bg_duration_minutes_seconds,
-                    minutes,
-                    seconds
-                )
-            }
-        }
-    }
-
-    private fun readableWakeReason(
-        context: Context,
-        rawReason: String
-    ): String {
-        val reason =
-            rawReason
-                .substringAfter(
-                    ':',
-                    rawReason
-                )
-                .trim('"')
-
-        return when {
-            reason.contains(
-                "failed to suspend",
-                ignoreCase = true
-            ) ->
-                context.getString(
-                    R.string.bg_wake_reason_failed_suspend
-                )
-
-            reason.contains(
-                "pm8xxx_rtc_alarm",
-                ignoreCase = true
-            ) ->
-                context.getString(
-                    R.string.bg_wake_reason_scheduled_system_alarm
-                )
-
-            reason.contains(
-                "qcom_rx_wakelock",
-                ignoreCase = true
-            ) ||
-                reason.contains(
-                    "qrtr_ws",
-                    ignoreCase = true
-                ) ->
-                context.getString(
-                    R.string.bg_wake_reason_qualcomm_radio
-                )
-
-            reason.contains(
-                "timerfd",
-                ignoreCase = true
-            ) ->
-                context.getString(
-                    R.string.bg_wake_reason_timer_scheduler
-                )
-
-            reason.contains(
-                "userspace-abort",
-                ignoreCase = true
-            ) ->
-                context.getString(
-                    R.string.bg_wake_reason_system_activity
-                )
-
-            reason.contains(
-                "NO_SUSPEND",
-                ignoreCase = true
-            ) &&
-                reason.contains(
-                    "IRQ",
-                    ignoreCase = true
-                ) ->
-                context.getString(
-                    R.string.bg_wake_reason_kernel_hardware_interrupt
-                )
-
-            reason.contains(
-                "NO_SUSPEND",
-                ignoreCase = true
-            ) ->
-                context.getString(
-                    R.string.bg_wake_reason_kernel_system_signal
-                )
-
-            reason.contains(
-                "IRQ",
-                ignoreCase = true
-            ) ->
-                context.getString(
-                    R.string.bg_wake_reason_hardware_interrupt_signal
-                )
-
-            reason.contains(
-                "alarm",
-                ignoreCase = true
-            ) ->
-                context.getString(
-                    R.string.bg_type_wakeup_alarm
-                )
-
-            reason.isBlank() ->
-                context.getString(
-                    R.string.bg_unspecified
-                )
-
-            else ->
-                reason
-        }
     }
 
     private fun cleanSource(
@@ -1818,16 +1075,5 @@ object BackgroundWakeMonitor {
     private data class ParsedHistoryLine(
         val timestampMillis: Long,
         val raw: String
-    )
-
-    private data class BackgroundEvidence(
-        val type: String,
-        val rawSource: String
-    )
-
-    private data class ResolvedEvidence(
-        val type: String,
-        val source: String,
-        val technicalSource: String
     )
 }

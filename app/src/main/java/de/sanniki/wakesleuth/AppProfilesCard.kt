@@ -29,26 +29,12 @@ import java.util.Locale
 
 @Composable
 fun AppProfilesCard(
-    events: List<WakeEvent>,
+    sessions: List<ArchivedSession>,
     detailLevel: DetailLevel
 ) {
-    val context =
-        androidx.compose.ui.platform
-            .LocalContext.current
-
-    val sessions =
-        remember(events) {
-            SessionArchiveStore
-                .getSessions(context)
-                .sortedByDescending {
-                    it.startMillis
-                }
-        }
-
     val profiles =
         remember(sessions) {
             buildAppProfiles(
-                context,
                 sessions
             )
         }

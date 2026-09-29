@@ -35,16 +35,6 @@
     <string name="bg_type_job_wakelock">Job-Wakelock</string>
     <string name="bg_type_partial_wakelock">Partial Wakelock</string>
 
-    <string name="bg_source_android_system">Android-System</string>
-    <string name="bg_source_google_play_services">Google Play-Dienste</string>
-    <string name="bg_source_android_system_ui">Android Systemoberfläche</string>
-    <string name="bg_source_samsung_telephony_sim">Samsung Telefonie-/SIM-Dienst</string>
-    <string name="bg_source_android_phone_service">Android Telefoniedienst</string>
-    <string name="bg_source_android_contacts">Android Kontakte</string>
-    <string name="bg_source_android_calendar">Android Kalender</string>
-    <string name="bg_source_samsung_system_service">Samsung-Systemdienst</string>
-    <string name="bg_source_oneplus_system_service">OnePlus-Systemdienst</string>
-    <string name="bg_source_samsung_offline_finding">Samsung Offline-Suche</string>
     <string name="bg_source_unknown_system">Unbekannte Systemquelle</string>
 
     <string name="bg_duration_not_determinable">nicht ermittelbar</string>

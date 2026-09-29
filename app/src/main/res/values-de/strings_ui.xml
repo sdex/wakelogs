@@ -64,16 +64,6 @@
     <string name="timeline_type_power_disconnected">STROM GETRENNT</string>
     <string name="timeline_type_usb_attached">USB VERBUNDEN</string>
     <string name="timeline_type_usb_detached">USB GETRENNT</string>
-    <string name="timeline_prefix_direct_wake_reason">Direkter Aufweckgrund:</string>
-    <string name="timeline_prefix_likely_cause">Wahrscheinliche Ursache:</string>
-    <string name="timeline_prefix_possible_cause">Mögliche Ursache:</string>
-    <string name="timeline_prefix_later_detected_cause">Nachträglich erkannte Ursache:</string>
-    <string name="timeline_prefix_possible_source">Mögliche Quelle:</string>
-    <string name="timeline_prefix_system_reason">Systemgrund:</string>
-    <string name="timeline_prefix_cpu_awake_time">CPU-Wachzeit:</string>
-    <string name="timeline_prefix_source">Quelle:</string>
-    <string name="timeline_prefix_kind">Art:</string>
-    <string name="timeline_prefix_cause">Ursache:</string>
     <string name="timeline_gap_days_hours">%1$d T %2$d Std später</string>
     <string name="timeline_gap_hours_minutes">%1$d Std %2$d Min später</string>
     <string name="timeline_gap_minutes_seconds">%1$d Min %2$d Sek später</string>

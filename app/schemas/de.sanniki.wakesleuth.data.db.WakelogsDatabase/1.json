@@ -1,0 +1,1336 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "7bdc86c2a3ef70d96d1572c88ad8f5eb",
+    "entities": [
+      {
+        "tableName": "monitoring_session",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `started_at` INTEGER NOT NULL, `stop_requested_at` INTEGER, `finalized_at` INTEGER, `end_reason` TEXT, `final_poll_completed` INTEGER, `device_family` TEXT NOT NULL, `network_baseline_captured_at` INTEGER, `display_wakeups` INTEGER, `cpu_wakeups` INTEGER, `note` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "started_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stopRequestedAt",
+            "columnName": "stop_requested_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "finalizedAt",
+            "columnName": "finalized_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "endReason",
+            "columnName": "end_reason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "finalPollCompleted",
+            "columnName": "final_poll_completed",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deviceFamily",
+            "columnName": "device_family",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "networkBaselineCapturedAt",
+            "columnName": "network_baseline_captured_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "displayWakeups",
+            "columnName": "display_wakeups",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "cpuWakeups",
+            "columnName": "cpu_wakeups",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_monitoring_session_started_at",
+            "unique": false,
+            "columnNames": [
+              "started_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_monitoring_session_started_at` ON `${TABLE_NAME}` (`started_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "session_source_stat",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`session_id` INTEGER NOT NULL, `source_kind` TEXT NOT NULL, `package_name` TEXT NOT NULL, `raw_source` TEXT NOT NULL, `cpu_count` INTEGER NOT NULL, `display_count` INTEGER NOT NULL, `companion_count` INTEGER NOT NULL, `longest_cpu_awake_ms` INTEGER, PRIMARY KEY(`session_id`, `source_kind`, `package_name`, `raw_source`), FOREIGN KEY(`session_id`) REFERENCES `monitoring_session`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "sessionId",
+            "columnName": "session_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceKind",
+            "columnName": "source_kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "packageName",
+            "columnName": "package_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawSource",
+            "columnName": "raw_source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cpuCount",
+            "columnName": "cpu_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayCount",
+            "columnName": "display_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "companionCount",
+            "columnName": "companion_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "longestCpuAwakeMs",
+            "columnName": "longest_cpu_awake_ms",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "session_id",
+            "source_kind",
+            "package_name",
+            "raw_source"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "monitoring_session",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "session_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "event",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `session_id` INTEGER NOT NULL, `occurred_at` INTEGER NOT NULL, `type` TEXT NOT NULL, `proximity_state` TEXT, `proximity_distance_cm` REAL, FOREIGN KEY(`session_id`) REFERENCES `monitoring_session`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "session_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurredAt",
+            "columnName": "occurred_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "proximityState",
+            "columnName": "proximity_state",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "proximityDistanceCm",
+            "columnName": "proximity_distance_cm",
+            "affinity": "REAL"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_event_session_id_occurred_at",
+            "unique": false,
+            "columnNames": [
+              "session_id",
+              "occurred_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_event_session_id_occurred_at` ON `${TABLE_NAME}` (`session_id`, `occurred_at`)"
+          },
+          {
+            "name": "index_event_type_occurred_at",
+            "unique": false,
+            "columnNames": [
+              "type",
+              "occurred_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_event_type_occurred_at` ON `${TABLE_NAME}` (`type`, `occurred_at`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "monitoring_session",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "session_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "screen_on_wake_reason",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`event_id` INTEGER NOT NULL, `reason` TEXT NOT NULL, `evidence` TEXT NOT NULL, `power_key_signal` TEXT, `offset_ms` INTEGER NOT NULL, `raw_reason` TEXT, `raw_details` TEXT, `raw_tag` TEXT, PRIMARY KEY(`event_id`), FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reason",
+            "columnName": "reason",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "evidence",
+            "columnName": "evidence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "powerKeySignal",
+            "columnName": "power_key_signal",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "offsetMs",
+            "columnName": "offset_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawReason",
+            "columnName": "raw_reason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rawDetails",
+            "columnName": "raw_details",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rawTag",
+            "columnName": "raw_tag",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "event_id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "event",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "screen_on_notification_cause",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`event_id` INTEGER NOT NULL, `notification_event_id` INTEGER, `package_name` TEXT NOT NULL, `offset_ms` INTEGER NOT NULL, PRIMARY KEY(`event_id`), FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`notification_event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notificationEventId",
+            "columnName": "notification_event_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "packageName",
+            "columnName": "package_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "offsetMs",
+            "columnName": "offset_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "event_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_screen_on_notification_cause_notification_event_id",
+            "unique": false,
+            "columnNames": [
+              "notification_event_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_screen_on_notification_cause_notification_event_id` ON `${TABLE_NAME}` (`notification_event_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "event",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "event",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "notification_event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "screen_on_wakelock_hint",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `event_id` INTEGER NOT NULL, `offset_ms` INTEGER NOT NULL, `tag` TEXT NOT NULL, `package_name` TEXT, `uid` INTEGER, FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "offsetMs",
+            "columnName": "offset_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "packageName",
+            "columnName": "package_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "uid",
+            "columnName": "uid",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_screen_on_wakelock_hint_event_id_tag",
+            "unique": true,
+            "columnNames": [
+              "event_id",
+              "tag"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_screen_on_wakelock_hint_event_id_tag` ON `${TABLE_NAME}` (`event_id`, `tag`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "event",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "screen_on_alarm_hint",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `event_id` INTEGER NOT NULL, `offset_ms` INTEGER NOT NULL, `package_name` TEXT, `tag` TEXT NOT NULL, `alarm_wake_count` INTEGER, `package_wakeups` INTEGER, FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "offsetMs",
+            "columnName": "offset_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "packageName",
+            "columnName": "package_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alarmWakeCount",
+            "columnName": "alarm_wake_count",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "packageWakeups",
+            "columnName": "package_wakeups",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_screen_on_alarm_hint_event_id_tag",
+            "unique": true,
+            "columnNames": [
+              "event_id",
+              "tag"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_screen_on_alarm_hint_event_id_tag` ON `${TABLE_NAME}` (`event_id`, `tag`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "event",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "screen_on_job_hint",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `event_id` INTEGER NOT NULL, `offset_ms` INTEGER NOT NULL, `package_name` TEXT, `service_name` TEXT NOT NULL, `prioritized` INTEGER NOT NULL, FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "offsetMs",
+            "columnName": "offset_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "packageName",
+            "columnName": "package_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "serviceName",
+            "columnName": "service_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "prioritized",
+            "columnName": "prioritized",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_screen_on_job_hint_event_id_service_name",
+            "unique": true,
+            "columnNames": [
+              "event_id",
+              "service_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_screen_on_job_hint_event_id_service_name` ON `${TABLE_NAME}` (`event_id`, `service_name`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "event",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "notification",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`event_id` INTEGER NOT NULL, `package_name` TEXT NOT NULL, `notification_key` TEXT, `title` TEXT, `text` TEXT, `fingerprint` TEXT NOT NULL, PRIMARY KEY(`event_id`), FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "packageName",
+            "columnName": "package_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notificationKey",
+            "columnName": "notification_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fingerprint",
+            "columnName": "fingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "event_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_notification_fingerprint",
+            "unique": false,
+            "columnNames": [
+              "fingerprint"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_notification_fingerprint` ON `${TABLE_NAME}` (`fingerprint`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "event",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "cpu_wakeup",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`event_id` INTEGER NOT NULL, `raw_wake_reason` TEXT, `running_observed` INTEGER NOT NULL, `returned_to_sleep_at` INTEGER, `awake_ms` INTEGER, PRIMARY KEY(`event_id`), FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawWakeReason",
+            "columnName": "raw_wake_reason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "runningObserved",
+            "columnName": "running_observed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "returnedToSleepAt",
+            "columnName": "returned_to_sleep_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "awakeMs",
+            "columnName": "awake_ms",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "event_id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "event",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "cpu_wakeup_evidence",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `event_id` INTEGER NOT NULL, `origin` TEXT NOT NULL, `evidence_type` TEXT NOT NULL, `raw_source` TEXT NOT NULL, `package_name` TEXT, `is_primary` INTEGER NOT NULL, FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "evidenceType",
+            "columnName": "evidence_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawSource",
+            "columnName": "raw_source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "packageName",
+            "columnName": "package_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isPrimary",
+            "columnName": "is_primary",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cpu_wakeup_evidence_event_id_evidence_type_raw_source",
+            "unique": true,
+            "columnNames": [
+              "event_id",
+              "evidence_type",
+              "raw_source"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_cpu_wakeup_evidence_event_id_evidence_type_raw_source` ON `${TABLE_NAME}` (`event_id`, `evidence_type`, `raw_source`)"
+          },
+          {
+            "name": "index_cpu_wakeup_evidence_is_primary_package_name",
+            "unique": false,
+            "columnNames": [
+              "is_primary",
+              "package_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cpu_wakeup_evidence_is_primary_package_name` ON `${TABLE_NAME}` (`is_primary`, `package_name`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "event",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "network_measurement",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`session_id` INTEGER NOT NULL, `event_id` INTEGER, `status` TEXT NOT NULL, `measured_at` INTEGER, `error_code` TEXT, `error_detail` TEXT, PRIMARY KEY(`session_id`), FOREIGN KEY(`session_id`) REFERENCES `monitoring_session`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "sessionId",
+            "columnName": "session_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "measuredAt",
+            "columnName": "measured_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "errorCode",
+            "columnName": "error_code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "errorDetail",
+            "columnName": "error_detail",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "session_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_network_measurement_event_id",
+            "unique": false,
+            "columnNames": [
+              "event_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_network_measurement_event_id` ON `${TABLE_NAME}` (`event_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "monitoring_session",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "session_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "event",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "network_app_usage",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`session_id` INTEGER NOT NULL, `uid` INTEGER NOT NULL, `package_name` TEXT, `rx_bytes` INTEGER NOT NULL, `tx_bytes` INTEGER NOT NULL, `rx_packets` INTEGER, `tx_packets` INTEGER, PRIMARY KEY(`session_id`, `uid`), FOREIGN KEY(`session_id`) REFERENCES `network_measurement`(`session_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "sessionId",
+            "columnName": "session_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uid",
+            "columnName": "uid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "packageName",
+            "columnName": "package_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rxBytes",
+            "columnName": "rx_bytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "txBytes",
+            "columnName": "tx_bytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rxPackets",
+            "columnName": "rx_packets",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "txPackets",
+            "columnName": "tx_packets",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "session_id",
+            "uid"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "network_measurement",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "session_id"
+            ],
+            "referencedColumns": [
+              "session_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "network_baseline_entry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`session_id` INTEGER NOT NULL, `uid` INTEGER NOT NULL, `package_name` TEXT, `rx_bytes` INTEGER NOT NULL, `tx_bytes` INTEGER NOT NULL, `rx_packets` INTEGER, `tx_packets` INTEGER, PRIMARY KEY(`session_id`, `uid`), FOREIGN KEY(`session_id`) REFERENCES `monitoring_session`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "sessionId",
+            "columnName": "session_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uid",
+            "columnName": "uid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "packageName",
+            "columnName": "package_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rxBytes",
+            "columnName": "rx_bytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "txBytes",
+            "columnName": "tx_bytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rxPackets",
+            "columnName": "rx_packets",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "txPackets",
+            "columnName": "tx_packets",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "session_id",
+            "uid"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "monitoring_session",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "session_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "system_snapshot",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`event_id` INTEGER NOT NULL, `trigger` TEXT NOT NULL, `status` TEXT NOT NULL, `error_detail` TEXT, `wakefulness` TEXT, `interactive` INTEGER, `low_power_mode` INTEGER, `device_idle_mode` INTEGER, `light_device_idle_mode` INTEGER, `deep_idle_state` TEXT, `light_idle_state` TEXT, `idle_screen_on` INTEGER, `idle_charging` INTEGER, `force_idle` TEXT, PRIMARY KEY(`event_id`), FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trigger",
+            "columnName": "trigger",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "errorDetail",
+            "columnName": "error_detail",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "wakefulness",
+            "columnName": "wakefulness",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "interactive",
+            "columnName": "interactive",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lowPowerMode",
+            "columnName": "low_power_mode",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deviceIdleMode",
+            "columnName": "device_idle_mode",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lightDeviceIdleMode",
+            "columnName": "light_device_idle_mode",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deepIdleState",
+            "columnName": "deep_idle_state",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lightIdleState",
+            "columnName": "light_idle_state",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "idleScreenOn",
+            "columnName": "idle_screen_on",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "idleCharging",
+            "columnName": "idle_charging",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "forceIdle",
+            "columnName": "force_idle",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "event_id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "event",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "expert_snapshot",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`event_id` INTEGER NOT NULL, `screen_on_event_id` INTEGER, `status` TEXT NOT NULL, `error_detail` TEXT, `location_available` INTEGER NOT NULL, `sensors_available` INTEGER NOT NULL, `network_available` INTEGER NOT NULL, PRIMARY KEY(`event_id`), FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`screen_on_event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "screenOnEventId",
+            "columnName": "screen_on_event_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "errorDetail",
+            "columnName": "error_detail",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "locationAvailable",
+            "columnName": "location_available",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sensorsAvailable",
+            "columnName": "sensors_available",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "networkAvailable",
+            "columnName": "network_available",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "event_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_expert_snapshot_screen_on_event_id",
+            "unique": false,
+            "columnNames": [
+              "screen_on_event_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expert_snapshot_screen_on_event_id` ON `${TABLE_NAME}` (`screen_on_event_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "event",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "event",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "screen_on_event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "expert_snapshot_signal",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`event_id` INTEGER NOT NULL, `signal` TEXT NOT NULL, PRIMARY KEY(`event_id`, `signal`), FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "signal",
+            "columnName": "signal",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "event_id",
+            "signal"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "event",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "usb_device_event",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`event_id` INTEGER NOT NULL, `device_id` INTEGER, `vendor_id` INTEGER, `product_id` INTEGER, `device_name` TEXT, `manufacturer_name` TEXT, PRIMARY KEY(`event_id`), FOREIGN KEY(`event_id`) REFERENCES `event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceId",
+            "columnName": "device_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "vendorId",
+            "columnName": "vendor_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "productId",
+            "columnName": "product_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deviceName",
+            "columnName": "device_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "manufacturerName",
+            "columnName": "manufacturer_name",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "event_id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "event",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "event_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "package_label",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`package_name` TEXT NOT NULL, `label` TEXT NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`package_name`))",
+        "fields": [
+          {
+            "fieldPath": "packageName",
+            "columnName": "package_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "label",
+            "columnName": "label",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "package_name"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7bdc86c2a3ef70d96d1572c88ad8f5eb')"
+    ]
+  }
+}

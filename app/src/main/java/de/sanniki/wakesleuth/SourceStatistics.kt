@@ -30,19 +30,26 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import de.sanniki.wakesleuth.data.db.entity.MonitoringSessionEntity
+import de.sanniki.wakesleuth.domain.CpuWakeupEvent
+import de.sanniki.wakesleuth.domain.NotificationEvent
+import de.sanniki.wakesleuth.domain.RecordedEvent
+import de.sanniki.wakesleuth.domain.ScreenOnEvent
+import de.sanniki.wakesleuth.domain.SourceClassifier
+import de.sanniki.wakesleuth.domain.SourceRef
+import de.sanniki.wakesleuth.domain.primarySource
+import de.sanniki.wakesleuth.domain.sources
+import de.sanniki.wakesleuth.ui.AnalysisWindow
+import de.sanniki.wakesleuth.ui.render.SourceLabelResolver
+import de.sanniki.wakesleuth.ui.render.rememberSourceLabelResolver
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.max
 
-private data class SourceStatisticsWindow(
-    val startMillis: Long,
-    val endMillis: Long,
-    val ongoing: Boolean
-)
-
 private data class SourceStatisticsEntry(
-    val source: String,
+    val source: SourceRef,
+    val name: String,
     val totalCount: Int,
     val displayCount: Int,
     val cpuCount: Int,
@@ -51,31 +58,41 @@ private data class SourceStatisticsEntry(
 
 @Composable
 fun SourceStatisticsCard(
-    events: List<WakeEvent>,
-    monitoring: Boolean,
+    events: List<RecordedEvent>,
+    session: MonitoringSessionEntity?,
     detailLevel: DetailLevel
 ) {
     val context =
         LocalContext.current
 
+    val labels =
+        rememberSourceLabelResolver()
+
     val window =
         remember(
             events,
-            monitoring
+            session
         ) {
-            calculateSourceStatisticsWindow(
-                events = events,
-                monitoring = monitoring
+            AnalysisWindow.of(
+                session = session,
+                now = System.currentTimeMillis()
+            ) ?: AnalysisWindow(
+                startMillis =
+                    events.minOfOrNull { it.occurredAt } ?: 0L,
+                endMillis =
+                    events.maxOfOrNull { it.occurredAt } ?: 0L,
+                ongoing = false
             )
         }
 
     val entries =
         remember(
             events,
-            window
+            window,
+            labels
         ) {
             buildSourceStatistics(
-                context = context,
+                labels = labels,
                 events = events,
                 window = window
             )
@@ -174,10 +191,7 @@ fun SourceStatisticsCard(
                     text =
                         stringResource(
                             R.string.stats_strongest_source,
-                            sourceDisplayName(
-                                context,
-                                entries.first().source
-                            )
+                            entries.first().name
                         ),
                     color =
                         MaterialTheme.colorScheme
@@ -343,10 +357,7 @@ private fun SourceStatisticsRow(
                 modifier = Modifier.weight(1f)
             ) {
                 val displayName =
-                    sourceDisplayName(
-                        LocalContext.current,
-                        entry.source
-                    )
+                    entry.name
 
                 Text(
                     text = displayName,
@@ -360,10 +371,15 @@ private fun SourceStatisticsRow(
                         TextOverflow.Ellipsis
                 )
 
+                val technicalName =
+                    entry.source.packageName
+                        ?: entry.source.rawSource
+
                 if (
                     detailLevel ==
                     DetailLevel.EXPERT &&
-                    displayName != entry.source
+                    technicalName != null &&
+                    displayName != technicalName
                 ) {
                     Spacer(
                         modifier =
@@ -371,7 +387,7 @@ private fun SourceStatisticsRow(
                     )
 
                     Text(
-                        text = entry.source,
+                        text = technicalName,
                         color =
                             MaterialTheme.colorScheme
                                 .onSurfaceVariant,
@@ -490,68 +506,74 @@ private fun SourceCountLabel(
     )
 }
 
+/**
+ * Counts, per source, the screen-ons, CPU wakeups and notifications it is
+ * linked to within the window. Sources are merged by identity.
+ */
 private fun buildSourceStatistics(
-    context: Context,
-    events: List<WakeEvent>,
-    window: SourceStatisticsWindow
+    labels: SourceLabelResolver,
+    events: List<RecordedEvent>,
+    window: AnalysisWindow
 ): List<SourceStatisticsEntry> {
-    data class MutableCounts(
-        var display: Int = 0,
-        var cpu: Int = 0,
-        var notifications: Int = 0
-    )
+    class Counts(
+        val source: SourceRef
+    ) {
+        var display = 0
+        var cpu = 0
+        var notifications = 0
+    }
 
     val counts =
-        linkedMapOf<String, MutableCounts>()
+        linkedMapOf<String, Counts>()
+
+    fun counts(source: SourceRef): Counts =
+        counts.getOrPut(source.groupKey) {
+            Counts(source)
+        }
 
     events
         .asSequence()
         .filter { event ->
-            event.timestamp >=
-                window.startMillis &&
-                event.timestamp <=
-                    window.endMillis
+            event.occurredAt in window
         }
         .forEach { event ->
-            val sources =
-                extractStatisticsSources(
-                    context,
-                    event
-                )
-
-            sources.forEach { source ->
-                val item =
-                    counts.getOrPut(source) {
-                        MutableCounts()
+            when (event) {
+                is ScreenOnEvent ->
+                    event.sources().forEach {
+                        counts(it.source).display += 1
                     }
 
-                when (event.type) {
-                    "SCREEN_ON" ->
-                        item.display += 1
+                is CpuWakeupEvent ->
+                    event.primarySource()?.let {
+                        counts(it).cpu += 1
+                    }
 
-                    "CPU_WAKEUP" ->
-                        item.cpu += 1
+                is NotificationEvent ->
+                    counts(
+                        SourceClassifier.classify(
+                            event.packageName
+                        )
+                    ).notifications += 1
 
-                    "NOTIFICATION" ->
-                        item.notifications += 1
-                }
+                else -> Unit
             }
         }
 
-    return counts
-        .map { entry ->
+    return counts.values
+        .map { item ->
             SourceStatisticsEntry(
-                source = entry.key,
+                source = item.source,
+                name = labels.label(item.source),
                 totalCount =
-                    entry.value.display +
-                        entry.value.cpu +
-                        entry.value.notifications,
+                    item.display +
+                        item.cpu +
+                        item.notifications,
                 displayCount =
-                    entry.value.display,
+                    item.display,
                 cpuCount =
-                    entry.value.cpu,
+                    item.cpu,
                 notificationCount =
-                    entry.value.notifications
+                    item.notifications
             )
         }
         .filter {
@@ -567,213 +589,16 @@ private fun buildSourceStatistics(
             }.thenByDescending {
                 it.cpuCount
             }.thenBy {
-                it.source.lowercase(
+                it.name.lowercase(
                     Locale.ROOT
                 )
             }
         )
 }
 
-private fun extractStatisticsSources(
-    context: Context,
-    event: WakeEvent
-): Set<String> {
-    val acceptedPrefixes =
-        listOf(
-            R.string.timeline_prefix_likely_cause,
-            R.string.timeline_prefix_possible_cause,
-            R.string.timeline_prefix_later_detected_cause,
-            R.string.timeline_prefix_possible_source,
-            R.string.timeline_prefix_source
-        ).flatMap {
-            LocalizedText.variants(
-                context,
-                it
-            )
-        }
-
-    val ignoredValues =
-        listOf(
-            R.string.bg_possible_source_ambiguous,
-            R.string.event_unknown,
-            R.string.event_none,
-            R.string.stats_value_not_determined,
-            R.string.bg_unspecified
-        ).flatMap {
-            LocalizedText.variants(
-                context,
-                it
-            )
-        }.toSet()
-
-    val notificationTitles =
-        LocalizedText.variants(
-            context,
-            R.string.stats_notification
-        )
-
-    val sources =
-        event.details
-            .lineSequence()
-            .map {
-                it.trim()
-            }
-            .mapNotNull { line ->
-                acceptedPrefixes
-                    .firstOrNull { prefix ->
-                        line.startsWith(prefix)
-                    }
-                    ?.let { prefix ->
-                        line.substringAfter(prefix)
-                            .trim()
-                    }
-            }
-            .map(::normalizeStatisticsSource)
-            .filter {
-                it.isNotBlank()
-            }
-            .filterNot { value ->
-                ignoredValues.any {
-                    value.equals(
-                        it,
-                        ignoreCase = true
-                    )
-                }
-            }
-            .toMutableSet()
-
-    if (
-        event.type == "CPU_WAKEUP"
-    ) {
-        event.title
-            .substringAfter(
-                "·",
-                ""
-            )
-            .trim()
-            .takeIf {
-                it.isNotBlank()
-            }
-            ?.let(::normalizeStatisticsSource)
-            ?.let {
-                sources.add(it)
-            }
-    }
-
-    if (
-        event.type == "NOTIFICATION" &&
-        sources.isEmpty()
-    ) {
-        event.title
-            .substringAfter(
-                "·",
-                event.title
-            )
-            .trim()
-            .takeIf { title ->
-                title.isNotBlank() &&
-                    notificationTitles.none {
-                        title.equals(
-                            it,
-                            ignoreCase = true
-                        )
-                    }
-            }
-            ?.let(::normalizeStatisticsSource)
-            ?.let {
-                sources.add(it)
-            }
-    }
-
-    return sources
-}
-
-private fun normalizeStatisticsSource(
-    raw: String
-): String {
-    return raw
-        .removePrefix("App: ")
-        .substringBefore(" (")
-        .substringBefore(" · ")
-        .trim()
-        .replace(
-            Regex("""\s+"""),
-            " "
-        )
-}
-
-private fun calculateSourceStatisticsWindow(
-    events: List<WakeEvent>,
-    monitoring: Boolean
-): SourceStatisticsWindow {
-    val now =
-        System.currentTimeMillis()
-
-    val sorted =
-        events.sortedBy {
-            it.timestamp
-        }
-
-    val latestStart =
-        sorted.lastOrNull {
-            it.type == "MONITOR_START"
-        }
-
-    if (latestStart != null) {
-        if (monitoring) {
-            return SourceStatisticsWindow(
-                startMillis =
-                    latestStart.timestamp,
-                endMillis = now,
-                ongoing = true
-            )
-        }
-
-        val stop =
-            sorted.firstOrNull { event ->
-                event.type ==
-                    "MONITOR_STOP" &&
-                    event.timestamp >=
-                        latestStart.timestamp
-            }
-
-        val finalEvent =
-            sorted.lastOrNull { event ->
-                event.timestamp >=
-                    latestStart.timestamp
-            }
-
-        return SourceStatisticsWindow(
-            startMillis =
-                latestStart.timestamp,
-            endMillis =
-                stop?.timestamp
-                    ?: finalEvent?.timestamp
-                    ?: latestStart.timestamp,
-            ongoing = false
-        )
-    }
-
-    if (sorted.isNotEmpty()) {
-        return SourceStatisticsWindow(
-            startMillis =
-                sorted.first().timestamp,
-            endMillis =
-                sorted.last().timestamp,
-            ongoing = false
-        )
-    }
-
-    return SourceStatisticsWindow(
-        startMillis = now,
-        endMillis = now,
-        ongoing = false
-    )
-}
-
 private fun formatSourceStatisticsWindow(
     context: Context,
-    window: SourceStatisticsWindow
+    window: AnalysisWindow
 ): String {
     val formatter =
         SimpleDateFormat(

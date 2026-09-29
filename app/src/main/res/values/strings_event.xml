@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Detail line labels (written into stored events and parsed back) -->
-    <string name="event_label_proximity_sensor">Proximity sensor:</string>
+    <!-- Detail line labels, rendered from stored facts at read time -->
     <string name="event_label_direct_wake_reason">Direct wake reason:</string>
     <string name="event_label_confidence">Confidence:</string>
     <string name="event_label_time_offset">Time offset:</string>
@@ -12,18 +11,13 @@
     <string name="event_label_kind">Type:</string>
     <string name="event_label_cause_detected_later">Cause detected later:</string>
     <string name="event_label_title">Title:</string>
-    <string name="event_label_system_hint">System hint:</string>
-    <string name="event_label_wakeup_alarm_hint">Wakeup alarm hint:</string>
-    <string name="event_label_background_job_hint">Background job hint:</string>
-    <string name="event_label_companion_activity">Accompanying activity:</string>
     <string name="event_label_alarm_wakeups_since_stats_start">Alarm wakeups since stats start:</string>
     <string name="event_label_start_type">Start type:</string>
     <string name="event_label_service">Service:</string>
 
-    <!-- Section header lines (written into stored events and parsed back) -->
+    <!-- Hint section headers, rendered from stored facts at read time -->
     <string name="event_section_system_hint_possible_trigger">System hint: possible trigger</string>
     <string name="event_section_wakeup_alarm_possible_trigger">Wakeup alarm hint: possible trigger</string>
-    <string name="event_section_wakeup_alarm_companion">Wakeup alarm hint: accompanying activity</string>
     <string name="event_section_wakeup_alarm_simultaneous">Wakeup alarm hint: simultaneous system event</string>
     <string name="event_section_wakeup_alarm_close_relation">Wakeup alarm hint: close temporal relation</string>
     <string name="event_section_companion_wakelock">Accompanying activity: wakelock</string>
@@ -47,16 +41,7 @@
     <string name="event_start_type_prioritized">prioritized</string>
     <string name="event_start_type_regular">regular</string>
     <string name="event_age_seconds">%1$.1f seconds</string>
-    <string name="event_seconds_word">second</string>
-    <string name="event_minutes_word">min</string>
     <string name="event_unknown_source">unknown source</string>
-    <string name="event_not_clearly">not clearly</string>
-    <string name="event_unknown_event">Unknown event</string>
-
-    <!-- Wakelock relationship -->
-    <string name="event_relation_likely_follow_up">likely follow-up event</string>
-    <string name="event_relation_possible_trigger">possible trigger</string>
-    <string name="event_relation_close">close temporal relation</string>
 
     <!-- Wakelock kinds -->
     <string name="event_kind_user_presence">Response to user presence</string>
@@ -82,8 +67,6 @@
 
     <!-- Export source groups -->
     <string name="event_source_radio_network">Radio/network</string>
-    <string name="event_source_google_services">Google services</string>
-    <string name="event_source_oneplus_system">OnePlus system</string>
 
     <!-- Event type labels in the export -->
     <string name="event_type_monitor">MONITOR</string>
@@ -146,9 +129,7 @@
     <string name="event_no_special_patterns">No special patterns detected in the stored events.</string>
 
     <!-- Export: highlights -->
-    <string name="event_highlight_longest_cpu_wakeup_label">Longest CPU wakeup:</string>
     <string name="event_highlight_longest_cpu_wakeup">Longest CPU wakeup: %1$s · %2$s</string>
-    <string name="event_highlight_frequent_sources_label">Frequent technical sources:</string>
     <string name="event_highlight_frequent_sources">Frequent technical sources: %1$s</string>
     <string name="event_highlight_screen_wakeups_all_power_button">Screen wakeups: all %1$d identified as power button</string>
     <string name="event_highlight_screen_wakeups_some_power_button">Screen wakeups: %1$d of %2$d identified as power button</string>

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Detail line labels (written into stored events and parsed back) -->
-    <string name="event_label_proximity_sensor">Näherungssensor:</string>
+    <!-- Detail line labels, rendered from stored facts at read time -->
     <string name="event_label_direct_wake_reason">Direkter Aufweckgrund:</string>
     <string name="event_label_confidence">Sicherheit:</string>
     <string name="event_label_time_offset">Zeitabstand:</string>
@@ -12,18 +11,13 @@
     <string name="event_label_kind">Art:</string>
     <string name="event_label_cause_detected_later">Nachträglich erkannte Ursache:</string>
     <string name="event_label_title">Titel:</string>
-    <string name="event_label_system_hint">Systemhinweis:</string>
-    <string name="event_label_wakeup_alarm_hint">Wakeup-Alarm-Hinweis:</string>
-    <string name="event_label_background_job_hint">Hintergrundjob-Hinweis:</string>
-    <string name="event_label_companion_activity">Begleitaktivität:</string>
     <string name="event_label_alarm_wakeups_since_stats_start">Alarm-Wakeups seit Statistikstart:</string>
     <string name="event_label_start_type">Starttyp:</string>
     <string name="event_label_service">Dienst:</string>
 
-    <!-- Section header lines (written into stored events and parsed back) -->
+    <!-- Hint section headers, rendered from stored facts at read time -->
     <string name="event_section_system_hint_possible_trigger">Systemhinweis: möglicher Auslöser</string>
     <string name="event_section_wakeup_alarm_possible_trigger">Wakeup-Alarm-Hinweis: möglicher Auslöser</string>
-    <string name="event_section_wakeup_alarm_companion">Wakeup-Alarm-Hinweis: Begleitaktivität</string>
     <string name="event_section_wakeup_alarm_simultaneous">Wakeup-Alarm-Hinweis: zeitgleiches Systemereignis</string>
     <string name="event_section_wakeup_alarm_close_relation">Wakeup-Alarm-Hinweis: enger zeitlicher Zusammenhang</string>
     <string name="event_section_companion_wakelock">Begleitaktivität: Wakelock</string>
@@ -47,16 +41,7 @@
     <string name="event_start_type_prioritized">priorisiert</string>
     <string name="event_start_type_regular">regulär</string>
     <string name="event_age_seconds">%1$.1f Sekunden</string>
-    <string name="event_seconds_word">Sekunde</string>
-    <string name="event_minutes_word">Min</string>
     <string name="event_unknown_source">unbekannte Quelle</string>
-    <string name="event_not_clearly">nicht eindeutig</string>
-    <string name="event_unknown_event">Unbekanntes Ereignis</string>
-
-    <!-- Wakelock relationship -->
-    <string name="event_relation_likely_follow_up">wahrscheinliches Folgeereignis</string>
-    <string name="event_relation_possible_trigger">möglicher Auslöser</string>
-    <string name="event_relation_close">enger zeitlicher Zusammenhang</string>
 
     <!-- Wakelock kinds -->
     <string name="event_kind_user_presence">Reaktion auf Benutzerpräsenz</string>
@@ -82,8 +67,6 @@
 
     <!-- Export source groups -->
     <string name="event_source_radio_network">Funk/Netzwerk</string>
-    <string name="event_source_google_services">Google-Dienste</string>
-    <string name="event_source_oneplus_system">OnePlus-System</string>
 
     <!-- Event type labels in the export -->
     <string name="event_type_monitor">MONITOR</string>
@@ -146,9 +129,7 @@
     <string name="event_no_special_patterns">Keine besonderen Muster in den gespeicherten Ereignissen erkannt.</string>
 
     <!-- Export: highlights -->
-    <string name="event_highlight_longest_cpu_wakeup_label">Längster CPU-Wakeup:</string>
     <string name="event_highlight_longest_cpu_wakeup">Längster CPU-Wakeup: %1$s · %2$s</string>
-    <string name="event_highlight_frequent_sources_label">Häufige technische Quellen:</string>
     <string name="event_highlight_frequent_sources">Häufige technische Quellen: %1$s</string>
     <string name="event_highlight_screen_wakeups_all_power_button">Display-Weckungen: alle %1$d als Power-Taste erkannt</string>
     <string name="event_highlight_screen_wakeups_some_power_button">Display-Weckungen: %1$d von %2$d als Power-Taste erkannt</string>

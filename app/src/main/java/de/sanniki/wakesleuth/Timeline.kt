@@ -1,6 +1,5 @@
 package de.sanniki.wakesleuth
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,7 +23,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import de.sanniki.wakesleuth.domain.EventType
+import de.sanniki.wakesleuth.domain.RecordedEvent
+import de.sanniki.wakesleuth.ui.render.EventTextRenderer
+import de.sanniki.wakesleuth.ui.render.rememberEventTextRenderer
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -36,13 +38,13 @@ import kotlin.math.abs
 
 @Composable
 fun WakeTimeline(
-    events: List<WakeEvent>,
+    events: List<RecordedEvent>,
     detailLevel: DetailLevel
 ) {
     val timelineEvents =
         remember(events) {
             events.sortedByDescending {
-                it.timestamp
+                it.occurredAt
             }
         }
 
@@ -123,8 +125,8 @@ fun WakeTimeline(
                 if (nextOlderEvent != null) {
                     TimelineGap(
                         durationMillis =
-                            event.timestamp -
-                                nextOlderEvent.timestamp
+                            event.occurredAt -
+                                nextOlderEvent.occurredAt
                     )
                 }
             }
@@ -134,7 +136,7 @@ fun WakeTimeline(
 
 @Composable
 private fun TimelineEventRow(
-    event: WakeEvent,
+    event: RecordedEvent,
     detailLevel: DetailLevel,
     showLine: Boolean
 ) {
@@ -154,7 +156,7 @@ private fun TimelineEventRow(
                         "HH:mm:ss",
                         Locale.getDefault()
                     ).format(
-                        Date(event.timestamp)
+                        Date(event.occurredAt)
                     ),
                 color =
                     MaterialTheme.colorScheme
@@ -171,7 +173,7 @@ private fun TimelineEventRow(
                         "dd.MM.",
                         Locale.getDefault()
                     ).format(
-                        Date(event.timestamp)
+                        Date(event.occurredAt)
                     ),
                 color =
                     MaterialTheme.colorScheme
@@ -205,7 +207,6 @@ private fun TimelineEventRow(
                         .width(2.dp)
                         .height(
                             timelineLineHeight(
-                                event = event,
                                 detailLevel =
                                     detailLevel
                             )
@@ -232,12 +233,12 @@ private fun TimelineEventRow(
 
 @Composable
 private fun TimelineEventContent(
-    event: WakeEvent,
+    event: RecordedEvent,
     detailLevel: DetailLevel,
     modifier: Modifier = Modifier
 ) {
-    val context =
-        LocalContext.current
+    val renderer =
+        rememberEventTextRenderer()
 
     Card(
         modifier = modifier,
@@ -271,7 +272,7 @@ private fun TimelineEventContent(
             )
 
             Text(
-                text = event.title,
+                text = renderer.title(event),
                 style =
                     MaterialTheme.typography
                         .bodyMedium,
@@ -280,11 +281,12 @@ private fun TimelineEventContent(
 
             val summary =
                 remember(
-                    event.details,
-                    detailLevel
+                    event,
+                    detailLevel,
+                    renderer
                 ) {
                     timelineSummary(
-                        context = context,
+                        renderer = renderer,
                         event = event,
                         detailLevel =
                             detailLevel
@@ -368,18 +370,18 @@ private fun TimelineGap(
 
 @Composable
 private fun timelinePointColor(
-    event: WakeEvent
+    event: RecordedEvent
 ) =
     when (event.type) {
-        "SCREEN_ON",
-        "CPU_WAKEUP",
-        "NOTIFICATION" ->
+        EventType.SCREEN_ON,
+        EventType.CPU_WAKEUP,
+        EventType.NOTIFICATION ->
             MaterialTheme.colorScheme.primary
 
-        "MONITOR_START" ->
+        EventType.MONITOR_START ->
             MaterialTheme.colorScheme.tertiary
 
-        "MONITOR_STOP" ->
+        EventType.MONITOR_STOP ->
             MaterialTheme.colorScheme.error
 
         else ->
@@ -389,17 +391,17 @@ private fun timelinePointColor(
 
 @Composable
 private fun timelineContainerColor(
-    event: WakeEvent
+    event: RecordedEvent
 ) =
     when (event.type) {
-        "SCREEN_ON",
-        "CPU_WAKEUP" ->
+        EventType.SCREEN_ON,
+        EventType.CPU_WAKEUP ->
             MaterialTheme.colorScheme
                 .primaryContainer
                 .copy(alpha = 0.32f)
 
-        "MONITOR_START",
-        "MONITOR_STOP" ->
+        EventType.MONITOR_START,
+        EventType.MONITOR_STOP ->
             MaterialTheme.colorScheme
                 .surfaceVariant
                 .copy(alpha = 0.42f)
@@ -409,134 +411,80 @@ private fun timelineContainerColor(
     }
 
 private fun timelineLineHeight(
-    event: WakeEvent,
     detailLevel: DetailLevel
 ) =
-    when {
-        detailLevel == DetailLevel.EXPERT &&
-            event.details.isNotBlank() ->
+    when (detailLevel) {
+        DetailLevel.EXPERT ->
             108.dp
 
-        detailLevel == DetailLevel.NORMAL &&
-            event.details.isNotBlank() ->
+        DetailLevel.NORMAL ->
             78.dp
 
-        else ->
+        DetailLevel.SIMPLE ->
             58.dp
     }
 
 private fun timelineSummary(
-    context: Context,
-    event: WakeEvent,
+    renderer: EventTextRenderer,
+    event: RecordedEvent,
     detailLevel: DetailLevel
-): String {
-    if (
-        detailLevel == DetailLevel.SIMPLE ||
-        event.details.isBlank()
-    ) {
-        return ""
+): String =
+    when (detailLevel) {
+        DetailLevel.SIMPLE ->
+            ""
+
+        DetailLevel.NORMAL ->
+            renderer
+                .summaryLines(event)
+                .joinToString(
+                    separator = "\n"
+                )
+
+        DetailLevel.EXPERT ->
+            renderer
+                .details(event)
+                .trim()
     }
-
-    if (detailLevel == DetailLevel.EXPERT) {
-        return event.details.trim()
-    }
-
-    val preferredPrefixes =
-        listOf(
-            R.string.timeline_prefix_direct_wake_reason,
-            R.string.timeline_prefix_likely_cause,
-            R.string.timeline_prefix_possible_cause,
-            R.string.timeline_prefix_later_detected_cause,
-            R.string.timeline_prefix_possible_source,
-            R.string.timeline_prefix_system_reason,
-            R.string.timeline_prefix_cpu_awake_time,
-            R.string.timeline_prefix_source,
-            R.string.timeline_prefix_kind,
-            R.string.timeline_prefix_cause
-        ).flatMap {
-            LocalizedText.variants(
-                context,
-                it
-            )
-        }
-
-    val usefulLines =
-        event.details
-            .lineSequence()
-            .map {
-                it.trim()
-            }
-            .filter {
-                it.isNotBlank()
-            }
-            .filter { line ->
-                preferredPrefixes.any {
-                        prefix ->
-
-                    line.startsWith(prefix)
-                }
-            }
-            .distinct()
-            .take(4)
-            .toList()
-
-    if (usefulLines.isNotEmpty()) {
-        return usefulLines.joinToString(
-            separator = "\n"
-        )
-    }
-
-    return event.details
-        .lineSequence()
-        .map {
-            it.trim()
-        }
-        .filter {
-            it.isNotBlank()
-        }
-        .take(3)
-        .joinToString(
-            separator = "\n"
-        )
-}
 
 @Composable
 private fun timelineEventTypeLabel(
-    type: String
+    type: EventType
 ): String {
     return when (type) {
-        "MONITOR_START" ->
+        EventType.MONITOR_START ->
             stringResource(R.string.timeline_type_monitor_start)
 
-        "MONITOR_STOP" ->
+        EventType.MONITOR_STOP ->
             stringResource(R.string.timeline_type_monitor_stop)
 
-        "SCREEN_ON" ->
+        EventType.SCREEN_ON ->
             stringResource(R.string.timeline_type_screen_on)
 
-        "SCREEN_OFF" ->
+        EventType.SCREEN_OFF ->
             stringResource(R.string.timeline_type_screen_off)
 
-        "CPU_WAKEUP" ->
+        EventType.CPU_WAKEUP ->
             stringResource(R.string.timeline_type_cpu_wakeup)
 
-        "NOTIFICATION" ->
+        EventType.NOTIFICATION ->
             stringResource(R.string.timeline_type_notification)
 
-        "POWER_CONNECTED" ->
+        EventType.POWER_CONNECTED ->
             stringResource(R.string.timeline_type_power_connected)
 
-        "POWER_DISCONNECTED" ->
+        EventType.POWER_DISCONNECTED ->
             stringResource(R.string.timeline_type_power_disconnected)
 
-        "USB_ATTACHED" ->
+        EventType.USB_ATTACHED ->
             stringResource(R.string.timeline_type_usb_attached)
 
-        "USB_DETACHED" ->
+        EventType.USB_DETACHED ->
             stringResource(R.string.timeline_type_usb_detached)
 
-        else ->
-            type.replace(
+        EventType.NETWORK_SESSION,
+        EventType.SYSTEM_SNAPSHOT,
+        EventType.EXPERT_SNAPSHOT ->
+            type.name.replace(
                 '_',
                 ' '
             )

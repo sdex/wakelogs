@@ -10,7 +10,6 @@
     <string name="source_drm_system_service">DRM system service</string>
     <string name="source_android_network_service">Android network service</string>
     <string name="source_android_system_service">Android system service</string>
-    <string name="source_system_service">System service</string>
     <string name="source_samsung_telephony_sim_service">Samsung phone/SIM service</string>
     <string name="source_samsung_offline_finding">Samsung Offline Finding</string>
     <string name="source_oneplus_screen_gestures">OnePlus screen gestures</string>
@@ -26,7 +25,6 @@
     <string name="source_google_cellular_ims_service">Google cellular/IMS service</string>
     <string name="source_android_bluetooth_service">Android Bluetooth service</string>
     <string name="source_android_networkstack_service">Android network service</string>
-    <string name="source_unknown_system_source">Unknown system source</string>
 
     <!-- EventGrouping -->
     <string name="grouping_source_ambiguous">Not clearly attributable</string>
@@ -62,6 +60,4 @@
     <string name="stats_label_display">Screen</string>
     <string name="stats_label_notifications">Notifications</string>
     <string name="stats_window_ongoing">%1$s · running</string>
-    <string name="stats_value_not_determined">not determined</string>
-    <string name="stats_notification">Notification</string>
 </resources>

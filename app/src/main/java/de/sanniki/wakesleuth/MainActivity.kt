@@ -86,6 +86,36 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import de.sanniki.wakesleuth.domain.AlarmHint
+import de.sanniki.wakesleuth.domain.CauseAssessment
+import de.sanniki.wakesleuth.domain.CpuWakeupEvent
+import de.sanniki.wakesleuth.domain.EventType
+import de.sanniki.wakesleuth.domain.ExpertSection
+import de.sanniki.wakesleuth.domain.ExpertSnapshotEvent
+import de.sanniki.wakesleuth.domain.ExpertSnapshotStatus
+import de.sanniki.wakesleuth.domain.HintRelation
+import de.sanniki.wakesleuth.domain.JobHint
+import de.sanniki.wakesleuth.domain.NotificationCauseKind
+import de.sanniki.wakesleuth.domain.NotificationEvent
+import de.sanniki.wakesleuth.domain.RecordedEvent
+import de.sanniki.wakesleuth.domain.ScreenOffEvent
+import de.sanniki.wakesleuth.domain.ScreenOnEvent
+import de.sanniki.wakesleuth.domain.ScreenOnVerdict
+import de.sanniki.wakesleuth.domain.SnapshotClassification
+import de.sanniki.wakesleuth.domain.SnapshotStatus
+import de.sanniki.wakesleuth.domain.SystemSnapshot
+import de.sanniki.wakesleuth.domain.SystemSnapshotEvent
+import de.sanniki.wakesleuth.domain.WakeLockHint
+import de.sanniki.wakesleuth.domain.WakeLockTags
+import de.sanniki.wakesleuth.domain.WakeReasons
+import de.sanniki.wakesleuth.ui.ScreenOnStatistics
+import de.sanniki.wakesleuth.ui.WakelogsViewModel
+import de.sanniki.wakesleuth.ui.render.EventTextRenderer
+import de.sanniki.wakesleuth.ui.render.SourceLabelResolver
+import de.sanniki.wakesleuth.ui.render.rememberEventTextRenderer
+import de.sanniki.wakesleuth.ui.render.rememberSourceLabelResolver
 import de.sanniki.wakesleuth.ui.theme.WakesleuthTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -145,7 +175,7 @@ private enum class CauseConfidence(
     UNRESOLVED(R.string.main_confidence_unresolved)
 }
 
-private data class CauseAssessment(
+private data class CauseAssessmentUi(
     val confidence: CauseConfidence,
     @StringRes val explanation: Int
 )
@@ -155,10 +185,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        if (!WakeMonitorService.isRunning) {
-            EventStore.setMonitoring(this, false)
-        }
 
         setContent {
             var uiSettings by remember {
@@ -193,7 +219,8 @@ class MainActivity : ComponentActivity() {
 private fun WakeSleuthScreen(
     uiSettings: WakeSleuthUiSettings,
     onUiSettingsChanged:
-        (WakeSleuthUiSettings) -> Unit
+        (WakeSleuthUiSettings) -> Unit,
+    viewModel: WakelogsViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -322,40 +349,34 @@ private fun WakeSleuthScreen(
         )
     }
 
-    var events by remember {
-        mutableStateOf(EventStore.getEvents(context))
-    }
+    val events by
+        viewModel.timeline
+            .collectAsStateWithLifecycle()
 
-    var monitoring by remember {
-        mutableStateOf(WakeMonitorService.isRunning)
-    }
+    val latestSession by
+        viewModel.latestSession
+            .collectAsStateWithLifecycle()
+
+    val archivedSessions by
+        viewModel.archive
+            .collectAsStateWithLifecycle()
+
+    val recordingSession =
+        latestSession?.takeIf {
+            it.finalizedAt == null
+        }
+
+    val monitoring =
+        recordingSession != null
 
     val currentSessionStartMillis =
-        remember(
-            events,
-            monitoring
-        ) {
-            if (!monitoring) {
-                null
-            } else {
-                events
-                    .filter {
-                        it.type ==
-                            "MONITOR_START"
-                    }
-                    .maxByOrNull {
-                        it.timestamp
-                    }
-                    ?.timestamp
-            }
-        }
+        recordingSession?.startedAt
+
+    val stopRequestedAtMillis =
+        recordingSession?.stopRequestedAt
 
     var currentSessionDurationMillis by remember {
         mutableStateOf(0L)
-    }
-
-    var stopRequestedAtMillis by remember {
-        mutableStateOf<Long?>(null)
     }
 
     LaunchedEffect(
@@ -373,9 +394,6 @@ private fun WakeSleuthScreen(
             if (!monitoring) {
                 currentSessionDurationMillis =
                     0L
-
-                stopRequestedAtMillis =
-                    null
             }
 
             return@LaunchedEffect
@@ -413,6 +431,23 @@ private fun WakeSleuthScreen(
     }
 
     val coroutineScope = rememberCoroutineScope()
+
+    val labels = rememberSourceLabelResolver()
+
+    val todayStartMillis =
+        remember {
+            startOfTodayMillis()
+        }
+
+    val dailyStatistics by
+        remember(todayStartMillis) {
+            viewModel.observeScreenOnStatistics(
+                from = todayStartMillis,
+                to = startOfNextDayMillis(todayStartMillis)
+            )
+        }.collectAsStateWithLifecycle(
+            ScreenOnStatistics()
+        )
 
     var shizukuState by remember {
         mutableStateOf(ShizukuDiagnostics.state())
@@ -556,30 +591,27 @@ private fun WakeSleuthScreen(
 
             EventFilter.DISPLAY -> {
                 events.filter {
-                    it.type == "SCREEN_ON" ||
-                        it.type == "SCREEN_OFF"
+                    it is ScreenOnEvent ||
+                        it is ScreenOffEvent
                 }
             }
 
             EventFilter.BACKGROUND -> {
                 events.filter {
-                    it.type == "CPU_WAKEUP"
+                    it is CpuWakeupEvent
                 }
             }
 
             EventFilter.NOTIFICATIONS -> {
                 events.filter {
-                    it.type == "NOTIFICATION"
+                    it is NotificationEvent
                 }
             }
 
             EventFilter.UNKNOWN -> {
                 events.filter {
-                    it.type == "SCREEN_ON" &&
-                        isUnexplainedScreenOn(
-                            context,
-                            it
-                        )
+                    it is ScreenOnEvent &&
+                        CauseAssessment.isUnexplained(it)
                 }
             }
         }
@@ -674,24 +706,24 @@ private fun WakeSleuthScreen(
             }
         }
 
-    LaunchedEffect(Unit) {
-        while (isActive) {
-            events = EventStore.getEvents(context)
-            monitoring = WakeMonitorService.isRunning
-            listenerEnabled =
-                isNotificationAccessEnabled(context)
-
-            notificationsAllowed =
-                Build.VERSION.SDK_INT < 33 ||
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.POST_NOTIFICATIONS
-                    ) == PackageManager.PERMISSION_GRANTED
-
-            shizukuState = ShizukuDiagnostics.state()
-
-            delay(600)
+    // Permissions and Shizuku can change in other apps; they are read
+    // again whenever this screen comes back to the foreground.
+    LaunchedEffect(appIsResumed) {
+        if (!appIsResumed) {
+            return@LaunchedEffect
         }
+
+        listenerEnabled =
+            isNotificationAccessEnabled(context)
+
+        notificationsAllowed =
+            Build.VERSION.SDK_INT < 33 ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+
+        shizukuState = ShizukuDiagnostics.state()
     }
 
     if (showSettings) {
@@ -909,9 +941,6 @@ private fun WakeSleuthScreen(
                             val requestedAtMillis =
                                 System.currentTimeMillis()
 
-                            stopRequestedAtMillis =
-                                requestedAtMillis
-
                             currentSessionDurationMillis =
                                 currentSessionStartMillis
                                     ?.let { startMillis ->
@@ -1046,7 +1075,7 @@ private fun WakeSleuthScreen(
                 uiSettings.showDailyStatistics
             ) {
                 item {
-                    StatisticsCard(events)
+                    StatisticsCard(dailyStatistics)
                 }
             }
 
@@ -1058,6 +1087,7 @@ private fun WakeSleuthScreen(
                 item {
                     SleepReportCard(
                         events = events,
+                        session = latestSession,
                         monitoring = monitoring,
                         detailLevel =
                             uiSettings.detailLevel
@@ -1072,7 +1102,7 @@ private fun WakeSleuthScreen(
             ) {
                 item {
                     SessionComparisonCard(
-                        events = events,
+                        sessions = archivedSessions,
                         detailLevel =
                             uiSettings.detailLevel
                     )
@@ -1080,7 +1110,7 @@ private fun WakeSleuthScreen(
 
                 item {
                     AppProfilesCard(
-                        events = events,
+                        sessions = archivedSessions,
                         detailLevel =
                             uiSettings.detailLevel
                     )
@@ -1088,9 +1118,12 @@ private fun WakeSleuthScreen(
 
                 item {
                     SessionHistoryCard(
-                        events = events,
+                        sessions = archivedSessions,
                         detailLevel =
-                            uiSettings.detailLevel
+                            uiSettings.detailLevel,
+                        onSaveNote = viewModel::updateNote,
+                        onDelete = viewModel::deleteSession,
+                        onDeleteAll = viewModel::clearArchive
                     )
                 }
             }
@@ -1104,7 +1137,7 @@ private fun WakeSleuthScreen(
                 item {
                     SourceStatisticsCard(
                         events = events,
-                        monitoring = monitoring,
+                        session = latestSession,
                         detailLevel =
                             uiSettings.detailLevel
                     )
@@ -1212,58 +1245,64 @@ private fun WakeSleuthScreen(
                                 wakeReasonDiagnostic != null ||
                                 networkStatsDiagnostic != null,
                         onExport = {
-                            pendingExportText =
-                                buildString {
-                                    appendLine(
-                                        resources.getString(
-                                            R.string.main_export_kind_technical_report
+                            coroutineScope.launch {
+                                val exportEvents =
+                                    viewModel.exportEvents()
+
+                                pendingExportText =
+                                    buildString {
+                                        appendLine(
+                                            resources.getString(
+                                                R.string.main_export_kind_technical_report
+                                            )
                                         )
-                                    )
-                                    appendLine()
+                                        appendLine()
 
-                                    append(
-                                        EventStore.buildExport(
-                                            context
+                                        append(
+                                            TechnicalExport.build(
+                                                context = context,
+                                                events = exportEvents,
+                                                monitoring = monitoring
+                                            )
                                         )
-                                    )
 
-                                    appendLine()
-                                    appendLine()
+                                        appendLine()
+                                        appendLine()
 
-                                    append(
-                                        buildManualDiagnosticsExport(
-                                            context =
-                                                context,
-                                            wakeLockDiagnostic =
-                                                wakeLockDiagnostic,
-                                            wakeupAlarmDiagnostic =
-                                                wakeupAlarmDiagnostic,
-                                            backgroundJobDiagnostic =
-                                                backgroundJobDiagnostic,
-                                            wakeReasonDiagnostic =
-                                                wakeReasonDiagnostic,
-                                            networkStatsDiagnostic =
-                                                networkStatsDiagnostic
+                                        append(
+                                            buildManualDiagnosticsExport(
+                                                context =
+                                                    context,
+                                                wakeLockDiagnostic =
+                                                    wakeLockDiagnostic,
+                                                wakeupAlarmDiagnostic =
+                                                    wakeupAlarmDiagnostic,
+                                                backgroundJobDiagnostic =
+                                                    backgroundJobDiagnostic,
+                                                wakeReasonDiagnostic =
+                                                    wakeReasonDiagnostic,
+                                                networkStatsDiagnostic =
+                                                    networkStatsDiagnostic
+                                            )
                                         )
-                                    )
-                                }
+                                    }
 
-                            val formatter =
-                                SimpleDateFormat(
-                                    "yyyyMMdd_HHmmss",
-                                    Locale.US
+                                val formatter =
+                                    SimpleDateFormat(
+                                        "yyyyMMdd_HHmmss",
+                                        Locale.US
+                                    )
+
+                                exportLauncher.launch(
+                                    resources.getString(
+                                        R.string.main_export_technical_report_file_name,
+                                        formatter.format(Date())
+                                    )
                                 )
-
-                            exportLauncher.launch(
-                                resources.getString(
-                                    R.string.main_export_technical_report_file_name,
-                                    formatter.format(Date())
-                                )
-                            )
+                            }
                         },
                         onClear = {
-                            EventStore.clear(context)
-                            events = emptyList()
+                            viewModel.clearEvents()
 
                             Toast.makeText(
                                 context,
@@ -1324,7 +1363,7 @@ private fun WakeSleuthScreen(
                         EventViewMode.LIST -> {
                             val groupedListItems =
                                 buildGroupedEventList(
-                                    context,
+                                    labels,
                                     filteredEvents
                                 )
 
@@ -2558,14 +2597,12 @@ private fun buildManualDiagnosticsExport(
                     .take(10)
                     .forEach { entry ->
                         val displayName =
-                            sourceDisplayName(
-                                context = context,
-                                appLabel =
-                                    entry.appLabel,
-                                packageName =
+                            SourceLabelResolver
+                                .get(context)
+                                .networkLabel(
                                     entry.packageName,
-                                uid = entry.uid
-                            )
+                                    entry.uid
+                                )
 
                         appendLine(
                             "• " +
@@ -4455,11 +4492,11 @@ private fun ShizukuWakeLockCard(
                                                 entry.packageName
                                         )
                                     } else {
-                                        sourceDisplayName(
-                                            context,
-                                            "UID " +
+                                        SourceLabelResolver
+                                            .get(context)
+                                            .uidLabel(
                                                 entry.uid
-                                        )
+                                            )
                                     }
 
                             Text(
@@ -4565,21 +4602,14 @@ private data class SessionComparisonData(
 
 @Composable
 private fun SessionComparisonCard(
-    events: List<WakeEvent>,
+    sessions: List<ArchivedSession>,
     detailLevel: DetailLevel
 ) {
     val context =
         LocalContext.current
 
     val comparison =
-        remember(events) {
-            val sessions =
-                SessionArchiveStore
-                    .getSessions(context)
-                    .sortedByDescending {
-                        it.startMillis
-                    }
-
+        remember(sessions) {
             if (sessions.size < 2) {
                 null
             } else {
@@ -5195,10 +5225,7 @@ private fun SessionTopAppRow(
         } else {
             Text(
                 text =
-                    sourceDisplayName(
-                        LocalContext.current,
-                        app.name
-                    ),
+                    app.name,
                 modifier = Modifier.fillMaxWidth(),
                 color =
                     MaterialTheme.colorScheme
@@ -5446,34 +5473,16 @@ private fun formatNetworkChange(
 
 @Composable
 private fun SessionHistoryCard(
-    events: List<WakeEvent>,
-    detailLevel: DetailLevel
+    sessions: List<ArchivedSession>,
+    detailLevel: DetailLevel,
+    onSaveNote: (sessionId: Long, note: String?) -> Unit,
+    onDelete: (sessionId: Long) -> Unit,
+    onDeleteAll: () -> Unit
 ) {
-    val context =
-        LocalContext.current
-
-    val archiveRefresh =
-        remember {
-            androidx.compose.runtime
-                .mutableIntStateOf(0)
-        }
-
     val showDeleteAllDialog =
         remember {
             androidx.compose.runtime
                 .mutableStateOf(false)
-        }
-
-    val sessions =
-        remember(
-            events,
-            archiveRefresh.intValue
-        ) {
-            SessionArchiveStore
-                .getSessions(context)
-                .sortedByDescending {
-                    it.startMillis
-                }
         }
 
     if (sessions.isEmpty()) {
@@ -5545,31 +5554,15 @@ private fun SessionHistoryCard(
                     session = session,
                     detailLevel = detailLevel,
                     onSaveNote = { note ->
-                        if (
-                            SessionArchiveStore
-                                .updateNote(
-                                    context = context,
-                                    sessionId =
-                                        session.id,
-                                    note = note
-                                )
-                        ) {
-                            archiveRefresh
-                                .intValue++
-                        }
+                        onSaveNote(
+                            session.id,
+                            note
+                        )
                     },
                     onDelete = {
-                        if (
-                            SessionArchiveStore
-                                .deleteSession(
-                                    context = context,
-                                    sessionId =
-                                        session.id
-                                )
-                        ) {
-                            archiveRefresh
-                                .intValue++
-                        }
+                        onDelete(
+                            session.id
+                        )
                     }
                 )
 
@@ -5721,12 +5714,7 @@ private fun SessionHistoryCard(
                         expanded.value =
                             false
 
-                        SessionArchiveStore.clear(
-                            context
-                        )
-
-                        archiveRefresh
-                            .intValue++
+                        onDeleteAll()
                     },
                     colors =
                         ButtonDefaults
@@ -6091,10 +6079,7 @@ private fun SessionHistoryEntry(
 
                 Text(
                     text =
-                        sourceDisplayName(
-                            context,
-                            app.name
-                        ),
+                        app.name,
                     modifier =
                         Modifier.fillMaxWidth(),
                     color =
@@ -6227,10 +6212,7 @@ private fun SessionHistoryEntry(
                         .forEach { app ->
                             SessionHistoryValueRow(
                                 label =
-                                    sourceDisplayName(
-                                        context,
-                                        app.name
-                                    ),
+                                    app.name,
                                 value =
                                     formatNetworkBytes(
                                         app.totalBytes
@@ -6785,16 +6767,13 @@ private fun buildSessionExportText(
                 )
             )
         } else {
-            session.topApps.forEachIndexed {
+            session.topApps.take(SESSION_EXPORT_TOP_APPS).forEachIndexed {
                     index,
                     app ->
 
                 appendLine(
                     "${index + 1}. " +
-                        sourceDisplayName(
-                            context,
-                            app.name
-                        ) +
+                        app.name +
                         " · " +
                         formatNetworkBytes(
                             app.totalBytes
@@ -6811,6 +6790,8 @@ private fun buildSessionExportText(
         )
     }
 }
+
+private const val SESSION_EXPORT_TOP_APPS = 10
 
 private fun formatSessionExportTimestamp(
     timestamp: Long
@@ -6894,47 +6875,16 @@ private fun startOfNextDayMillis(
 
 @Composable
 private fun StatisticsCard(
-    events: List<WakeEvent>
+    statistics: ScreenOnStatistics
 ) {
-    val context =
-        LocalContext.current
-
-    val todayStartMillis =
-        remember {
-            startOfTodayMillis()
-        }
-
-    val tomorrowStartMillis =
-        remember(todayStartMillis) {
-            startOfNextDayMillis(
-                todayStartMillis
-            )
-        }
-
-    val screenOnEvents =
-        events.filter { event ->
-            event.type == "SCREEN_ON" &&
-                event.timestamp >=
-                    todayStartMillis &&
-                event.timestamp <
-                    tomorrowStartMillis
-        }
+    val screenOnCount =
+        statistics.total
 
     val hintedCount =
-        screenOnEvents.count {
-            hasExplanationOrHint(
-                context,
-                it
-            )
-        }
+        statistics.withCause
 
     val unknownCount =
-        screenOnEvents.count {
-            isUnexplainedScreenOn(
-                context,
-                it
-            )
-        }
+        statistics.unexplained
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -6958,7 +6908,7 @@ private fun StatisticsCard(
             )
 
             if (
-                screenOnEvents.isEmpty() &&
+                screenOnCount == 0 &&
                 hintedCount == 0 &&
                 unknownCount == 0
             ) {
@@ -6982,7 +6932,7 @@ private fun StatisticsCard(
                 ) {
                     StatisticValue(
                         value =
-                            screenOnEvents.size.toString(),
+                            screenOnCount.toString(),
                         label = stringResource(
                             R.string.main_metric_screen_on
                         ),
@@ -7009,463 +6959,6 @@ private fun StatisticsCard(
                 }
             }
         }
-    }
-}
-
-private data class NightWindow(
-    val startMillis: Long,
-    val endMillis: Long,
-    val ongoing: Boolean,
-    @StringRes val title: Int
-)
-
-private enum class NightWakeCategory {
-    POWER_BUTTON,
-    DOUBLE_TAP,
-    NOTIFICATION,
-    WAKEUP_ALARM,
-    OTHER_EXPLAINED,
-    UNEXPLAINED
-}
-
-@Composable
-private fun NightAnalysisCard(
-    events: List<WakeEvent>,
-    monitoring: Boolean
-) {
-    val context =
-        LocalContext.current
-
-    val nightWindow =
-        remember(
-            events,
-            monitoring
-        ) {
-            calculateNightWindow(
-                events = events,
-                monitoring = monitoring
-            )
-        }
-
-    val screenOnEvents =
-        events.filter { event ->
-            event.type == "SCREEN_ON" &&
-                event.timestamp >=
-                    nightWindow.startMillis &&
-                event.timestamp <=
-                    nightWindow.endMillis
-        }
-
-    val categories =
-        screenOnEvents.groupingBy {
-            nightWakeCategory(
-                context,
-                it
-            )
-        }.eachCount()
-
-    val powerButtonCount =
-        categories[
-            NightWakeCategory.POWER_BUTTON
-        ] ?: 0
-
-    val doubleTapCount =
-        categories[
-            NightWakeCategory.DOUBLE_TAP
-        ] ?: 0
-
-    val notificationCount =
-        categories[
-            NightWakeCategory.NOTIFICATION
-        ] ?: 0
-
-    val alarmCount =
-        categories[
-            NightWakeCategory.WAKEUP_ALARM
-        ] ?: 0
-
-    val otherExplainedCount =
-        categories[
-            NightWakeCategory.OTHER_EXPLAINED
-        ] ?: 0
-
-    val unexplainedCount =
-        categories[
-            NightWakeCategory.UNEXPLAINED
-        ] ?: 0
-
-    val backgroundWakeCount =
-        events.count { event ->
-            event.type == "CPU_WAKEUP" &&
-                event.timestamp >=
-                    nightWindow.startMillis &&
-                event.timestamp <=
-                    nightWindow.endMillis
-        }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp)
-        ) {
-            Text(
-                text = stringResource(
-                    nightWindow.title
-                ),
-                style =
-                    MaterialTheme.typography
-                        .titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(
-                modifier = Modifier.height(4.dp)
-            )
-
-            Text(
-                text =
-                    formatNightWindow(
-                        nightWindow
-                    ),
-                color =
-                    MaterialTheme.colorScheme
-                        .onSurfaceVariant,
-                style =
-                    MaterialTheme.typography.bodySmall
-            )
-
-            Spacer(
-                modifier = Modifier.height(14.dp)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement =
-                    Arrangement.spacedBy(8.dp)
-            ) {
-                StatisticValue(
-                    value =
-                        screenOnEvents.size.toString(),
-                    label = stringResource(
-                        R.string.main_metric_screen_on
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-
-                StatisticValue(
-                    value =
-                        (
-                            screenOnEvents.size -
-                                unexplainedCount
-                        ).toString(),
-                    label = stringResource(
-                        R.string.main_metric_assigned
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-
-                StatisticValue(
-                    value =
-                        unexplainedCount.toString(),
-                    label = stringResource(
-                        R.string.main_filter_unexplained
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(
-                modifier = Modifier.height(14.dp)
-            )
-
-            HorizontalDivider()
-
-            Spacer(
-                modifier = Modifier.height(12.dp)
-            )
-
-            NightAnalysisRow(
-                label = stringResource(
-                    R.string.main_night_power_button
-                ),
-                value = powerButtonCount
-            )
-
-            NightAnalysisRow(
-                label = stringResource(
-                    R.string.main_night_double_tap
-                ),
-                value = doubleTapCount
-            )
-
-            NightAnalysisRow(
-                label = stringResource(
-                    R.string.main_night_notifications
-                ),
-                value = notificationCount
-            )
-
-            NightAnalysisRow(
-                label = stringResource(
-                    R.string.main_diag_wakeup_alarms
-                ),
-                value = alarmCount
-            )
-
-            NightAnalysisRow(
-                label = stringResource(
-                    R.string.main_night_other_hints
-                ),
-                value = otherExplainedCount
-            )
-
-            NightAnalysisRow(
-                label = stringResource(
-                    R.string.main_filter_unexplained
-                ),
-                value = unexplainedCount
-            )
-
-            NightAnalysisRow(
-                label = stringResource(
-                    R.string.main_night_background_cpu_wakeups
-                ),
-                value = backgroundWakeCount
-            )
-
-            if (
-                screenOnEvents.isEmpty() &&
-                backgroundWakeCount == 0
-            ) {
-                Spacer(
-                    modifier = Modifier.height(10.dp)
-                )
-
-                Text(
-                    text =
-                        stringResource(
-                            R.string.main_night_no_wakeups
-                        ),
-                    color =
-                        MaterialTheme.colorScheme
-                            .onSurfaceVariant,
-                    style =
-                        MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun NightAnalysisRow(
-    label: String,
-    value: Int
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        verticalAlignment =
-            Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.weight(1f),
-            color =
-                MaterialTheme.colorScheme
-                    .onSurfaceVariant,
-            style =
-                MaterialTheme.typography.bodyMedium
-        )
-
-        Text(
-            text = value.toString(),
-            color =
-                MaterialTheme.colorScheme.primary,
-            style =
-                MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-private fun calculateNightWindow(
-    events: List<WakeEvent>,
-    monitoring: Boolean
-): NightWindow {
-    val now =
-        System.currentTimeMillis()
-
-    val sortedEvents =
-        events.sortedBy {
-            it.timestamp
-        }
-
-    val latestMonitorStart =
-        sortedEvents.lastOrNull {
-            it.type == "MONITOR_START"
-        }
-
-    if (latestMonitorStart != null) {
-        val stopAfterStart =
-            sortedEvents.firstOrNull { event ->
-                event.type == "MONITOR_STOP" &&
-                    event.timestamp >=
-                        latestMonitorStart.timestamp
-            }
-
-        if (monitoring) {
-            return NightWindow(
-                startMillis =
-                    latestMonitorStart.timestamp,
-                endMillis = now,
-                ongoing = true,
-                title =
-                    R.string.main_night_window_ongoing
-            )
-        }
-
-        val lastSessionEvent =
-            sortedEvents.lastOrNull { event ->
-                event.timestamp >=
-                    latestMonitorStart.timestamp
-            }
-
-        val endTimestamp =
-            stopAfterStart?.timestamp
-                ?: lastSessionEvent?.timestamp
-                ?: latestMonitorStart.timestamp
-
-        return NightWindow(
-            startMillis =
-                latestMonitorStart.timestamp,
-            endMillis =
-                endTimestamp,
-            ongoing = false,
-            title =
-                R.string.main_night_window_last
-        )
-    }
-
-    if (sortedEvents.isNotEmpty()) {
-        return NightWindow(
-            startMillis =
-                sortedEvents.first().timestamp,
-            endMillis =
-                sortedEvents.last().timestamp,
-            ongoing = false,
-            title =
-                R.string.main_night_window_recorded
-        )
-    }
-
-    return NightWindow(
-        startMillis = now,
-        endMillis = now,
-        ongoing = false,
-        title = R.string.main_night_window_none
-    )
-}
-
-@Composable
-private fun formatNightWindow(
-    window: NightWindow
-): String {
-    val formatter =
-        SimpleDateFormat(
-            "dd.MM. HH:mm",
-            Locale.getDefault()
-        )
-
-    return if (window.ongoing) {
-        stringResource(
-            R.string.main_since,
-            formatter.format(
-                Date(window.startMillis)
-            )
-        )
-    } else if (
-        window.startMillis ==
-            window.endMillis
-    ) {
-        formatter.format(
-            Date(window.startMillis)
-        )
-    } else {
-        buildString {
-            append(
-                formatter.format(
-                    Date(window.startMillis)
-                )
-            )
-
-            append(" – ")
-
-            append(
-                formatter.format(
-                    Date(window.endMillis)
-                )
-            )
-        }
-    }
-}
-
-private fun nightWakeCategory(
-    context: Context,
-    event: WakeEvent
-): NightWakeCategory {
-    val details = event.details
-
-    return when {
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.main_match_direct_wake_power_button
-        ) ->
-            NightWakeCategory.POWER_BUTTON
-
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.main_match_direct_wake_double_tap
-        ) ->
-            NightWakeCategory.DOUBLE_TAP
-
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.main_label_likely_cause
-        ) ||
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.main_label_possible_cause
-        ) ||
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.event_label_cause_detected_later
-        ) ->
-            NightWakeCategory.NOTIFICATION
-
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.event_label_wakeup_alarm_hint
-        ) ->
-            NightWakeCategory.WAKEUP_ALARM
-
-        isUnexplainedScreenOn(
-            context,
-            event
-        ) ->
-            NightWakeCategory.UNEXPLAINED
-
-        else ->
-            NightWakeCategory.OTHER_EXPLAINED
     }
 }
 
@@ -7848,7 +7341,10 @@ private fun GroupedCpuEventCard(
 
                     Text(
                         text =
-                            group.source,
+                            group.source
+                                ?: stringResource(
+                                    R.string.grouping_source_ambiguous
+                                ),
                         style =
                             MaterialTheme
                                 .typography
@@ -8255,16 +7751,16 @@ private fun GroupedEventValueRow(
 }
 
 private fun formatGroupedEventRange(
-    events: List<WakeEvent>
+    events: List<RecordedEvent>
 ): String {
     val oldest =
         events.minOf {
-            it.timestamp
+            it.occurredAt
         }
 
     val newest =
         events.maxOf {
-            it.timestamp
+            it.occurredAt
         }
 
     val formatter =
@@ -8321,11 +7817,14 @@ private fun formatGroupedCpuDuration(
 
 @Composable
 private fun EventCard(
-    event: WakeEvent,
+    event: RecordedEvent,
     detailLevel: DetailLevel
 ) {
     val context =
         LocalContext.current
+
+    val renderer =
+        rememberEventTextRenderer()
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -8359,7 +7858,7 @@ private fun EventCard(
 
                 Text(
                     text = formatTimestamp(
-                        event.timestamp
+                        event.occurredAt
                     ),
                     color =
                         MaterialTheme.colorScheme
@@ -8374,73 +7873,75 @@ private fun EventCard(
             )
 
             Text(
-                text = event.title,
+                text = renderer.title(event),
                 style =
                     MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
 
-            val causeAssessment =
-                causeAssessmentFor(
-                    context,
-                    event
-                )
-
-            if (causeAssessment != null) {
+            if (event is ScreenOnEvent) {
                 Spacer(
                     modifier = Modifier.height(7.dp)
                 )
 
                 CauseAssessmentCard(
                     assessment =
-                        causeAssessment
+                        causeAssessmentFor(event)
                 )
-            }
 
-            val causalChain =
-                remember(event.details) {
-                    buildCausalChain(
-                        context,
-                        event
+                val causalChain =
+                    remember(event, renderer) {
+                        buildCausalChain(
+                            context,
+                            renderer,
+                            event
+                        )
+                    }
+
+                if (causalChain.isNotEmpty()) {
+                    Spacer(
+                        modifier = Modifier.height(8.dp)
+                    )
+
+                    CausalChainView(
+                        steps = causalChain
                     )
                 }
-
-            if (causalChain.isNotEmpty()) {
-                Spacer(
-                    modifier = Modifier.height(8.dp)
-                )
-
-                CausalChainView(
-                    steps = causalChain
-                )
             }
 
             if (
-                event.details.isNotBlank() &&
                 detailLevel != DetailLevel.SIMPLE
             ) {
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
+                val details =
+                    remember(event, renderer) {
+                        uiDetailsForEvent(
+                            context,
+                            renderer,
+                            event
+                        )
+                    }
 
-                HorizontalDivider()
+                if (details.isNotBlank()) {
+                    Spacer(
+                        modifier = Modifier.height(5.dp)
+                    )
 
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
+                    HorizontalDivider()
 
-                Text(
-                    text = uiDetailsForEvent(
-                        context,
-                        event
-                    ),
-                    color =
-                        MaterialTheme.colorScheme
-                            .onSurfaceVariant,
-                    style =
-                        MaterialTheme.typography.bodySmall,
-                    lineHeight = 17.sp
-                )
+                    Spacer(
+                        modifier = Modifier.height(5.dp)
+                    )
+
+                    Text(
+                        text = details,
+                        color =
+                            MaterialTheme.colorScheme
+                                .onSurfaceVariant,
+                        style =
+                            MaterialTheme.typography.bodySmall,
+                        lineHeight = 17.sp
+                    )
+                }
             }
         }
     }
@@ -8611,365 +8112,137 @@ private fun CausalChainView(
     }
 }
 
+/**
+ * Steps that led to a screen-on, in time order: the direct wake reason,
+ * the notification cause and every hint, each with its exact offset.
+ * Hints that only accompanied the wake-up are listed separately.
+ */
 private fun buildCausalChain(
     context: Context,
-    event: WakeEvent
+    renderer: EventTextRenderer,
+    event: ScreenOnEvent
 ): List<CausalChainStep> {
-    if (event.type != "SCREEN_ON") {
-        return emptyList()
-    }
-
-    val lines =
-        event.details
-            .lines()
-            .map { it.trim() }
-
     val steps =
         mutableListOf<CausalChainStep>()
 
-    fun valueAfter(
-        startIndex: Int,
-        @StringRes prefixId: Int
-    ): String? {
-        val end =
-            lines.indices
-                .drop(startIndex + 1)
-                .firstOrNull { index ->
-                    isCausalSectionStart(
-                        context,
-                        lines[index]
+    event.wakeReason?.let { wakeReason ->
+        steps.add(
+            CausalChainStep(
+                offsetMillis =
+                    wakeReason.offsetMs,
+                timingText =
+                    renderer.signedSeconds(
+                        wakeReason.offsetMs
+                    ),
+                title =
+                    context.getString(
+                        R.string.main_chain_trigger
+                    ),
+                source =
+                    renderer.wakeReasonLabel(
+                        wakeReason
                     )
-                }
-                ?: lines.size
-
-        return lines
-            .subList(
-                startIndex + 1,
-                end
             )
-            .firstOrNull {
-                LocalizedText.startsWithAny(
-                    it,
-                    context,
-                    prefixId
-                )
-            }
-            ?.let {
-                LocalizedText.removeAnyPrefix(
-                    it,
-                    context,
-                    prefixId
-                )
-            }
-            ?.trim()
+        )
     }
 
-    lines.forEachIndexed {
-            index,
-            line ->
+    event.notificationCause?.let { cause ->
+        steps.add(
+            CausalChainStep(
+                offsetMillis =
+                    cause.offsetMs,
+                timingText =
+                    renderer.signedSeconds(
+                        cause.offsetMs
+                    ),
+                title =
+                    context.getString(
+                        R.string.main_chain_notification
+                    ),
+                source =
+                    SourceLabelResolver
+                        .get(context)
+                        .appName(cause.packageName)
+            )
+        )
+    }
 
-        when {
-            LocalizedText.startsWithAny(
-                line,
-                context,
-                R.string.event_label_direct_wake_reason
-            ) -> {
-                val title =
-                    line.substringAfter(":")
-                        .trim()
-
-                val timing =
-                    valueAfter(
-                        index,
-                        R.string.event_label_time_offset
-                    ) ?: context.getString(
-                        R.string.main_timing_directly_assigned
+    event.wakeLockHints.forEach { hint ->
+        steps.add(
+            CausalChainStep(
+                offsetMillis =
+                    hint.offsetMs,
+                timingText =
+                    renderer.signedSeconds(
+                        hint.offsetMs
+                    ),
+                title =
+                    renderer.wakeLockKindLabel(
+                        WakeLockTags.kindOf(hint.tag)
+                    ),
+                source =
+                    renderer.sourceLabel(
+                        hint.packageName
+                    ),
+                companionActivity =
+                    isChainCompanion(
+                        CauseAssessment.relationOf(event, hint),
+                        hint.offsetMs
                     )
+            )
+        )
+    }
 
-                steps.add(
-                    CausalChainStep(
-                        offsetMillis =
-                            parseCausalOffset(
-                                context,
-                                timing
-                            ),
-                        timingText =
-                            readableCausalTiming(
-                                context,
-                                timing
-                            ),
-                        title =
-                            context.getString(
-                                R.string.main_chain_trigger
-                            ),
-                        source = title
+    event.alarmHints.forEach { hint ->
+        steps.add(
+            CausalChainStep(
+                offsetMillis =
+                    hint.offsetMs,
+                timingText =
+                    renderer.signedSeconds(
+                        hint.offsetMs
+                    ),
+                title =
+                    context.getString(
+                        R.string.main_chain_wakeup_alarm
+                    ),
+                source =
+                    renderer.sourceLabel(
+                        hint.packageName
+                    ),
+                companionActivity =
+                    isChainCompanion(
+                        CauseAssessment.relationOf(event, hint),
+                        hint.offsetMs
                     )
-                )
-            }
+            )
+        )
+    }
 
-            LocalizedText.startsWithAny(
-                line,
-                context,
-                R.string.main_label_likely_cause
-            ) ||
-            LocalizedText.startsWithAny(
-                line,
-                context,
-                R.string.main_label_possible_cause
-            ) -> {
-                val source =
-                    line.substringAfter(":")
-                        .trim()
-
-                val timing =
-                    valueAfter(
-                        index,
-                        R.string.event_label_time_offset
-                    ) ?: context.getString(
-                        R.string.main_timing_assigned
+    event.jobHints.forEach { hint ->
+        steps.add(
+            CausalChainStep(
+                offsetMillis =
+                    hint.offsetMs,
+                timingText =
+                    renderer.signedSeconds(
+                        hint.offsetMs
+                    ),
+                title =
+                    context.getString(
+                        R.string.main_kind_background_job
+                    ),
+                source =
+                    renderer.sourceLabel(
+                        hint.packageName
+                    ),
+                companionActivity =
+                    isChainCompanion(
+                        CauseAssessment.relationOf(event, hint),
+                        hint.offsetMs
                     )
-
-                steps.add(
-                    CausalChainStep(
-                        offsetMillis =
-                            parseCausalOffset(
-                                context,
-                                timing
-                            ),
-                        timingText =
-                            readableCausalTiming(
-                                context,
-                                timing
-                            ),
-                        title =
-                            context.getString(
-                                R.string.main_chain_notification
-                            ),
-                        source = source
-                    )
-                )
-            }
-
-            LocalizedText.startsWithAny(
-                line,
-                context,
-                R.string.event_label_cause_detected_later
-            ) -> {
-                val source =
-                    line.substringAfter(":")
-                        .trim()
-
-                val arrivedPrefixes =
-                    LocalizedText.variants(
-                        context,
-                        R.string.main_label_notification_arrived
-                    ).map { "$it " }
-
-                val timingLine =
-                    lines
-                        .drop(index + 1)
-                        .firstNotNullOfOrNull { candidate ->
-                            arrivedPrefixes
-                                .firstOrNull {
-                                    candidate.startsWith(it)
-                                }
-                                ?.let {
-                                    candidate.removePrefix(it)
-                                }
-                        }
-                        ?: context.getString(
-                            R.string.main_match_after_screen_on
-                        )
-
-                steps.add(
-                    CausalChainStep(
-                        offsetMillis =
-                            parseCausalOffset(
-                                context,
-                                timingLine
-                            ),
-                        timingText =
-                            readableCausalTiming(
-                                context,
-                                timingLine
-                            ),
-                        title =
-                            context.getString(
-                                R.string.main_chain_notification
-                            ),
-                        source = source
-                    )
-                )
-            }
-
-            LocalizedText.startsWithAny(
-                line,
-                context,
-                R.string.event_label_system_hint
-            ) ||
-            LocalizedText.equalsAny(
-                line,
-                context,
-                R.string.event_section_companion_wakelock
-            ) -> {
-                val source =
-                    valueAfter(
-                        index,
-                        R.string.event_label_source
-                    ).orEmpty()
-
-                val kind =
-                    valueAfter(
-                        index,
-                        R.string.event_label_kind
-                    ) ?: context.getString(
-                        R.string.main_chain_wakelock
-                    )
-
-                val timing =
-                    valueAfter(
-                        index,
-                        R.string.event_label_time_offset
-                    ) ?: context.getString(
-                        R.string.main_timing_assigned
-                    )
-
-                steps.add(
-                    CausalChainStep(
-                        offsetMillis =
-                            parseCausalOffset(
-                                context,
-                                timing
-                            ),
-                        timingText =
-                            readableCausalTiming(
-                                context,
-                                timing
-                            ),
-                        title = kind,
-                        source = source,
-                        companionActivity =
-                            LocalizedText.startsWithAny(
-                                line,
-                                context,
-                                R.string.event_label_companion_activity
-                            ) &&
-                                parseCausalOffset(
-                                    context,
-                                    timing
-                                ) >= 0L
-                    )
-                )
-            }
-
-            LocalizedText.startsWithAny(
-                line,
-                context,
-                R.string.event_label_wakeup_alarm_hint
-            ) ||
-            LocalizedText.equalsAny(
-                line,
-                context,
-                R.string.event_section_companion_wakeup_alarm
-            ) -> {
-                val source =
-                    valueAfter(
-                        index,
-                        R.string.event_label_source
-                    ).orEmpty()
-
-                val timing =
-                    valueAfter(
-                        index,
-                        R.string.event_label_time_offset
-                    ) ?: context.getString(
-                        R.string.main_timing_assigned
-                    )
-
-                steps.add(
-                    CausalChainStep(
-                        offsetMillis =
-                            parseCausalOffset(
-                                context,
-                                timing
-                            ),
-                        timingText =
-                            readableCausalTiming(
-                                context,
-                                timing
-                            ),
-                        title = context.getString(
-                            R.string.main_chain_wakeup_alarm
-                        ),
-                        source = source,
-                        companionActivity =
-                            LocalizedText.startsWithAny(
-                                line,
-                                context,
-                                R.string.event_label_companion_activity
-                            ) &&
-                                parseCausalOffset(
-                                    context,
-                                    timing
-                                ) >= 0L
-                    )
-                )
-            }
-
-            LocalizedText.startsWithAny(
-                line,
-                context,
-                R.string.event_label_background_job_hint
-            ) ||
-            LocalizedText.equalsAny(
-                line,
-                context,
-                R.string.event_section_companion_background_job
-            ) -> {
-                val source =
-                    valueAfter(
-                        index,
-                        R.string.event_label_source
-                    ).orEmpty()
-
-                val timing =
-                    valueAfter(
-                        index,
-                        R.string.event_label_time_offset
-                    ) ?: context.getString(
-                        R.string.main_timing_assigned
-                    )
-
-                steps.add(
-                    CausalChainStep(
-                        offsetMillis =
-                            parseCausalOffset(
-                                context,
-                                timing
-                            ),
-                        timingText =
-                            readableCausalTiming(
-                                context,
-                                timing
-                            ),
-                        title = context.getString(
-                            R.string.main_kind_background_job
-                        ),
-                        source = source,
-                        companionActivity =
-                            LocalizedText.startsWithAny(
-                                line,
-                                context,
-                                R.string.event_label_companion_activity
-                            ) &&
-                                parseCausalOffset(
-                                    context,
-                                    timing
-                                ) >= 0L
-                    )
-                )
-            }
-        }
+            )
+        )
     }
 
     if (steps.isEmpty()) {
@@ -8979,7 +8252,7 @@ private fun buildCausalChain(
     steps.add(
         CausalChainStep(
             offsetMillis = 0L,
-            timingText = formatZeroCausalTiming(),
+            timingText = renderer.signedSeconds(0L),
             title = context.getString(
                 R.string.main_chain_screen_turned_on
             ),
@@ -9007,224 +8280,20 @@ private fun buildCausalChain(
         )
 }
 
-private fun isCausalSectionStart(
-    context: Context,
-    line: String
-): Boolean {
-    return LocalizedText.startsWithAny(
-        line,
-        context,
-        R.string.event_label_direct_wake_reason
-    ) ||
-        LocalizedText.startsWithAny(
-            line,
-            context,
-            R.string.main_label_likely_cause
-        ) ||
-        LocalizedText.startsWithAny(
-            line,
-            context,
-            R.string.main_label_possible_cause
-        ) ||
-        LocalizedText.startsWithAny(
-            line,
-            context,
-            R.string.event_label_cause_detected_later
-        ) ||
-        LocalizedText.startsWithAny(
-            line,
-            context,
-            R.string.event_label_system_hint
-        ) ||
-        LocalizedText.startsWithAny(
-            line,
-            context,
-            R.string.event_label_wakeup_alarm_hint
-        ) ||
-        LocalizedText.startsWithAny(
-            line,
-            context,
-            R.string.event_label_background_job_hint
-        ) ||
-        LocalizedText.startsWithAny(
-            line,
-            context,
-            R.string.event_label_companion_activity
-        )
-}
-
-private fun parseCausalOffset(
-    context: Context,
-    text: String
-): Long {
-    val normalized =
-        text.replace(
-            ',',
-            '.'
-        )
-
-    if (
-        LocalizedText.containsAny(
-            normalized,
-            context,
-            R.string.main_match_simultaneous,
-            ignoreCase = true
-        )
-    ) {
-        return 0L
-    }
-
-    val secondsPattern =
-        LocalizedText.variants(
-            context,
-            R.string.main_match_seconds
-        ).joinToString("|") {
-            Regex.escape(it)
-        }
-
-    val match =
-        Regex(
-            """(\d+(?:\.\d+)?)\s+(?:$secondsPattern)"""
-        ).find(normalized)
-
-    val milliseconds =
-        match
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.toDoubleOrNull()
-            ?.times(1_000.0)
-            ?.toLong()
-            ?: 0L
-
-    return when {
-        LocalizedText.containsAny(
-            normalized,
-            context,
-            R.string.main_match_before_screen_on,
-            ignoreCase = true
-        ) ->
-            -milliseconds
-
-        LocalizedText.containsAny(
-            normalized,
-            context,
-            R.string.main_match_after_screen_on,
-            ignoreCase = true
-        ) ->
-            milliseconds
-
-        else ->
-            0L
-    }
-}
-
-private fun formatZeroCausalTiming(): String {
-    return String.format(
-        Locale.getDefault(),
-        "%.1f s",
-        0.0
-    )
-}
-
-private fun readableCausalTiming(
-    context: Context,
-    text: String
-): String {
-    val offset =
-        parseCausalOffset(
-            context,
-            text
-        )
-
-    if (offset == 0L) {
-        return formatZeroCausalTiming()
-    }
-
-    val decimalSeparator =
-        java.text.DecimalFormatSymbols
-            .getInstance(
-                Locale.getDefault()
-            )
-            .decimalSeparator
-
-    val normalized =
-        text
-            .replace(
-                '.',
-                decimalSeparator
-            )
-            .replace(
-                ',',
-                decimalSeparator
-            )
-
-    fun secondsValue(): String {
-        val secondsWord =
-            LocalizedText.variants(
-                context,
-                R.string.main_match_seconds
-            ).firstOrNull {
-                normalized.contains(" $it")
-            }
-
-        val beforeSeconds =
-            if (secondsWord == null) {
-                normalized
-            } else {
-                normalized
-                    .substringBefore(
-                        " $secondsWord"
-                    )
-            }
-
-        return beforeSeconds
-            .substringAfterLast(' ')
-            .trim()
-    }
-
-    return when {
-        LocalizedText.containsAny(
-            normalized,
-            context,
-            R.string.main_match_before_screen_on,
-            ignoreCase = true
-        ) -> {
-            val value =
-                secondsValue()
-
-            "−$value s"
-        }
-
-        LocalizedText.containsAny(
-            normalized,
-            context,
-            R.string.main_match_after_screen_on,
-            ignoreCase = true
-        ) -> {
-            val value =
-                secondsValue()
-
-            "+$value s"
-        }
-
-        LocalizedText.containsAny(
-            normalized,
-            context,
-            R.string.main_match_simultaneous,
-            ignoreCase = true
-        ) ->
-            formatZeroCausalTiming()
-
-        else ->
-            context.getString(
-                R.string.main_timing_assigned
-            )
-    }
-}
+/**
+ * Accompanying activity that happened before the screen-on still belongs
+ * into the chain; only simultaneous or later activity is listed apart.
+ */
+private fun isChainCompanion(
+    relation: HintRelation,
+    offsetMillis: Long
+): Boolean =
+    relation == HintRelation.COMPANION &&
+        offsetMillis >= 0L
 
 @Composable
 private fun CauseAssessmentCard(
-    assessment: CauseAssessment
+    assessment: CauseAssessmentUi
 ) {
     val containerColor =
         when (assessment.confidence) {
@@ -9320,593 +8389,320 @@ private fun CauseAssessmentCard(
     }
 }
 
+/**
+ * Detail text of an event card. Snapshots get a compact summary; every
+ * other event shows the rendered detail lines.
+ */
 private fun uiDetailsForEvent(
     context: Context,
-    event: WakeEvent
-): String {
-    if (event.type == "EXPERT_SNAPSHOT") {
-        val lines =
-            event.details
-                .lineSequence()
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-                .toList()
-
-        fun findValue(
-            @StringRes prefixId: Int
-        ): String? {
-            return lines.firstOrNull { line ->
-                LocalizedText.startsWithAny(
-                    line,
-                    context,
-                    prefixId
-                )
-            }
-                ?.let {
-                    LocalizedText.removeAnyPrefix(
-                        it,
-                        context,
-                        prefixId
-                    )
-                }
-                ?.trim()
-                ?.ifBlank { null }
-        }
-
-        val location =
-            findValue(
-                R.string.main_label_expert_location
-            )
-
-        val sensor =
-            findValue(
-                R.string.main_label_expert_sensors
-            )
-
-        val network =
-            findValue(
-                R.string.main_label_expert_network
-            )
-
-        return buildString {
-            appendLine(
-                context.getString(
-                    R.string.main_ui_trigger,
-                    context.getString(
-                        R.string.main_metric_screen_on
-                    )
-                )
-            )
-            appendLine(
-                context.getString(
-                    R.string.main_ui_expert_context_summary
-                )
-            )
-
-            if (location != null) {
-                appendLine()
-                appendLine(
-                    context.getString(
-                        R.string.main_ui_expert_section_location
-                    )
-                )
-                appendLine("• $location")
-            }
-
-            if (sensor != null) {
-                appendLine()
-                appendLine(
-                    context.getString(
-                        R.string.main_ui_expert_section_sensors
-                    )
-                )
-                appendLine("• $sensor")
-            }
-
-            if (network != null) {
-                appendLine()
-                appendLine(
-                    context.getString(
-                        R.string.main_ui_expert_section_network
-                    )
-                )
-                appendLine("• $network")
-            }
-
-            appendLine()
-            append(
-                context.getString(
-                    R.string.main_ui_expert_no_coordinates
-                )
-            )
-        }.trim()
-    }
-
-    if (event.type == "SYSTEM_SNAPSHOT") {
-        val lines =
-            event.details
-                .lineSequence()
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-                .toList()
-
-        fun valueAfter(
-            @StringRes prefixId: Int
-        ): String? {
-            return lines.firstOrNull { line ->
-                LocalizedText.startsWithAny(
-                    line,
-                    context,
-                    prefixId
-                )
-            }?.let {
-                LocalizedText.removeAnyPrefix(
-                    it,
-                    context,
-                    prefixId
-                )
-            }
-                ?.trim()
-                ?.ifBlank { null }
-        }
-
-        val trigger =
-            valueAfter(R.string.main_label_trigger)
-                ?: context.getString(
-                    R.string.main_ui_system_check
-                )
-
-        val wakefulness =
-            lines.firstOrNull { line ->
-                line.startsWith("Power:")
-            }
-                ?.substringAfter("Wakefulness=", "")
-                ?.substringBefore(",")
-                ?.trim()
-                ?.ifBlank { null }
-                ?: context.getString(
-                    R.string.main_unknown_lowercase
-                )
-
-        val screenOn =
-            lines.firstOrNull { line ->
-                LocalizedText.startsWithAny(
-                    line,
-                    context,
-                    R.string.main_label_conditions
-                )
-            }
-                ?.substringAfter("ScreenOn=", "")
-                ?.substringBefore(",")
-                ?.trim()
-                ?.ifBlank { null }
-
-        val displayText =
-            when (screenOn) {
-                "true" -> context.getString(
-                    R.string.main_ui_display_on
-                )
-                "false" -> context.getString(
-                    R.string.main_ui_display_off
-                )
-                else -> context.getString(
-                    R.string.main_unknown_lowercase
-                )
-            }
-
-        val idleLine =
-            lines.firstOrNull { line ->
-                line.startsWith("DeviceIdle:")
-            }
-
-        val idleText =
-            readableIdleStateForUi(
+    renderer: EventTextRenderer,
+    event: RecordedEvent
+): String =
+    when (event) {
+        is ExpertSnapshotEvent ->
+            expertSnapshotUiDetails(
                 context,
-                idleLine
+                renderer,
+                event
             )
 
-        val classification =
-            valueAfter(R.string.main_label_assessment)
-                ?: context.getString(
-                    R.string.main_ui_no_assessment
-                )
-
-        return buildString {
-            appendLine(
-                context.getString(
-                    R.string.main_ui_trigger,
-                    trigger
-                )
-            )
-            appendLine(
-                context.getString(
-                    R.string.main_ui_state,
-                    wakefulness
-                )
-            )
-            appendLine(
-                context.getString(
-                    R.string.main_ui_display,
-                    displayText
-                )
+        is SystemSnapshotEvent ->
+            systemSnapshotUiDetails(
+                context,
+                renderer,
+                event.snapshot
             )
 
-            if (idleText != null) {
-                appendLine(
-                    context.getString(
-                        R.string.main_ui_idle,
-                        idleText
-                    )
+        else ->
+            renderer.details(event)
+    }
+
+private fun expertSnapshotUiDetails(
+    context: Context,
+    renderer: EventTextRenderer,
+    event: ExpertSnapshotEvent
+): String {
+    val snapshot =
+        event.snapshot
+
+    return buildString {
+        appendLine(
+            context.getString(
+                R.string.main_ui_trigger,
+                context.getString(
+                    R.string.main_metric_screen_on
                 )
+            )
+        )
+        appendLine(
+            context.getString(
+                R.string.main_ui_expert_context_summary
+            )
+        )
+
+        if (snapshot.status != ExpertSnapshotStatus.OK) {
+            appendLine()
+            appendLine(
+                context.getString(
+                    R.string.service_diagnostic_error,
+                    snapshot.errorDetail
+                        ?: context.getString(
+                            R.string.main_unknown_lowercase
+                        )
+                )
+            )
+        }
+
+        ExpertSection.entries.forEach { section ->
+            val signals =
+                snapshot.signals
+                    .filter { it.section == section }
+                    .sortedBy { it.ordinal }
+
+            if (signals.isEmpty()) {
+                return@forEach
             }
 
             appendLine()
-            append(classification)
-        }.trim()
-    }
+            appendLine(
+                context.getString(
+                    when (section) {
+                        ExpertSection.LOCATION ->
+                            R.string.main_ui_expert_section_location
 
-    return event.details
+                        ExpertSection.SENSORS ->
+                            R.string.main_ui_expert_section_sensors
+
+                        ExpertSection.NETWORK ->
+                            R.string.main_ui_expert_section_network
+                    }
+                )
+            )
+
+            signals.forEach { signal ->
+                appendLine(
+                    "• " +
+                        renderer.expertSignalLabel(
+                            signal,
+                            event.deviceFamily
+                        )
+                )
+            }
+        }
+
+        appendLine()
+        append(
+            context.getString(
+                R.string.main_ui_expert_no_coordinates
+            )
+        )
+    }.trim()
 }
 
+private fun systemSnapshotUiDetails(
+    context: Context,
+    renderer: EventTextRenderer,
+    snapshot: SystemSnapshot
+): String {
+    val displayText =
+        when (snapshot.idleScreenOn) {
+            true -> context.getString(
+                R.string.main_ui_display_on
+            )
+            false -> context.getString(
+                R.string.main_ui_display_off
+            )
+            null -> context.getString(
+                R.string.main_unknown_lowercase
+            )
+        }
 
+    val idleText =
+        readableIdleStateForUi(
+            context,
+            snapshot
+        )
 
+    val classification =
+        if (snapshot.status == SnapshotStatus.OK) {
+            renderer.snapshotClassificationLabel(
+                SnapshotClassification.of(snapshot)
+            )
+        } else {
+            context.getString(
+                R.string.main_ui_no_assessment
+            )
+        }
+
+    return buildString {
+        appendLine(
+            context.getString(
+                R.string.main_ui_trigger,
+                renderer.snapshotTriggerLabel(
+                    snapshot.trigger
+                )
+            )
+        )
+        appendLine(
+            context.getString(
+                R.string.main_ui_state,
+                snapshot.wakefulness
+                    ?: context.getString(
+                        R.string.main_unknown_lowercase
+                    )
+            )
+        )
+        appendLine(
+            context.getString(
+                R.string.main_ui_display,
+                displayText
+            )
+        )
+
+        if (idleText != null) {
+            appendLine(
+                context.getString(
+                    R.string.main_ui_idle,
+                    idleText
+                )
+            )
+        }
+
+        appendLine()
+        append(classification)
+    }.trim()
+}
+
+/** Doze state from the raw `mState` / `mLightState` tokens. */
 private fun readableIdleStateForUi(
     context: Context,
-    idleLine: String?
+    snapshot: SystemSnapshot
 ): String? {
-    if (idleLine.isNullOrBlank()) {
-        return null
-    }
+    val deep =
+        snapshot.deepIdleState
+            ?.uppercase(Locale.ROOT)
 
-    val lower =
-        idleLine.lowercase(Locale.getDefault())
+    val light =
+        snapshot.lightIdleState
+            ?.uppercase(Locale.ROOT)
 
     return when {
-        lower.contains("deep=idle") ||
-            lower.contains("deepmode=true") ->
+        deep?.startsWith("IDLE") == true ||
+            snapshot.deviceIdleMode == true ->
             context.getString(
                 R.string.main_idle_deep_doze
             )
 
-        lower.contains("deep=inactive") &&
-            lower.contains("light=inactive") ->
+        deep == "INACTIVE" &&
+            light == "INACTIVE" ->
             context.getString(
                 R.string.main_idle_not_deep_yet
             )
 
-        lower.contains("light=active") ||
-            lower.contains("deep=active") ->
+        light == "ACTIVE" ||
+            deep == "ACTIVE" ->
             context.getString(
                 R.string.main_idle_system_active
             )
 
-        lower.contains("light=idle") ->
+        light?.startsWith("IDLE") == true ->
             context.getString(
                 R.string.main_idle_light_doze
             )
 
+        deep == null &&
+            light == null ->
+            null
+
         else ->
-            idleLine
-                .replace("DeviceIdle:", "")
-                .trim()
-                .take(80)
-                .ifBlank { null }
+            listOfNotNull(
+                snapshot.deepIdleState?.let { "Deep=$it" },
+                snapshot.lightIdleState?.let { "Light=$it" }
+            ).joinToString(", ")
     }
 }
 
 private fun causeAssessmentFor(
-    context: Context,
-    event: WakeEvent
-): CauseAssessment? {
-    if (event.type != "SCREEN_ON") {
-        return null
-    }
-
-    val details =
-        event.details
-
-    val hasDirectWakeReason =
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.event_label_direct_wake_reason,
-            ignoreCase = true
-        )
-
-    if (hasDirectWakeReason) {
-        return CauseAssessment(
-            confidence =
-                CauseConfidence.CONFIRMED,
-            explanation =
-                R.string.main_assessment_confirmed
-        )
-    }
-
-    val hasStrongNotification =
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.main_label_likely_cause,
-            ignoreCase = true
-        ) ||
-            (
-                LocalizedText.containsAny(
-                    details,
-                    context,
-                    R.string.event_label_cause_detected_later,
-                    ignoreCase = true
-                ) &&
-                LocalizedText.containsAny(
-                    details,
-                    context,
-                    R.string.service_confidence_high,
-                    ignoreCase = true
-                )
+    event: ScreenOnEvent
+): CauseAssessmentUi =
+    when (CauseAssessment.verdictOf(event)) {
+        ScreenOnVerdict.CONFIRMED ->
+            CauseAssessmentUi(
+                confidence =
+                    CauseConfidence.CONFIRMED,
+                explanation =
+                    R.string.main_assessment_confirmed
             )
 
-    if (hasStrongNotification) {
-        return CauseAssessment(
-            confidence =
-                CauseConfidence.PROBABLE,
-            explanation =
-                R.string.main_assessment_probable
-        )
-    }
-
-    val hasMediumNotification =
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.main_label_possible_cause,
-            ignoreCase = true
-        ) ||
-            (
-                LocalizedText.containsAny(
-                    details,
-                    context,
-                    R.string.event_label_cause_detected_later,
-                    ignoreCase = true
-                ) &&
-                LocalizedText.containsAny(
-                    details,
-                    context,
-                    R.string.service_confidence_medium,
-                    ignoreCase = true
-                )
+        ScreenOnVerdict.PROBABLE_NOTIFICATION ->
+            CauseAssessmentUi(
+                confidence =
+                    CauseConfidence.PROBABLE,
+                explanation =
+                    R.string.main_assessment_probable
             )
 
-    if (hasMediumNotification) {
-        return CauseAssessment(
-            confidence =
-                CauseConfidence.POSSIBLE,
-            explanation =
-                R.string.main_assessment_possible_notification
-        )
-    }
-
-    val hasWakeupAlarm =
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.event_label_wakeup_alarm_hint,
-            ignoreCase = true
-        )
-
-    if (hasWakeupAlarm) {
-        return CauseAssessment(
-            confidence =
-                CauseConfidence.POSSIBLE,
-            explanation =
-                R.string.main_assessment_possible_wakeup_alarm
-        )
-    }
-
-    val hasStrongWakeLock =
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.event_section_system_hint_possible_trigger,
-            ignoreCase = true
-        ) ||
-            LocalizedText.containsAny(
-                details,
-                context,
-                R.string.main_match_system_hint_close_relation,
-                ignoreCase = true
+        ScreenOnVerdict.POSSIBLE_NOTIFICATION ->
+            CauseAssessmentUi(
+                confidence =
+                    CauseConfidence.POSSIBLE,
+                explanation =
+                    R.string.main_assessment_possible_notification
             )
 
-    if (hasStrongWakeLock) {
-        return CauseAssessment(
-            confidence =
-                CauseConfidence.POSSIBLE,
-            explanation =
-                R.string.main_assessment_possible_wakelock
-        )
-    }
-
-    val hasCompanionActivity =
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.event_label_companion_activity,
-            ignoreCase = true
-        ) ||
-            LocalizedText.containsAny(
-                details,
-                context,
-                R.string.event_label_background_job_hint,
-                ignoreCase = true
-            ) ||
-            LocalizedText.containsAny(
-                details,
-                context,
-                R.string.main_match_system_hint_likely_follow_up,
-                ignoreCase = true
+        ScreenOnVerdict.POSSIBLE_WAKEUP_ALARM ->
+            CauseAssessmentUi(
+                confidence =
+                    CauseConfidence.POSSIBLE,
+                explanation =
+                    R.string.main_assessment_possible_wakeup_alarm
             )
 
-    if (hasCompanionActivity) {
-        return CauseAssessment(
-            confidence =
-                CauseConfidence.COMPANION,
-            explanation =
-                R.string.main_assessment_companion
-        )
+        ScreenOnVerdict.POSSIBLE_WAKELOCK ->
+            CauseAssessmentUi(
+                confidence =
+                    CauseConfidence.POSSIBLE,
+                explanation =
+                    R.string.main_assessment_possible_wakelock
+            )
+
+        ScreenOnVerdict.COMPANION ->
+            CauseAssessmentUi(
+                confidence =
+                    CauseConfidence.COMPANION,
+                explanation =
+                    R.string.main_assessment_companion
+            )
+
+        ScreenOnVerdict.UNRESOLVED ->
+            CauseAssessmentUi(
+                confidence =
+                    CauseConfidence.UNRESOLVED,
+                explanation =
+                    R.string.main_assessment_unresolved
+            )
     }
-
-    return CauseAssessment(
-        confidence =
-            CauseConfidence.UNRESOLVED,
-        explanation =
-            R.string.main_assessment_unresolved
-    )
-}
-
-
-private fun hasExplanationOrHint(
-    context: Context,
-    event: WakeEvent
-): Boolean {
-    if (event.type != "SCREEN_ON") {
-        return false
-    }
-
-    val details = event.details
-
-    val hasNotificationCause =
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.main_label_likely_cause
-        ) ||
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.main_label_possible_cause
-        ) ||
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.event_label_cause_detected_later
-        )
-
-    val hasSystemHint =
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.event_label_system_hint
-        ) ||
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.event_label_wakeup_alarm_hint
-        ) ||
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.event_label_background_job_hint
-        ) ||
-        LocalizedText.containsAny(
-            details,
-            context,
-            R.string.event_label_direct_wake_reason
-        )
-
-    return hasNotificationCause ||
-        hasSystemHint
-}
-
-private fun isUnexplainedScreenOn(
-    context: Context,
-    event: WakeEvent
-): Boolean {
-    if (event.type != "SCREEN_ON") {
-        return false
-    }
-
-    return LocalizedText.containsAny(
-        event.details,
-        context,
-        R.string.sleep_marker_cause_unknown
-    ) &&
-        !hasExplanationOrHint(
-            context,
-            event
-        )
-}
 
 private fun readableWakeReason(
     context: Context,
     diagnostic: WakeReasonDiagnostic
 ): String {
-    val reason =
-        diagnostic.reason.orEmpty()
-
-    val details =
-        diagnostic.details.orEmpty()
-
-    return when {
-        reason ==
-            "WAKE_REASON_POWER_BUTTON" ->
-            context.getString(
-                R.string.main_wake_reason_power_button
-            )
-
-        details.contains(
-            "DoubleTap",
-            ignoreCase = true
-        ) ||
-        details.contains(
-            "blackGestureWake",
-            ignoreCase = true
-        ) ->
-            context.getString(
-                R.string.main_wake_reason_double_tap
-            )
-
-        reason ==
-            "WAKE_REASON_GESTURE" ->
-            context.getString(
-                R.string.main_wake_reason_gesture
-            )
-
-        reason ==
-            "WAKE_REASON_LIFT" ->
-            context.getString(
-                R.string.main_wake_reason_lift
-            )
-
-        reason ==
-            "WAKE_REASON_PLUGGED_IN" ->
-            context.getString(
-                R.string.main_wake_reason_plugged_in
-            )
-
-        reason ==
-            "WAKE_REASON_APPLICATION" ->
-            context.getString(
-                R.string.main_wake_reason_application
-            )
-
-        reason ==
-            "WAKE_REASON_WAKE_KEY" ->
-            context.getString(
-                R.string.main_wake_reason_wake_key
-            )
-
-        reason ==
-            "WAKE_REASON_WAKE_MOTION" ->
-            context.getString(
-                R.string.main_wake_reason_motion
-            )
-
-        reason.isNotBlank() ->
-            reason
-
-        else ->
-            context.getString(
-                R.string.main_unknown
-            )
+    if (diagnostic.reason.isNullOrBlank()) {
+        return context.getString(
+            R.string.main_unknown
+        )
     }
+
+    return EventTextRenderer(context)
+        .wakeReasonLabel(
+            reason =
+                WakeReasons.fromPowerManager(
+                    diagnostic.reason,
+                    diagnostic.details
+                ),
+            rawReason =
+                diagnostic.reason
+        )
 }
 
 private fun compactWakeReasonDetails(
@@ -10080,226 +8876,31 @@ private fun resolveWakeLockSource(
     context: Context,
     packageName: String?
 ): String {
-    val rawName = packageName
-        ?.trim()
-        .orEmpty()
-
-    if (rawName.isBlank()) {
+    if (packageName.isNullOrBlank()) {
         return context.getString(
             R.string.main_unknown
         )
     }
 
-    readableSystemSource(
-        context,
-        rawName
-    )?.let {
-        return "$it ($rawName)"
-    }
-
-    return runCatching {
-        val applicationInfo =
-            context.packageManager
-                .getApplicationInfo(
-                    rawName,
-                    0
-                )
-
-        val appName =
-            context.packageManager
-                .getApplicationLabel(
-                    applicationInfo
-                )
-                .toString()
-                .trim()
-
-        if (appName.isBlank()) {
-            rawName
-        } else {
-            "$appName ($rawName)"
-        }
-    }.getOrDefault(rawName)
-}
-
-private fun readableSystemSource(
-    context: Context,
-    packageName: String
-): String? {
-    val value = packageName.lowercase(
-        Locale.ROOT
-    )
-
-    return when {
-        value == "android" ||
-            value == "system" ->
-            context.getString(
-                R.string.main_source_android_system
-            )
-
-        value.contains(
-            "com.android.mms.service"
-        ) ->
-            context.getString(
-                R.string.main_source_android_mms
-            )
-
-        value.contains(
-            "com.android.phone"
-        ) ->
-            context.getString(
-                R.string.main_source_android_phone
-            )
-
-        value.contains(
-            "com.android.providers.telephony"
-        ) ->
-            context.getString(
-                R.string.main_source_android_telephony_provider
-            )
-
-        value.contains(
-            "com.google.android.ims"
-        ) ->
-            context.getString(
-                R.string.main_source_google_ims
-            )
-
-        value.contains(
-            "com.android.systemui"
-        ) ->
-            context.getString(
-                R.string.main_source_android_system_ui
-            )
-
-        value.contains(
-            "com.android.bluetooth"
-        ) ->
-            context.getString(
-                R.string.main_source_android_bluetooth
-            )
-
-        value.contains(
-            "com.android.networkstack"
-        ) ->
-            context.getString(
-                R.string.main_source_android_network_stack
-            )
-
-        value.contains(
-            "com.google.android.gms"
-        ) ->
-            context.getString(
-                R.string.main_source_google_play_services
-            )
-
-        else -> null
-    }
+    return SourceLabelResolver
+        .get(context)
+        .labelWithPackage(packageName.trim())
 }
 
 private fun classifyWakeLockTag(
     context: Context,
     tag: String?
 ): String {
-    val value = tag
-        ?.trim()
-        .orEmpty()
-
-    if (value.isBlank()) {
+    if (tag.isNullOrBlank()) {
         return context.getString(
             R.string.main_kind_unknown_partial_wakelock
         )
     }
 
-    return when {
-        value.contains(
-            "NetworkStats",
-            ignoreCase = true
-        ) ->
-            context.getString(
-                R.string.main_kind_network_stats
-            )
-
-        value.contains(
-            "*alarm*",
-            ignoreCase = true
-        ) ->
-            context.getString(
-                R.string.main_kind_alarm
-            )
-
-        value.contains(
-            "*job*",
-            ignoreCase = true
-        ) ->
-            context.getString(
-                R.string.main_kind_background_job
-            )
-
-        value.contains(
-            "*launch*",
-            ignoreCase = true
-        ) ->
-            context.getString(
-                R.string.main_kind_app_launch
-            )
-
-        value.contains(
-            "AudioMix",
-            ignoreCase = true
-        ) ||
-        value.contains(
-            "AudioIn",
-            ignoreCase = true
-        ) ||
-        value.contains(
-            "ExoPlayer",
-            ignoreCase = true
-        ) ->
-            context.getString(
-                R.string.main_kind_audio
-            )
-
-        value.contains(
-            "SyncManager",
-            ignoreCase = true
-        ) ||
-        value.contains(
-            "*sync*",
-            ignoreCase = true
-        ) ->
-            context.getString(
-                R.string.main_kind_sync
-            )
-
-        value.contains(
-            "Icing",
-            ignoreCase = true
-        ) ->
-            context.getString(
-                R.string.main_kind_search_indexing
-            )
-
-        value.contains(
-            "NotificationManagerService",
-            ignoreCase = true
-        ) ->
-            context.getString(
-                R.string.main_kind_notification_processing
-            )
-
-        value.contains(
-            "PendingIntentClient",
-            ignoreCase = true
-        ) ->
-            context.getString(
-                R.string.main_kind_scheduled_background_action
-            )
-
-        else ->
-            context.getString(
-                R.string.main_kind_partial_wakelock
-            )
-    }
+    return EventTextRenderer(context)
+        .wakeLockKindLabel(
+            WakeLockTags.kindOf(tag)
+        )
 }
 
 private fun formatWakeLockTimestamp(
@@ -10350,52 +8951,54 @@ private fun formatWakeLockTimestamp(
 
 private fun eventTypeLabel(
     context: Context,
-    type: String
+    type: EventType
 ): String {
     return when (type) {
-        "SCREEN_ON" ->
+        EventType.SCREEN_ON ->
             context.getString(
                 R.string.main_event_type_screen_on
             )
 
-        "SCREEN_OFF" ->
+        EventType.SCREEN_OFF ->
             context.getString(
                 R.string.main_event_type_screen_off
             )
 
-        "CPU_WAKEUP" ->
+        EventType.CPU_WAKEUP ->
             context.getString(
                 R.string.main_event_type_background
             )
 
-        "SYSTEM_SNAPSHOT" ->
+        EventType.SYSTEM_SNAPSHOT ->
             context.getString(
                 R.string.main_event_type_system
             )
 
-        "EXPERT_SNAPSHOT" ->
+        EventType.EXPERT_SNAPSHOT ->
             context.getString(
                 R.string.main_event_type_expert
             )
 
-        "NOTIFICATION" ->
+        EventType.NOTIFICATION ->
             context.getString(
                 R.string.main_event_type_notification
             )
 
-        "MONITOR_START",
-        "MONITOR_STOP" ->
+        EventType.MONITOR_START,
+        EventType.MONITOR_STOP ->
             context.getString(
                 R.string.main_event_type_monitor
             )
 
-        else ->
-            type
+        EventType.POWER_CONNECTED,
+        EventType.POWER_DISCONNECTED,
+        EventType.USB_ATTACHED,
+        EventType.USB_DETACHED,
+        EventType.NETWORK_SESSION ->
+            type.name
                 .replace("_", " ")
-                .uppercase(Locale.getDefault())
     }
 }
-
 
 private fun formatTimestamp(
     timestamp: Long

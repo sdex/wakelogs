@@ -3,6 +3,7 @@ package de.sanniki.wakesleuth.data
 import android.content.Context
 import de.sanniki.wakesleuth.data.db.dao.PackageLabelDao
 import de.sanniki.wakesleuth.data.db.entity.PackageLabelEntity
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
@@ -20,7 +21,7 @@ class PackageLabelStore(
 ) {
     private val stored = ConcurrentHashMap<String, String>()
 
-    /** Live labels; an empty string marks a package that is not installed. */
+    /** Live labels of installed packages. Misses are not cached: the app may be installed later. */
     private val live = ConcurrentHashMap<String, String>()
 
     @Volatile
@@ -37,11 +38,19 @@ class PackageLabelStore(
 
     fun label(packageName: String): String? = liveLabel(packageName) ?: stored[packageName]
 
-    fun liveLabel(packageName: String): String? =
-        live
-            .getOrPut(packageName) {
-                lookup(packageName)?.trim().orEmpty()
-            }.ifEmpty { null }
+    fun liveLabel(packageName: String): String? {
+        live[packageName]?.let { return it }
+
+        val label = lookup(packageName)?.trim().orEmpty()
+
+        if (label.isEmpty()) {
+            return null
+        }
+
+        live[packageName] = label
+
+        return label
+    }
 
     /** Stores the current label of every installed package not yet stored. */
     fun remember(packageNames: Collection<String?>) {
@@ -70,7 +79,14 @@ class PackageLabelStore(
             }
 
             if (changed.isNotEmpty()) {
-                runCatching { dao.upsert(changed) }.onSuccess { changed.forEach { stored[it.packageName] = it.label } }
+                try {
+                    dao.upsert(changed)
+                    changed.forEach { stored[it.packageName] = it.label }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // A label that could not be stored is retried on the next remember.
+                }
             }
         }
     }

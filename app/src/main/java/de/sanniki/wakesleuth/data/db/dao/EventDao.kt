@@ -37,6 +37,7 @@ interface EventDao {
         """
         SELECT * FROM event
         WHERE type = 'SCREEN_ON' AND occurred_at >= :from AND occurred_at < :to
+        ORDER BY occurred_at DESC, id DESC
         """,
     )
     fun observeScreenOnsBetween(

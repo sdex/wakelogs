@@ -37,19 +37,23 @@ import de.sanniki.wakesleuth.ui.monitor.stopMonitoring
 import de.sanniki.wakesleuth.ui.render.SourceLabelResolver
 import de.sanniki.wakesleuth.ui.statistics.ScreenOnStatistics
 import de.sanniki.wakesleuth.ui.statistics.startOfNextDayMillis
-import de.sanniki.wakesleuth.ui.statistics.startOfTodayMillis
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -88,13 +92,16 @@ internal class WakeSleuthViewModel(
     }
 
     init {
+        val createdAt = System.currentTimeMillis()
+
         viewModelScope.launch(Dispatchers.IO) {
             data.labels.preload()
 
             // A session can only be open while the service runs; one left
             // open belongs to a process that was killed.
             if (!WakeMonitorService.isRunning) {
-                data.sessions.recoverAbandonedSessions(System.currentTimeMillis())
+                // A service started after this point owns its session.
+                data.sessions.recoverAbandonedSessions(System.currentTimeMillis(), ownerStartedAt = createdAt)
             }
         }
 
@@ -265,12 +272,13 @@ internal class WakeSleuthViewModel(
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeDailyStatistics() {
-        val todayStart = startOfTodayMillis()
-
         viewModelScope.launch {
-            data.events
-                .observeScreenOnsBetween(todayStart, startOfNextDayMillis(todayStart))
+            // The day bounds follow the clock: at midnight the query restarts for the new day.
+            currentDayStarts()
+                .distinctUntilChanged()
+                .flatMapLatest { dayStart -> data.events.observeScreenOnsBetween(dayStart, startOfNextDayMillis(dayStart)) }
                 .map { screenOns ->
                     ScreenOnStatistics(
                         total = screenOns.size,
@@ -418,31 +426,34 @@ internal class WakeSleuthViewModel(
             val current = state.value
             val exportEvents = exportEvents()
 
-            pendingExportText = buildString {
-                appendLine(app.getString(R.string.main_export_kind_technical_report))
-                appendLine()
+            // The report can be large; assemble it off the main thread.
+            pendingExportText = withContext(Dispatchers.Default) {
+                buildString {
+                    appendLine(app.getString(R.string.main_export_kind_technical_report))
+                    appendLine()
 
-                append(
-                    TechnicalExport.build(
-                        context = app,
-                        events = exportEvents,
-                        monitoring = current.monitor.monitoring,
-                    ),
-                )
+                    append(
+                        TechnicalExport.build(
+                            context = app,
+                            events = exportEvents,
+                            monitoring = current.monitor.monitoring,
+                        ),
+                    )
 
-                appendLine()
-                appendLine()
+                    appendLine()
+                    appendLine()
 
-                append(
-                    buildManualDiagnosticsExport(
-                        context = app,
-                        wakeLockDiagnostic = current.diagnostics.wakeLock,
-                        wakeupAlarmDiagnostic = current.diagnostics.wakeupAlarm,
-                        backgroundJobDiagnostic = current.diagnostics.backgroundJob,
-                        wakeReasonDiagnostic = current.diagnostics.wakeReason,
-                        networkStatsDiagnostic = current.diagnostics.networkStats,
-                    ),
-                )
+                    append(
+                        buildManualDiagnosticsExport(
+                            context = app,
+                            wakeLockDiagnostic = current.diagnostics.wakeLock,
+                            wakeupAlarmDiagnostic = current.diagnostics.wakeupAlarm,
+                            backgroundJobDiagnostic = current.diagnostics.backgroundJob,
+                            wakeReasonDiagnostic = current.diagnostics.wakeReason,
+                            networkStatsDiagnostic = current.diagnostics.networkStats,
+                        ),
+                    )
+                }
             }
 
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
@@ -608,3 +619,27 @@ internal class WakeSleuthViewModel(
         }
     }
 }
+
+/** Start of the calendar day containing [at]. */
+internal fun startOfDayMillis(at: Long): Long =
+    Calendar
+        .getInstance()
+        .apply {
+            timeInMillis = at
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+/** Emits the start of the current day, and again at every date change. */
+internal fun currentDayStarts(now: () -> Long = System::currentTimeMillis): Flow<Long> =
+    flow {
+        while (true) {
+            val dayStart = startOfDayMillis(now())
+
+            emit(dayStart)
+
+            delay((startOfNextDayMillis(dayStart) - now()).coerceAtLeast(1L))
+        }
+    }

@@ -8,10 +8,11 @@ import de.sanniki.wakesleuth.domain.CpuEvidenceRules
 import de.sanniki.wakesleuth.domain.EvidenceOrigin
 import de.sanniki.wakesleuth.domain.EvidenceType
 import de.sanniki.wakesleuth.domain.PowerKeySignal
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-import kotlin.math.abs
 
 data class BackgroundParserDiagnostics(
     val parsedLines: Int = 0,
@@ -31,6 +32,9 @@ object BackgroundWakeMonitor {
     private const val KEY_BASELINE_READY = "baseline_ready"
 
     private const val KEY_LAST_TIMESTAMP = "last_timestamp"
+
+    /** Session the persisted baseline belongs to. */
+    private const val KEY_BASELINE_SESSION_ID = "baseline_session_id"
 
     private const val KEY_DIAG_PARSED_LINES = "diag_parsed_lines"
 
@@ -56,6 +60,8 @@ object BackgroundWakeMonitor {
 
     private const val HISTORY_LINES = 3000
 
+    private const val NO_SESSION = -1L
+
     /*
      * Ein Kandidat wird erst verarbeitet, wenn genügend
      * Folgezeit vergangen ist. So landen Jobs und Syncs
@@ -78,6 +84,23 @@ object BackgroundWakeMonitor {
      * häufig auf zwei direkt aufeinanderfolgende Zeilen.
      */
     private const val POWER_KEY_LOOKBACK_MILLIS = 1_000L
+
+    /*
+     * BatteryStats-Zeilen tragen kein Jahr. Zeitstempel, die mehr als
+     * diese Toleranz in der Zukunft liegen, gehören zum Vorjahr.
+     */
+    internal const val FUTURE_SLACK_MILLIS = 24 * 60 * 60 * 1_000L
+
+    /** Tolerance for clock differences between the history and this process. */
+    internal const val CLOCK_SLACK_MILLIS = 60_000L
+
+    /*
+     * Ein Kandidat ohne -running wird höchstens so lange zurückgehalten;
+     * danach wird er ohne Schlafzeitpunkt gespeichert.
+     */
+    internal const val MAX_DEFER_MILLIS = 5 * 60 * 1_000L
+
+    private val pollMutex = Mutex()
 
     private val timestampRegex =
         Regex(
@@ -104,7 +127,11 @@ object BackgroundWakeMonitor {
             """\+sync=(?<source>\S+:"[^"]+"|\S+)""",
         )
 
-    suspend fun poll(context: Context): Int {
+    suspend fun poll(context: Context): Int =
+        // The periodic poll and the final poll must never interleave.
+        pollMutex.withLock { pollLocked(context) }
+
+    private suspend fun pollLocked(context: Context): Int {
         if (
             ShizukuDiagnostics.state() != ShizukuState.RUNNING_GRANTED
         ) {
@@ -155,12 +182,13 @@ object BackgroundWakeMonitor {
     private suspend fun processHistory(
         context: Context,
         history: String,
+        now: Long = System.currentTimeMillis(),
     ): Int {
         val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         val parsedLines = history
             .lineSequence()
-            .mapNotNull(::parseHistoryLine)
+            .mapNotNull { parseHistoryLine(it, now) }
             .sortedBy {
                 it.timestampMillis
             }.toList()
@@ -178,8 +206,7 @@ object BackgroundWakeMonitor {
 
         saveRawDiagnosticLines(context = context, parsedLines = parsedLines)
 
-        val safeCutoff = newestTimestamp -
-            SAFE_TAIL_MILLIS
+        val safeCutoff = safeCutoff(newestTimestamp = newestTimestamp, now = now)
 
         val fullDiagnostics = BackgroundParserDiagnostics(
             parsedLines = parsedLines.size,
@@ -201,6 +228,27 @@ object BackgroundWakeMonitor {
             lastPollMillis = System.currentTimeMillis(),
         )
 
+        val data = WakelogsData.get(context)
+        val session = data.database.sessionDao().recordingSession()
+
+        if (session == null) {
+            // Nothing can be recorded; keep the position so no wakeup is skipped.
+            saveDiagnostics(context = context, diagnostics = fullDiagnostics)
+
+            return 0
+        }
+
+        // The baseline belongs to one session; a new session must not
+        // import the history that predates it.
+        if (prefs.getLong(KEY_BASELINE_SESSION_ID, NO_SESSION) != session.id) {
+            prefs
+                .edit()
+                .putLong(KEY_BASELINE_SESSION_ID, session.id)
+                .putBoolean(KEY_BASELINE_READY, false)
+                .remove(KEY_LAST_TIMESTAMP)
+                .apply()
+        }
+
         if (
             !prefs.getBoolean(KEY_BASELINE_READY, false)
         ) {
@@ -215,7 +263,11 @@ object BackgroundWakeMonitor {
             return 0
         }
 
-        val previousTimestamp = prefs.getLong(KEY_LAST_TIMESTAMP, 0L)
+        val previousTimestamp = healLastTimestamp(
+            stored = prefs.getLong(KEY_LAST_TIMESTAMP, 0L),
+            safeCutoff = safeCutoff,
+            now = now,
+        )
 
         /*
          * Der Bildschirmzustand wird anhand der gesamten
@@ -442,24 +494,35 @@ object BackgroundWakeMonitor {
                 }
         }
 
+        val batch = batchCandidates(
+            candidates = wakeCandidates,
+            sessionStartedAt = session.startedAt,
+            now = now,
+        )
+
         var added = 0
 
-        wakeCandidates.forEach { candidate ->
+        // Position up to which everything is settled; unresolved or
+        // unrecorded candidates hold it back so the next poll sees them again.
+        var nextTimestamp = safeCutoff
+
+        batch.deferredFrom?.let { nextTimestamp = minOf(nextTimestamp, it - 1L) }
+
+        for (candidate in batch.ready) {
             if (
                 shouldSkipVisibleWakeEvent(candidate)
             ) {
-                return@forEach
+                continue
             }
 
-            WakelogsData
-                .get(context)
-                .recorder
-                .recordCpuWakeup(toCpuWakeupCandidate(candidate))
+            val eventId = data.recorder.recordCpuWakeup(toCpuWakeupCandidate(candidate))
 
-            added += 1
+            if (eventId != null) {
+                added += 1
+            }
         }
 
-        prefs.edit().putLong(KEY_LAST_TIMESTAMP, safeCutoff).apply()
+        prefs.edit().putLong(KEY_LAST_TIMESTAMP, nextTimestamp).apply()
 
         saveDiagnostics(
             context = context,
@@ -468,6 +531,63 @@ object BackgroundWakeMonitor {
 
         return added
     }
+
+    /**
+     * Result of [batchCandidates]: candidates that can be recorded now and
+     * the timestamp of the oldest candidate that still waits for its
+     * `-running` line, if any (it and everything after it is deferred).
+     */
+    internal data class CandidateBatch(
+        val ready: List<WakeCandidate>,
+        val deferredFrom: Long?,
+    )
+
+    /**
+     * Drops candidates that started before the session, and defers those
+     * whose CPU sleep line has not shown up yet (up to [MAX_DEFER_MILLIS]).
+     */
+    internal fun batchCandidates(
+        candidates: List<WakeCandidate>,
+        sessionStartedAt: Long,
+        now: Long,
+    ): CandidateBatch {
+        val ready = mutableListOf<WakeCandidate>()
+
+        for (candidate in candidates.sortedBy { it.timestampMillis }) {
+            if (candidate.timestampMillis < sessionStartedAt) {
+                continue
+            }
+
+            val unresolved = candidate.cpuSleepTimestampMillis == null &&
+                now - candidate.timestampMillis < MAX_DEFER_MILLIS
+
+            if (unresolved) {
+                return CandidateBatch(ready = ready, deferredFrom = candidate.timestampMillis)
+            }
+
+            ready.add(candidate)
+        }
+
+        return CandidateBatch(ready = ready, deferredFrom = null)
+    }
+
+    /** Newest settled timestamp; never beyond the present, whatever the history claims. */
+    internal fun safeCutoff(
+        newestTimestamp: Long,
+        now: Long,
+    ): Long = minOf(newestTimestamp, now + CLOCK_SLACK_MILLIS) - SAFE_TAIL_MILLIS
+
+    /** A persisted position in the future would stop the polling for good. */
+    internal fun healLastTimestamp(
+        stored: Long,
+        safeCutoff: Long,
+        now: Long,
+    ): Long =
+        if (stored > now + CLOCK_SLACK_MILLIS) {
+            minOf(stored, safeCutoff)
+        } else {
+            stored
+        }
 
     private fun shouldSkipVisibleWakeEvent(candidate: WakeCandidate): Boolean {
         val durationMillis = candidate.cpuSleepTimestampMillis
@@ -584,7 +704,10 @@ object BackgroundWakeMonitor {
         return pattern.containsMatchIn(raw)
     }
 
-    private fun parseHistoryLine(raw: String): ParsedHistoryLine? {
+    internal fun parseHistoryLine(
+        raw: String,
+        now: Long = System.currentTimeMillis(),
+    ): ParsedHistoryLine? {
         val timestamp = timestampRegex
             .find(raw)
             ?.groups
@@ -592,18 +715,34 @@ object BackgroundWakeMonitor {
             ?.value
             ?: return null
 
-        val timestampMillis = parseTimestamp(timestamp)
+        val timestampMillis = parseTimestamp(timestamp, now)
             ?: return null
 
         return ParsedHistoryLine(timestampMillis = timestampMillis, raw = raw)
     }
 
-    private fun parseTimestamp(value: String): Long? =
-        runCatching {
-            val year = Calendar.getInstance().get(Calendar.YEAR)
+    /**
+     * History lines carry no year. The current year is used unless that
+     * puts the time more than a day into the future (a December line seen
+     * in early January), then the previous year applies.
+     */
+    internal fun parseTimestamp(
+        value: String,
+        now: Long = System.currentTimeMillis(),
+    ): Long? {
+        val year = Calendar.getInstance().apply { timeInMillis = now }.get(Calendar.YEAR)
 
-            SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).apply { isLenient = false }.parse("$year-$value")?.time
-        }.getOrNull()
+        // The previous year also covers 29 February in a non-leap year.
+        return listOf(year, year - 1)
+            .firstNotNullOfOrNull { candidateYear ->
+                runCatching {
+                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+                        .apply { isLenient = false }
+                        .parse("$candidateYear-$value")
+                        ?.time
+                }.getOrNull()?.takeIf { it <= now + FUTURE_SLACK_MILLIS }
+            }
+    }
 
     private fun saveRawDiagnosticLines(
         context: Context,
@@ -677,7 +816,7 @@ object BackgroundWakeMonitor {
             ).apply()
     }
 
-    private data class WakeCandidate(
+    internal data class WakeCandidate(
         val timestampMillis: Long,
         var wakeReason: String?,
         var runningObserved: Boolean,
@@ -685,7 +824,7 @@ object BackgroundWakeMonitor {
         var cpuSleepTimestampMillis: Long? = null,
     )
 
-    private data class ParsedHistoryLine(
+    internal data class ParsedHistoryLine(
         val timestampMillis: Long,
         val raw: String,
     )

@@ -32,13 +32,17 @@ import de.sanniki.wakesleuth.domain.SnapshotStatus
 import de.sanniki.wakesleuth.domain.SnapshotTrigger
 import de.sanniki.wakesleuth.domain.SystemSnapshot
 import de.sanniki.wakesleuth.domain.UsbDeviceInfo
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 class WakeMonitorService :
@@ -53,6 +57,8 @@ class WakeMonitorService :
     private var explicitStop = false
     private var stopInProgress = false
     private var sessionStart: Job? = null
+    private var pollJob: Job? = null
+    private var serviceStartedAt = Long.MAX_VALUE
 
     private val data by lazy { WakelogsData.get(this) }
 
@@ -129,11 +135,27 @@ class WakeMonitorService :
         startAsForeground()
         registerSystemEvents()
         registerProximitySensor()
+    }
+
+    /**
+     * Opens (or resumes) the session once. Not done in [onCreate] so that a
+     * STOP that merely (re)created the service cannot open a new session.
+     */
+    private fun beginSession() {
+        if (sessionStart != null) {
+            return
+        }
 
         val startedAt = System.currentTimeMillis()
         val proximityAtStart = proximity
 
+        serviceStartedAt = startedAt
+
         sessionStart = diagnosticScope.launch {
+            // A restart after the service died mid-stop: finish that
+            // session first instead of opening a second one next to it.
+            data.sessions.finalizeStoppingSessions(startedAt)
+
             val sessionId = data.sessions.startOrResume(
                 at = startedAt,
                 deviceFamily = DeviceProfile.detect(this@WakeMonitorService).family,
@@ -150,6 +172,19 @@ class WakeMonitorService :
         flags: Int,
         startId: Int,
     ): Int {
+        if (intent?.action == ACTION_STOP && sessionStart == null) {
+            // Nothing is running that could be stopped.
+            explicitStop = true
+            isRunning = false
+
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+
+            return START_NOT_STICKY
+        }
+
+        beginSession()
+
         when (intent?.action) {
             ACTION_STOP -> {
                 if (stopInProgress) {
@@ -177,45 +212,76 @@ class WakeMonitorService :
                 )
 
                 diagnosticScope.launch {
-                    // A stop right after the start must not overtake the
-                    // creation of the session it is meant to end.
-                    sessionStart?.join()
+                    var sessionId: Long? = null
+                    var finalPollCompleted = false
 
-                    val sessionId = data.sessions.requestStop(stopRequestedAtMillis)
+                    try {
+                        // A stop right after the start must not overtake the
+                        // creation of the session it is meant to end.
+                        sessionStart?.join()
 
-                    val finalPollCompleted =
-                        withTimeoutOrNull(
-                            FINALIZATION_TIMEOUT_MILLIS,
-                        ) {
-                            /*
-                             * BackgroundWakeMonitor hält die
-                             * jüngsten BatteryStats-Zeilen kurz
-                             * zurück. Diese Wartezeit lässt den
-                             * Sicherheits-Nachlauf ausreifen.
-                             */
-                            delay(FINAL_POLL_DELAY_MILLIS)
+                        // The periodic poll must not run next to the final one.
+                        pollJob?.cancelAndJoin()
 
-                            BackgroundWakeMonitor.poll(applicationContext)
+                        sessionId = withContext(NonCancellable) { data.sessions.requestStop(stopRequestedAtMillis) }
 
-                            true
-                        } ?: false
+                        finalPollCompleted =
+                            withTimeoutOrNull(
+                                FINALIZATION_TIMEOUT_MILLIS,
+                            ) {
+                                /*
+                                 * BackgroundWakeMonitor hält die
+                                 * jüngsten BatteryStats-Zeilen kurz
+                                 * zurück. Diese Wartezeit lässt den
+                                 * Sicherheits-Nachlauf ausreifen.
+                                 */
+                                delay(FINAL_POLL_DELAY_MILLIS)
 
-                    if (sessionId != null) {
-                        finishNetworkSession(sessionId)
+                                try {
+                                    BackgroundWakeMonitor.poll(applicationContext)
 
-                        data.sessions.finalize(
-                            sessionId = sessionId,
-                            at = System.currentTimeMillis(),
-                            endReason = SessionEndReason.USER_STOP,
-                            finalPollCompleted = finalPollCompleted,
-                        )
+                                    true
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (_: Exception) {
+                                    false
+                                }
+                            } ?: false
+                    } finally {
+                        // Runs even when this coroutine is cancelled, so the
+                        // session is always closed and the service ends.
+                        withContext(NonCancellable) {
+                            sessionId?.let { id ->
+                                val measured = withTimeoutOrNull(NETWORK_FINISH_TIMEOUT_MILLIS) {
+                                    finishNetworkSession(id)
+
+                                    true
+                                }
+
+                                if (measured == null) {
+                                    // Records END_FAILED for a session with baseline; no-op if already stored.
+                                    data.sessions.finishNetworkMeasurement(
+                                        sessionId = id,
+                                        end = null,
+                                        at = System.currentTimeMillis(),
+                                    )
+                                }
+
+                                data.sessions.finalize(
+                                    sessionId = id,
+                                    at = System.currentTimeMillis(),
+                                    endReason = SessionEndReason.USER_STOP,
+                                    finalPollCompleted = finalPollCompleted,
+                                )
+                            }
+
+                            isRunning = false
+
+                            stopForeground(STOP_FOREGROUND_REMOVE)
+
+                            stopSelf()
+                        }
                     }
-
-                    isRunning = false
-
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-
-                    stopSelf()
                 }
 
                 return START_NOT_STICKY
@@ -277,10 +343,15 @@ class WakeMonitorService :
 
         isRunning = false
 
-        if (!explicitStop) {
+        if (!explicitStop && sessionStart != null) {
             // Destroyed without a stop request: close the session so it
-            // does not stay "running" in the database.
-            data.scope.launch { data.sessions.recoverAbandonedSessions(System.currentTimeMillis()) }
+            // does not stay "running" in the database. A session a newer
+            // service has claimed since is left alone.
+            val ownerStartedAt = serviceStartedAt
+
+            data.scope.launch {
+                data.sessions.recoverAbandonedSessions(System.currentTimeMillis(), ownerStartedAt)
+            }
         }
 
         super.onDestroy()
@@ -538,9 +609,15 @@ class WakeMonitorService :
     private fun startBackgroundWakeMonitoring() {
         captureLightSystemSnapshot(trigger = SnapshotTrigger.START_PROBE, delayMillis = 5_000L)
 
-        diagnosticScope.launch {
+        pollJob = diagnosticScope.launch {
             while (true) {
-                runCatching { BackgroundWakeMonitor.poll(applicationContext) }
+                try {
+                    BackgroundWakeMonitor.poll(applicationContext)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // The next round tries again.
+                }
 
                 delay(BACKGROUND_WAKE_POLL_INTERVAL_MILLIS)
             }
@@ -673,6 +750,9 @@ class WakeMonitorService :
          * zehn Sekunden dauern. Danach wird sicher beendet.
          */
         private const val FINALIZATION_TIMEOUT_MILLIS = 10_000L
+
+        // Reading the end traffic must not hold up closing the session.
+        private const val NETWORK_FINISH_TIMEOUT_MILLIS = 8_000L
 
         @Volatile
         var isRunning: Boolean = false

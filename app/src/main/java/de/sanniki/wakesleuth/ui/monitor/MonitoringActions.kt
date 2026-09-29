@@ -25,6 +25,11 @@ internal fun stopMonitoring(
     context: Context,
     requestedAtMillis: Long,
 ) {
+    // A stop must never start the service (and with it a new session).
+    if (!WakeMonitorService.isRunning) {
+        return
+    }
+
     val intent = Intent(
         context,
         WakeMonitorService::class.java,

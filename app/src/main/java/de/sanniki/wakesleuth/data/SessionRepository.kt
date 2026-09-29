@@ -32,6 +32,14 @@ class SessionRepository(
     private val eventDao get() = database.eventDao()
     private val networkDao get() = database.networkDao()
 
+    /*
+     * The session most recently claimed by startOrResume and when. Guarded
+     * by the writer's mutex (written inside startOrResume's transaction,
+     * read inside the recovery transaction).
+     */
+    private var claimedSessionId: Long? = null
+    private var claimedAt: Long = Long.MIN_VALUE
+
     fun observeLatestSession(): Flow<MonitoringSessionEntity?> = sessionDao.observeLatestSession()
 
     /**
@@ -44,7 +52,11 @@ class SessionRepository(
         proximity: Proximity?,
     ): Long =
         writer.transaction {
-            sessionDao.runningSession()?.let { return@transaction it.id }
+            sessionDao.runningSession()?.let {
+                claim(it.id, at)
+
+                return@transaction it.id
+            }
 
             val sessionId = sessionDao.insert(MonitoringSessionEntity(startedAt = at, deviceFamily = deviceFamily))
 
@@ -58,8 +70,18 @@ class SessionRepository(
                 ),
             )
 
+            claim(sessionId, at)
+
             sessionId
         }
+
+    private fun claim(
+        sessionId: Long,
+        at: Long,
+    ) {
+        claimedSessionId = sessionId
+        claimedAt = maxOf(claimedAt, at)
+    }
 
     suspend fun hasNetworkBaseline(sessionId: Long): Boolean = sessionDao.byId(sessionId)?.networkBaselineCapturedAt != null
 
@@ -110,6 +132,9 @@ class SessionRepository(
     /**
      * Stores the traffic delta of every UID since the baseline and the
      * NETWORK_SESSION timeline row; the baseline is dropped afterwards.
+     * Does nothing for a finalized session or one that already has a
+     * measurement, so a repeated call cannot replace (and cascade away)
+     * the stored result.
      */
     suspend fun finishNetworkMeasurement(
         sessionId: Long,
@@ -118,6 +143,11 @@ class SessionRepository(
     ) {
         val usagePackages = writer.transaction {
             val session = sessionDao.byId(sessionId) ?: return@transaction emptyList()
+
+            if (session.finalizedAt != null || networkDao.measurement(sessionId) != null) {
+                return@transaction emptyList()
+            }
+
             val baseline = networkDao.baseline(sessionId)
 
             val status: NetworkMeasurementStatus
@@ -174,10 +204,25 @@ class SessionRepository(
         endReason: SessionEndReason,
         finalPollCompleted: Boolean?,
     ) {
+        finalize(sessionId, at, endReason, finalPollCompleted, ownerStartedAt = Long.MAX_VALUE)
+    }
+
+    private suspend fun finalize(
+        sessionId: Long,
+        at: Long,
+        endReason: SessionEndReason,
+        finalPollCompleted: Boolean?,
+        ownerStartedAt: Long,
+    ) {
         writer.transaction {
             val session = sessionDao.byId(sessionId) ?: return@transaction
 
             if (session.finalizedAt != null) {
+                return@transaction
+            }
+
+            // Claimed by a newer service since the caller looked.
+            if (session.id == claimedSessionId && claimedAt > ownerStartedAt) {
                 return@transaction
             }
 
@@ -223,10 +268,17 @@ class SessionRepository(
 
     /**
      * Closes sessions left open by a service that is no longer running,
-     * e.g. after the process was killed. Must only be called while the
-     * monitor service is not running.
+     * e.g. after the process was killed.
+     *
+     * [ownerStartedAt] is when the caller's view of the world began (the
+     * start of the service being destroyed, or of the view model). A
+     * session claimed by [startOrResume] after that belongs to a newer
+     * service and is left alone.
      */
-    suspend fun recoverAbandonedSessions(now: Long) {
+    suspend fun recoverAbandonedSessions(
+        now: Long,
+        ownerStartedAt: Long = Long.MAX_VALUE,
+    ) {
         sessionDao.unfinalizedSessions().forEach { session ->
             finalize(
                 sessionId = session.id,
@@ -237,8 +289,28 @@ class SessionRepository(
                     SessionEndReason.USER_STOP
                 },
                 finalPollCompleted = null,
+                ownerStartedAt = ownerStartedAt,
             )
         }
+    }
+
+    /**
+     * Finalizes sessions whose stop was requested but never completed
+     * (the service died while stopping), so a restarted service opens a
+     * clean session instead of a second one next to them.
+     */
+    suspend fun finalizeStoppingSessions(now: Long) {
+        sessionDao
+            .unfinalizedSessions()
+            .filter { it.stopRequestedAt != null }
+            .forEach { session ->
+                finalize(
+                    sessionId = session.id,
+                    at = now,
+                    endReason = SessionEndReason.USER_STOP,
+                    finalPollCompleted = null,
+                )
+            }
     }
 
     suspend fun updateNote(
@@ -258,7 +330,7 @@ class SessionRepository(
         writer.transaction { sessionDao.deleteAllFinalized() }
     }
 
-    private fun trafficDeltas(
+    internal fun trafficDeltas(
         sessionId: Long,
         baseline: List<NetworkBaselineEntryEntity>,
         end: List<NetworkTrafficEntry>,
@@ -269,8 +341,8 @@ class SessionRepository(
             .distinctBy { it.uid }
             .mapNotNull { entry ->
                 val start = baselineByUid[entry.uid]
-                val rx = (entry.rxBytes - (start?.rxBytes ?: 0L)).coerceAtLeast(0L)
-                val tx = (entry.txBytes - (start?.txBytes ?: 0L)).coerceAtLeast(0L)
+                val rx = counterDelta(entry.rxBytes, start?.rxBytes ?: 0L)
+                val tx = counterDelta(entry.txBytes, start?.txBytes ?: 0L)
 
                 if (rx + tx <= 0L) {
                     return@mapNotNull null
@@ -298,8 +370,14 @@ class SessionRepository(
             end == null -> null
             baselineRow == null -> end.coerceAtLeast(0L)
             start == null -> null
-            else -> (end - start).coerceAtLeast(0L)
+            else -> counterDelta(end, start)
         }
+
+    /** A counter that went down was reset (reboot); it restarted from zero. */
+    private fun counterDelta(
+        end: Long,
+        start: Long,
+    ): Long = if (end >= start) end - start else end.coerceAtLeast(0L)
 
     companion object {
         const val MAX_SESSIONS = 20

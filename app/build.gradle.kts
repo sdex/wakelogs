@@ -19,8 +19,8 @@ android {
         applicationId = "de.sanniki.wakesleuth"
         minSdk = 26
         targetSdk = 36
-        versionCode = 80
-        versionName = "0.18.2"
+        versionCode = 81
+        versionName = "0.19.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

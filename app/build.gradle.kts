@@ -5,6 +5,11 @@ plugins {
     alias(libs.plugins.room3)
 }
 
+val releaseKeystore = providers.environmentVariable("SIGNING_KEYSTORE_FILE").orNull
+val releaseStorePassword = providers.environmentVariable("SIGNING_KEY_STORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("SIGNING_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("SIGNING_KEY_PASSWORD").orNull
+
 android {
     namespace = "de.sanniki.wakesleuth"
 
@@ -20,8 +25,22 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            if (releaseKeystore != null) {
+                storeFile = file(releaseKeystore)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (releaseKeystore != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             optimization {
                 enable = true
             }

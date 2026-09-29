@@ -20,7 +20,6 @@
     <string name="main_confidence_possible">Möglicher Zusammenhang</string>
     <string name="main_confidence_companion">Begleitaktivität</string>
     <string name="main_confidence_unresolved">Ungeklärt</string>
-    <string name="main_toast_press_back_again">Zum Beenden erneut zurück</string>
     <string name="main_error_file_open_failed">Datei konnte nicht geöffnet werden.</string>
     <string name="main_toast_export_saved">wakelogs-Export gespeichert</string>
     <string name="main_toast_export_failed">Export konnte nicht gespeichert werden</string>
@@ -39,7 +38,7 @@
     <string name="main_section_analysis_subtitle">Auswertung, Quellen und Ereignisse</string>
     <string name="main_section_sessions_subtitle">Vergleich und gespeicherte Messungen</string>
     <string name="main_section_diagnostics_subtitle">Shizuku und technische Systemprüfungen</string>
-    <string name="main_header_version">Version %1$s · %2$s</string>
+    <string name="main_header_version">Version %1$s</string>
     <string name="main_settings">Einstellungen</string>
     <string name="main_setup_complete">Einrichtung vollständig</string>
     <string name="main_setup_required">Einrichtung erforderlich</string>

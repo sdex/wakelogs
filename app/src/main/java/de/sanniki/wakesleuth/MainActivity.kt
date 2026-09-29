@@ -46,13 +46,16 @@ import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -61,6 +64,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -256,8 +260,6 @@ private fun WakeSleuthScreen(
 
     val selectedMainSection = mainSections[pagerState.currentPage]
 
-    var lastBackPressMillis by remember { mutableStateOf(0L) }
-
     BackHandler {
         when {
             showSettings -> {
@@ -269,24 +271,7 @@ private fun WakeSleuthScreen(
             }
 
             else -> {
-                val now = System.currentTimeMillis()
-
-                if (
-                    now - lastBackPressMillis <= 2_000L
-                ) {
-                    val activity = context as? ComponentActivity
-
-                    activity?.finish()
-                } else {
-                    lastBackPressMillis = now
-
-                    Toast
-                        .makeText(
-                            context,
-                            resources.getString(R.string.main_toast_press_back_again),
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                }
+                (context as? ComponentActivity)?.finish()
             }
         }
     }
@@ -550,6 +535,9 @@ private fun WakeSleuthScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets.safeDrawing,
+        topBar = {
+            HeaderToolbar(onOpenSettings = { showSettings = true })
+        },
         bottomBar = {
             wakelogsBottomNavigation(
                 selectedSection = selectedMainSection,
@@ -569,22 +557,6 @@ private fun WakeSleuthScreen(
         Column(
             modifier = Modifier.fillMaxSize().padding(innerPadding),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = uiSettings.cardDensity.pageHorizontalPadding,
-                        top = 16.dp,
-                        end = uiSettings.cardDensity.pageHorizontalPadding,
-                    ),
-            ) {
-                HeaderCard(
-                    onOpenSettings = {
-                        showSettings = true
-                    },
-                )
-            }
-
             Spacer(modifier = Modifier.height(uiSettings.cardDensity.itemSpacing))
 
             HorizontalPager(
@@ -1087,50 +1059,35 @@ private fun CurrentSectionHeader(section: MainSection) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HeaderCard(onOpenSettings: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-            ) {
+private fun HeaderToolbar(onOpenSettings: () -> Unit) {
+    TopAppBar(
+        title = {
+            Column {
                 Text(
-                    text = "wakelogs",
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    style = MaterialTheme.typography.headlineSmall,
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
-
-                Spacer(modifier = Modifier.height(1.dp))
-
                 Text(
-                    text = stringResource(R.string.main_header_version, BuildConfig.VERSION_NAME, "dernikiausd"),
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.68f),
+                    text = stringResource(R.string.main_header_version, BuildConfig.VERSION_NAME),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-
-            TextButton(
-                onClick = onOpenSettings,
-            ) {
-                Text(
-                    text = stringResource(R.string.main_settings),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
+        },
+        actions = {
+            IconButton(onClick = onOpenSettings) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = stringResource(R.string.main_settings),
                 )
             }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -1198,9 +1155,7 @@ private fun SetupStatusCard(
                 }
 
                 when (shizukuState) {
-                    ShizukuState.RUNNING_GRANTED -> {
-                        Unit
-                    }
+                    ShizukuState.RUNNING_GRANTED -> {}
 
                     ShizukuState.RUNNING_DENIED -> {
                         SetupRequirementRow(

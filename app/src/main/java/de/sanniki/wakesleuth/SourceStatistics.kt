@@ -398,9 +398,7 @@ private fun buildSourceStatistics(
                     counts(SourceClassifier.classify(event.packageName)).notifications += 1
                 }
 
-                else -> {
-                    Unit
-                }
+                else -> {}
             }
         }
 

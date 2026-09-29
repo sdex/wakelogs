@@ -221,9 +221,7 @@ class WakeMonitorService :
                 return START_NOT_STICKY
             }
 
-            else -> {
-                Unit
-            }
+            else -> {}
         }
 
         return START_STICKY
@@ -566,7 +564,9 @@ class WakeMonitorService :
         val openIntent = PendingIntent.getActivity(
             this,
             1,
-            Intent(this, MainActivity::class.java),
+            Intent(this, MainActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP,
+            ),
             PendingIntent.FLAG_UPDATE_CURRENT or
                 PendingIntent.FLAG_IMMUTABLE,
         )

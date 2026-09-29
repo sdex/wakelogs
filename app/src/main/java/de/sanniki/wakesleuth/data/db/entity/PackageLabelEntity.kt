@@ -15,5 +15,5 @@ data class PackageLabelEntity(
     val packageName: String,
     val label: String,
     @ColumnInfo(name = "updated_at")
-    val updatedAt: Long
+    val updatedAt: Long,
 )

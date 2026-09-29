@@ -15,9 +15,9 @@ import de.sanniki.wakesleuth.domain.SnapshotTrigger
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class SystemSnapshotEntity(
     @PrimaryKey
@@ -44,5 +44,5 @@ data class SystemSnapshotEntity(
     @ColumnInfo(name = "idle_charging")
     val idleCharging: Boolean? = null,
     @ColumnInfo(name = "force_idle")
-    val forceIdle: String? = null
+    val forceIdle: String? = null,
 )

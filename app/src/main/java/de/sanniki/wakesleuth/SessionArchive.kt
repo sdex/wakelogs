@@ -15,7 +15,7 @@ data class ArchivedSessionApp(
     val name: String,
     val totalBytes: Long,
     val rxBytes: Long,
-    val txBytes: Long
+    val txBytes: Long,
 )
 
 /** Wakeup activity of one source over a session. */
@@ -25,7 +25,7 @@ data class ArchivedSessionSource(
     val cpuCount: Int,
     val displayCount: Int,
     val companionCount: Int,
-    val longestCpuDurationMillis: Long?
+    val longestCpuDurationMillis: Long?,
 )
 
 /** UI model of a finalized session, assembled from the archive tables. */
@@ -44,16 +44,15 @@ data class ArchivedSession(
     /** Every app with traffic, largest first. */
     val topApps: List<ArchivedSessionApp>,
     val sources: List<ArchivedSessionSource> = emptyList(),
-    val note: String? = null
+    val note: String? = null,
 )
 
 object SessionArchive {
-
     fun build(
         sessions: List<MonitoringSessionEntity>,
         stats: List<SessionSourceStatEntity>,
         usage: List<NetworkAppUsageEntity>,
-        labels: SourceLabelResolver
+        labels: SourceLabelResolver,
     ): List<ArchivedSession> {
         val statsBySession = stats.groupBy { it.sessionId }
         val usageBySession = usage.groupBy { it.sessionId }
@@ -65,21 +64,17 @@ object SessionArchive {
                 val end = (session.stopRequestedAt ?: session.finalizedAt ?: start).coerceAtLeast(start)
                 val apps = usageBySession[session.id].orEmpty()
 
-                val topApps =
-                    apps
-                        .map { item ->
-                            ArchivedSessionApp(
-                                source =
-                                    item.packageName
-                                        ?.let { SourceClassifier.classify(it) }
-                                        ?: SourceClassifier.forUid(item.uid),
-                                name = labels.networkLabel(item.packageName, item.uid),
-                                totalBytes = saturatedSum(item.rxBytes, item.txBytes),
-                                rxBytes = item.rxBytes,
-                                txBytes = item.txBytes
-                            )
-                        }
-                        .sortedByDescending { it.totalBytes }
+                val topApps = apps
+                    .map { item ->
+                        ArchivedSessionApp(
+                            source = item.packageName?.let { SourceClassifier.classify(it) }
+                                ?: SourceClassifier.forUid(item.uid),
+                            name = labels.networkLabel(item.packageName, item.uid),
+                            totalBytes = saturatedSum(item.rxBytes, item.txBytes),
+                            rxBytes = item.rxBytes,
+                            txBytes = item.txBytes,
+                        )
+                    }.sortedByDescending { it.totalBytes }
 
                 val rx = saturatedSum(*apps.map { it.rxBytes }.toLongArray())
                 val tx = saturatedSum(*apps.map { it.txBytes }.toLongArray())
@@ -97,34 +92,30 @@ object SessionArchive {
                     networkTxBytes = tx,
                     networkActiveApps = apps.size,
                     topApps = topApps,
-                    sources =
-                        statsBySession[session.id]
-                            .orEmpty()
-                            .map { stat ->
-                                val source =
-                                    SourceRef(
-                                        kind = stat.sourceKind,
-                                        packageName = stat.packageName.ifEmpty { null },
-                                        rawSource = stat.rawSource.ifEmpty { null }
-                                    )
+                    sources = statsBySession[session.id]
+                        .orEmpty()
+                        .map { stat ->
+                            val source = SourceRef(
+                                kind = stat.sourceKind,
+                                packageName = stat.packageName.ifEmpty { null },
+                                rawSource = stat.rawSource.ifEmpty { null },
+                            )
 
-                                ArchivedSessionSource(
-                                    source = source,
-                                    name = labels.label(source),
-                                    cpuCount = stat.cpuCount,
-                                    displayCount = stat.displayCount,
-                                    companionCount = stat.companionCount,
-                                    longestCpuDurationMillis = stat.longestCpuAwakeMs
-                                )
-                            }
-                            .sortedWith(
-                                compareByDescending<ArchivedSessionSource> {
-                                    it.cpuCount + it.displayCount
-                                }.thenBy { it.name.lowercase() }
-                            ),
-                    note = session.note
+                            ArchivedSessionSource(
+                                source = source,
+                                name = labels.label(source),
+                                cpuCount = stat.cpuCount,
+                                displayCount = stat.displayCount,
+                                companionCount = stat.companionCount,
+                                longestCpuDurationMillis = stat.longestCpuAwakeMs,
+                            )
+                        }.sortedWith(
+                            compareByDescending<ArchivedSessionSource> {
+                                it.cpuCount + it.displayCount
+                            }.thenBy { it.name.lowercase() },
+                        ),
+                    note = session.note,
                 )
-            }
-            .sortedByDescending { it.startMillis }
+            }.sortedByDescending { it.startMillis }
     }
 }

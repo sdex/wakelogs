@@ -12,9 +12,9 @@ import androidx.room3.PrimaryKey
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class CpuWakeupEntity(
     @PrimaryKey
@@ -27,5 +27,5 @@ data class CpuWakeupEntity(
     @ColumnInfo(name = "returned_to_sleep_at")
     val returnedToSleepAt: Long?,
     @ColumnInfo(name = "awake_ms")
-    val awakeMs: Long?
+    val awakeMs: Long?,
 )

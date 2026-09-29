@@ -35,25 +35,25 @@ import de.sanniki.wakesleuth.domain.WakeLockHint
 
 /** Assembles the typed read model from a timeline row and its payload. */
 object EventMapper {
-
     fun toDomain(row: EventWithPayload): RecordedEvent {
         val event = row.event
-        val proximity =
-            event.proximityState?.let { Proximity(it, event.proximityDistanceCm) }
+        val proximity = event.proximityState?.let { Proximity(it, event.proximityDistanceCm) }
 
         return when (event.type) {
-            EventType.MONITOR_START ->
+            EventType.MONITOR_START -> {
                 MonitorStartEvent(event.id, event.sessionId, event.occurredAt, proximity)
+            }
 
-            EventType.MONITOR_STOP ->
+            EventType.MONITOR_STOP -> {
                 MonitorStopEvent(
                     id = event.id,
                     sessionId = event.sessionId,
                     occurredAt = event.occurredAt,
-                    finalPollCompleted = row.session?.finalPollCompleted
+                    finalPollCompleted = row.session?.finalPollCompleted,
                 )
+            }
 
-            EventType.SCREEN_ON ->
+            EventType.SCREEN_ON -> {
                 ScreenOnEvent(
                     id = event.id,
                     sessionId = event.sessionId,
@@ -67,7 +67,7 @@ object EventMapper {
                             offsetMs = it.offsetMs,
                             rawReason = it.rawReason,
                             rawDetails = it.rawDetails,
-                            rawTag = it.rawTag
+                            rawTag = it.rawTag,
                         )
                     },
                     notificationCause = row.notificationCause?.let {
@@ -75,7 +75,7 @@ object EventMapper {
                             notificationEventId = it.cause.notificationEventId,
                             packageName = it.cause.packageName,
                             offsetMs = it.cause.offsetMs,
-                            notificationTitle = it.notification?.title
+                            notificationTitle = it.notification?.title,
                         )
                     },
                     wakeLockHints = row.wakeLockHints
@@ -89,28 +89,33 @@ object EventMapper {
                                 packageName = it.packageName,
                                 tag = it.tag,
                                 alarmWakeCount = it.alarmWakeCount,
-                                packageWakeups = it.packageWakeups
+                                packageWakeups = it.packageWakeups,
                             )
                         },
                     jobHints = row.jobHints
                         .sortedBy { it.id }
-                        .map { JobHint(it.offsetMs, it.packageName, it.serviceName, it.prioritized) }
+                        .map { JobHint(it.offsetMs, it.packageName, it.serviceName, it.prioritized) },
                 )
+            }
 
-            EventType.SCREEN_OFF ->
+            EventType.SCREEN_OFF -> {
                 ScreenOffEvent(event.id, event.sessionId, event.occurredAt, proximity)
+            }
 
             EventType.POWER_CONNECTED,
-            EventType.POWER_DISCONNECTED ->
+            EventType.POWER_DISCONNECTED,
+            -> {
                 PowerEvent(
                     id = event.id,
                     sessionId = event.sessionId,
                     occurredAt = event.occurredAt,
-                    connected = event.type == EventType.POWER_CONNECTED
+                    connected = event.type == EventType.POWER_CONNECTED,
                 )
+            }
 
             EventType.USB_ATTACHED,
-            EventType.USB_DETACHED ->
+            EventType.USB_DETACHED,
+            -> {
                 UsbEvent(
                     id = event.id,
                     sessionId = event.sessionId,
@@ -122,12 +127,13 @@ object EventMapper {
                             vendorId = it.vendorId,
                             productId = it.productId,
                             deviceName = it.deviceName,
-                            manufacturerName = it.manufacturerName
+                            manufacturerName = it.manufacturerName,
                         )
-                    }
+                    },
                 )
+            }
 
-            EventType.NOTIFICATION ->
+            EventType.NOTIFICATION -> {
                 NotificationEvent(
                     id = event.id,
                     sessionId = event.sessionId,
@@ -135,10 +141,11 @@ object EventMapper {
                     packageName = row.notification?.packageName.orEmpty(),
                     notificationKey = row.notification?.notificationKey,
                     title = row.notification?.title,
-                    text = row.notification?.text
+                    text = row.notification?.text,
                 )
+            }
 
-            EventType.CPU_WAKEUP ->
+            EventType.CPU_WAKEUP -> {
                 CpuWakeupEvent(
                     id = event.id,
                     sessionId = event.sessionId,
@@ -155,22 +162,24 @@ object EventMapper {
                                 type = it.evidenceType,
                                 rawSource = it.rawSource,
                                 packageName = it.packageName,
-                                isPrimary = it.isPrimary
+                                isPrimary = it.isPrimary,
                             )
-                        }
+                        },
                 )
+            }
 
-            EventType.NETWORK_SESSION ->
+            EventType.NETWORK_SESSION -> {
                 NetworkSessionEvent(
                     id = event.id,
                     sessionId = event.sessionId,
                     occurredAt = event.occurredAt,
                     measurement = row.networkMeasurement?.let {
                         toDomain(it, row.session)
-                    }
+                    },
                 )
+            }
 
-            EventType.SYSTEM_SNAPSHOT ->
+            EventType.SYSTEM_SNAPSHOT -> {
                 SystemSnapshotEvent(
                     id = event.id,
                     sessionId = event.sessionId,
@@ -189,15 +198,16 @@ object EventMapper {
                             lightIdleState = it.lightIdleState,
                             idleScreenOn = it.idleScreenOn,
                             idleCharging = it.idleCharging,
-                            forceIdle = it.forceIdle
+                            forceIdle = it.forceIdle,
                         )
                     } ?: SystemSnapshot(
                         trigger = SnapshotTrigger.AFTER_SCREEN_ON,
-                        status = SnapshotStatus.TIMEOUT_OR_EMPTY
-                    )
+                        status = SnapshotStatus.TIMEOUT_OR_EMPTY,
+                    ),
                 )
+            }
 
-            EventType.EXPERT_SNAPSHOT ->
+            EventType.EXPERT_SNAPSHOT -> {
                 ExpertSnapshotEvent(
                     id = event.id,
                     sessionId = event.sessionId,
@@ -210,7 +220,7 @@ object EventMapper {
                             locationAvailable = it.locationAvailable,
                             sensorsAvailable = it.sensorsAvailable,
                             networkAvailable = it.networkAvailable,
-                            signals = row.expertSignals.map { signal -> signal.signal }.toSet()
+                            signals = row.expertSignals.map { signal -> signal.signal }.toSet(),
                         )
                     } ?: ExpertSnapshot(
                         screenOnEventId = null,
@@ -218,16 +228,17 @@ object EventMapper {
                         locationAvailable = false,
                         sensorsAvailable = false,
                         networkAvailable = false,
-                        signals = emptySet()
+                        signals = emptySet(),
                     ),
-                    deviceFamily = row.session?.deviceFamily ?: DeviceFamily.GENERIC_ANDROID
+                    deviceFamily = row.session?.deviceFamily ?: DeviceFamily.GENERIC_ANDROID,
                 )
+            }
         }
     }
 
     fun toDomain(
         row: NetworkMeasurementWithUsage,
-        session: MonitoringSessionEntity?
+        session: MonitoringSessionEntity?,
     ): NetworkMeasurement =
         NetworkMeasurement(
             sessionId = row.measurement.sessionId,
@@ -244,11 +255,10 @@ object EventMapper {
                         rxBytes = it.rxBytes,
                         txBytes = it.txBytes,
                         rxPackets = it.rxPackets,
-                        txPackets = it.txPackets
+                        txPackets = it.txPackets,
                     )
-                }
-                .sortedWith(
-                    compareByDescending<NetworkAppUsage> { it.totalBytes }.thenBy { it.uid }
-                )
+                }.sortedWith(
+                    compareByDescending<NetworkAppUsage> { it.totalBytes }.thenBy { it.uid },
+                ),
         )
 }

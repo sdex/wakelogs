@@ -13,9 +13,9 @@ import androidx.room3.ForeignKey
             entity = NetworkMeasurementEntity::class,
             parentColumns = ["session_id"],
             childColumns = ["session_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class NetworkAppUsageEntity(
     @ColumnInfo(name = "session_id")
@@ -30,5 +30,5 @@ data class NetworkAppUsageEntity(
     @ColumnInfo(name = "rx_packets")
     val rxPackets: Long?,
     @ColumnInfo(name = "tx_packets")
-    val txPackets: Long?
+    val txPackets: Long?,
 )

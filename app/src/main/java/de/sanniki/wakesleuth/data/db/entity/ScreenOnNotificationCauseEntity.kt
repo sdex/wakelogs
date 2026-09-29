@@ -18,15 +18,15 @@ import androidx.room3.PrimaryKey
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.CASCADE,
         ),
         ForeignKey(
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["notification_event_id"],
-            onDelete = ForeignKey.SET_NULL
-        )
-    ]
+            onDelete = ForeignKey.SET_NULL,
+        ),
+    ],
 )
 data class ScreenOnNotificationCauseEntity(
     @PrimaryKey
@@ -37,5 +37,5 @@ data class ScreenOnNotificationCauseEntity(
     @ColumnInfo(name = "package_name")
     val packageName: String,
     @ColumnInfo(name = "offset_ms")
-    val offsetMs: Long
+    val offsetMs: Long,
 )

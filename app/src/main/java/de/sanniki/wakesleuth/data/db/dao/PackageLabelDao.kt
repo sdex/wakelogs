@@ -7,7 +7,6 @@ import de.sanniki.wakesleuth.data.db.entity.PackageLabelEntity
 
 @Dao
 interface PackageLabelDao {
-
     @Upsert
     suspend fun upsert(labels: List<PackageLabelEntity>)
 

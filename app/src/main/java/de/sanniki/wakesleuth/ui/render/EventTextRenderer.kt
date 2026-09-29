@@ -59,58 +59,92 @@ import java.util.Locale
  */
 class EventTextRenderer(
     private val context: Context,
-    private val sources: SourceLabelResolver = SourceLabelResolver.get(context)
+    private val sources: SourceLabelResolver = SourceLabelResolver.get(context),
 ) {
-
     fun title(event: RecordedEvent): String =
         when (event) {
-            is MonitorStartEvent -> string(R.string.service_event_monitor_start)
-            is MonitorStopEvent -> string(R.string.service_event_monitor_stop)
-            is ScreenOnEvent -> string(R.string.service_event_screen_on)
-            is ScreenOffEvent -> string(R.string.service_event_screen_off)
-            is PowerEvent ->
+            is MonitorStartEvent -> {
+                string(R.string.service_event_monitor_start)
+            }
+
+            is MonitorStopEvent -> {
+                string(R.string.service_event_monitor_stop)
+            }
+
+            is ScreenOnEvent -> {
+                string(R.string.service_event_screen_on)
+            }
+
+            is ScreenOffEvent -> {
+                string(R.string.service_event_screen_off)
+            }
+
+            is PowerEvent -> {
                 if (event.connected) {
                     string(R.string.service_event_power_connected)
                 } else {
                     string(R.string.service_event_power_disconnected)
                 }
-            is UsbEvent ->
+            }
+
+            is UsbEvent -> {
                 if (event.attached) {
                     string(R.string.service_event_usb_attached)
                 } else {
                     string(R.string.service_event_usb_detached)
                 }
-            is NotificationEvent ->
+            }
+
+            is NotificationEvent -> {
                 string(R.string.service_notification_event_title, sources.appName(event.packageName))
-            is CpuWakeupEvent -> cpuTitle(event)
-            is NetworkSessionEvent -> string(R.string.service_event_network_session)
-            is SystemSnapshotEvent -> string(R.string.service_event_system_snapshot)
-            is ExpertSnapshotEvent -> string(R.string.service_event_expert_snapshot)
+            }
+
+            is CpuWakeupEvent -> {
+                cpuTitle(event)
+            }
+
+            is NetworkSessionEvent -> {
+                string(R.string.service_event_network_session)
+            }
+
+            is SystemSnapshotEvent -> {
+                string(R.string.service_event_system_snapshot)
+            }
+
+            is ExpertSnapshotEvent -> {
+                string(R.string.service_event_expert_snapshot)
+            }
         }
 
     fun details(event: RecordedEvent): String =
         when (event) {
-            is MonitorStartEvent ->
+            is MonitorStartEvent -> {
                 string(R.string.service_event_monitor_start_details, proximityLabel(event.proximity))
+            }
 
-            is MonitorStopEvent ->
+            is MonitorStopEvent -> {
                 if (event.finalPollCompleted == false) {
                     string(R.string.service_event_monitor_stop_details_incomplete)
                 } else {
                     string(R.string.service_event_monitor_stop_details_complete)
                 }
+            }
 
-            is ScreenOnEvent -> screenOnDetails(event)
+            is ScreenOnEvent -> {
+                screenOnDetails(event)
+            }
 
-            is ScreenOffEvent ->
+            is ScreenOffEvent -> {
                 string(R.string.service_proximity_line, proximityLabel(event.proximity))
+            }
 
-            is PowerEvent ->
+            is PowerEvent -> {
                 if (event.connected) {
                     string(R.string.service_event_power_connected_details)
                 } else {
                     string(R.string.service_event_power_disconnected_details)
                 }
+            }
 
             is UsbEvent -> {
                 val device = event.device
@@ -118,20 +152,29 @@ class EventTextRenderer(
                 if (device == null) {
                     string(R.string.service_usb_no_info)
                 } else {
-                    string(
-                        R.string.service_usb_details,
-                        device.deviceId ?: 0,
-                        device.vendorId ?: 0,
-                        device.productId ?: 0
-                    )
+                    string(R.string.service_usb_details, device.deviceId ?: 0, device.vendorId ?: 0, device.productId ?: 0)
                 }
             }
 
-            is NotificationEvent -> notificationDetails(event)
-            is CpuWakeupEvent -> cpuDetails(event)
-            is NetworkSessionEvent -> networkDetails(event.measurement)
-            is SystemSnapshotEvent -> systemSnapshotDetails(event.snapshot)
-            is ExpertSnapshotEvent -> expertSnapshotDetails(event)
+            is NotificationEvent -> {
+                notificationDetails(event)
+            }
+
+            is CpuWakeupEvent -> {
+                cpuDetails(event)
+            }
+
+            is NetworkSessionEvent -> {
+                networkDetails(event.measurement)
+            }
+
+            is SystemSnapshotEvent -> {
+                systemSnapshotDetails(event.snapshot)
+            }
+
+            is ExpertSnapshotEvent -> {
+                expertSnapshotDetails(event)
+            }
         }
 
     /**
@@ -139,16 +182,15 @@ class EventTextRenderer(
      * sources for a screen-on, reason, duration and source for a CPU
      * wakeup, otherwise the first detail lines.
      */
-    fun summaryLines(event: RecordedEvent, max: Int = 4): List<String> =
+    fun summaryLines(
+        event: RecordedEvent,
+        max: Int = 4,
+    ): List<String> =
         when (event) {
-            is ScreenOnEvent ->
+            is ScreenOnEvent -> {
                 buildList {
-                    event.wakeReason?.let {
-                        add(labeled(R.string.event_label_direct_wake_reason, wakeReasonLabel(it)))
-                    }
-                    event.notificationCause?.let {
-                        add(notificationCauseLines(it).first())
-                    }
+                    event.wakeReason?.let { add(labeled(R.string.event_label_direct_wake_reason, wakeReasonLabel(it))) }
+                    event.notificationCause?.let { add(notificationCauseLines(it).first()) }
                     if (CauseAssessment.isUnexplained(event)) {
                         add(string(R.string.sleep_marker_cause_unknown))
                     }
@@ -162,29 +204,31 @@ class EventTextRenderer(
                     event.jobHints.forEach { hint ->
                         add(labeled(R.string.event_label_source, sources.labelWithPackage(hint.packageName)))
                     }
-                }
-                    .distinct()
+                }.distinct()
                     .take(max)
+            }
 
-            is CpuWakeupEvent ->
+            is CpuWakeupEvent -> {
                 listOf(
                     string(R.string.bg_detail_system_reason, cpuSystemReason(event)),
                     string(R.string.bg_detail_cpu_awake_time, cpuAwakeDuration(event.awakeMs)),
                     string(
                         R.string.bg_detail_possible_source,
-                        cpuSourceLabel(event) ?: string(R.string.bg_possible_source_ambiguous)
-                    )
+                        cpuSourceLabel(event) ?: string(R.string.bg_possible_source_ambiguous),
+                    ),
                 )
+            }
 
-            else ->
+            else -> {
                 details(event)
                     .lines()
                     .map { it.trim() }
                     .filter { it.isNotEmpty() }
                     .take(3)
+            }
         }
 
-    /* ---------------- labels ---------------- */
+    // ---------------- labels ----------------
 
     fun proximityLabel(proximity: Proximity?): String =
         string(
@@ -195,13 +239,15 @@ class EventTextRenderer(
                 ProximityState.NOT_PRESENT -> R.string.service_proximity_not_present
                 ProximityState.REGISTRATION_FAILED -> R.string.service_proximity_registration_failed
                 ProximityState.NOT_AVAILABLE, null -> R.string.service_proximity_not_available
-            }
+            },
         )
 
-    fun wakeReasonLabel(wakeReason: DirectWakeReason): String =
-        wakeReasonLabel(wakeReason.reason, wakeReason.rawReason)
+    fun wakeReasonLabel(wakeReason: DirectWakeReason): String = wakeReasonLabel(wakeReason.reason, wakeReason.rawReason)
 
-    fun wakeReasonLabel(reason: WakeReason, rawReason: String?): String =
+    fun wakeReasonLabel(
+        reason: WakeReason,
+        rawReason: String?,
+    ): String =
         when (reason) {
             WakeReason.POWER_BUTTON -> string(R.string.event_power_button)
             WakeReason.DOUBLE_TAP -> string(R.string.event_wake_reason_double_tap)
@@ -220,22 +266,35 @@ class EventTextRenderer(
                 WakeReasonEvidence.POWER_MANAGER_LOG -> R.string.event_confidence_power_manager
                 WakeReasonEvidence.BATTERYSTATS_POWER_KEY -> R.string.event_confidence_samsung_batterystats
                 WakeReasonEvidence.POWER_KEY_WAKELOCK -> R.string.event_confidence_system_wakelock
-            }
+            },
         )
 
     /** Technical token that proved the wake reason. */
     fun technicalWakeReason(wakeReason: DirectWakeReason): String =
         when (wakeReason.powerKeySignal) {
-            PowerKeySignal.PMIC_PWRKEY -> wakeReason.rawReason ?: PMIC_POWER_KEY
-            PowerKeySignal.POLICY_POWER -> POLICY_POWER
-            PowerKeySignal.DISPLAY_REASON_KEY -> DISPLAY_REASON_KEY
-            PowerKeySignal.POWER_KEY_WAKELOCK ->
+            PowerKeySignal.PMIC_PWRKEY -> {
+                wakeReason.rawReason ?: PMIC_POWER_KEY
+            }
+
+            PowerKeySignal.POLICY_POWER -> {
+                POLICY_POWER
+            }
+
+            PowerKeySignal.DISPLAY_REASON_KEY -> {
+                DISPLAY_REASON_KEY
+            }
+
+            PowerKeySignal.POWER_KEY_WAKELOCK -> {
                 if (wakeReason.evidence == WakeReasonEvidence.POWER_KEY_WAKELOCK) {
                     WINDOW_MANAGER_POWER_KEY
                 } else {
                     SAMSUNG_POWER_KEY
                 }
-            null -> wakeReason.rawReason ?: string(R.string.event_unknown)
+            }
+
+            null -> {
+                wakeReason.rawReason ?: string(R.string.event_unknown)
+            }
         }
 
     fun wakeLockKindLabel(kind: WakeLockKind): String =
@@ -252,7 +311,7 @@ class EventTextRenderer(
                 WakeLockKind.SEARCH_INDEXING -> R.string.event_kind_search_indexing
                 WakeLockKind.SCHEDULED_BACKGROUND_ACTION -> R.string.event_kind_scheduled_background_action
                 WakeLockKind.PARTIAL_WAKELOCK -> R.string.event_kind_partial_wakelock
-            }
+            },
         )
 
     fun evidenceTypeLabel(type: EvidenceType): String =
@@ -296,7 +355,7 @@ class EventTextRenderer(
                 DetectionKind.REASON_ONLY -> R.string.bg_detection_reason_only
                 DetectionKind.CPU_START_ONLY -> R.string.bg_detection_cpu_start_only
                 DetectionKind.BATTERYSTATS_ACTIVITY -> R.string.bg_detection_batterystats_activity
-            }
+            },
         )
 
     fun cpuAwakeDuration(durationMillis: Long?): String {
@@ -310,11 +369,9 @@ class EventTextRenderer(
     }
 
     /** Label of the source a CPU wakeup is attributed to, if any. */
-    fun cpuSourceLabel(event: CpuWakeupEvent): String? =
-        event.primarySource()?.let(sources::label)
+    fun cpuSourceLabel(event: CpuWakeupEvent): String? = event.primarySource()?.let(sources::label)
 
-    fun evidenceSourceLabel(evidence: CpuEvidence): String =
-        sources.label(evidence.source())
+    fun evidenceSourceLabel(evidence: CpuEvidence): String = sources.label(evidence.source())
 
     fun snapshotTriggerLabel(trigger: SnapshotTrigger): String =
         string(
@@ -322,7 +379,7 @@ class EventTextRenderer(
                 SnapshotTrigger.AFTER_SCREEN_ON -> R.string.service_snapshot_reason_after_screen_on
                 SnapshotTrigger.AFTER_SCREEN_OFF -> R.string.service_snapshot_reason_after_screen_off
                 SnapshotTrigger.START_PROBE -> R.string.service_snapshot_reason_start_probe
-            }
+            },
         )
 
     fun snapshotClassificationLabel(classification: SnapshotClassification): String =
@@ -333,7 +390,7 @@ class EventTextRenderer(
                 SnapshotClassification.LIGHT_IDLE -> R.string.service_classify_light_idle
                 SnapshotClassification.VENDOR_SPECIFIC -> R.string.service_classify_vendor_specific
                 SnapshotClassification.UNCLEAR -> R.string.service_classify_unclear
-            }
+            },
         )
 
     fun expertSectionLabel(section: ExpertSection): String =
@@ -342,47 +399,110 @@ class EventTextRenderer(
                 ExpertSection.LOCATION -> R.string.shizuku_snapshot_section_location
                 ExpertSection.SENSORS -> R.string.shizuku_snapshot_section_sensors
                 ExpertSection.NETWORK -> R.string.shizuku_snapshot_section_network
-            }
+            },
         )
 
-    fun expertSignalLabel(signal: ExpertSignal, deviceFamily: DeviceFamily): String =
+    fun expertSignalLabel(
+        signal: ExpertSignal,
+        deviceFamily: DeviceFamily,
+    ): String =
         string(
             when (signal) {
-                ExpertSignal.FUSED_LOCATION -> R.string.shizuku_hint_fused_location
-                ExpertSignal.NETWORK_LOCATION -> R.string.shizuku_hint_network_location
-                ExpertSignal.GNSS_LOCATION -> R.string.shizuku_hint_gnss_location
-                ExpertSignal.ACTIVITY_RECOGNITION -> R.string.shizuku_hint_activity_recognition
-                ExpertSignal.GEOFENCING -> R.string.shizuku_hint_geofencing
-                ExpertSignal.WEATHER_PASSIVE_LOCATION -> R.string.shizuku_hint_weather_passive_location
-                ExpertSignal.OPLUS_LOCATION_SERVICES -> R.string.shizuku_hint_oplus_location_services
-                ExpertSignal.PROXIMITY_WAKEUP -> R.string.shizuku_hint_proximity_wakeup
-                ExpertSignal.PICK_UP_DETECTION -> R.string.shizuku_hint_pick_up_detection
-                ExpertSignal.AOD_LIGHT_WAKEUP -> R.string.shizuku_hint_aod_light_wakeup
-                ExpertSignal.ACTIVITY_SENSOR ->
+                ExpertSignal.FUSED_LOCATION -> {
+                    R.string.shizuku_hint_fused_location
+                }
+
+                ExpertSignal.NETWORK_LOCATION -> {
+                    R.string.shizuku_hint_network_location
+                }
+
+                ExpertSignal.GNSS_LOCATION -> {
+                    R.string.shizuku_hint_gnss_location
+                }
+
+                ExpertSignal.ACTIVITY_RECOGNITION -> {
+                    R.string.shizuku_hint_activity_recognition
+                }
+
+                ExpertSignal.GEOFENCING -> {
+                    R.string.shizuku_hint_geofencing
+                }
+
+                ExpertSignal.WEATHER_PASSIVE_LOCATION -> {
+                    R.string.shizuku_hint_weather_passive_location
+                }
+
+                ExpertSignal.OPLUS_LOCATION_SERVICES -> {
+                    R.string.shizuku_hint_oplus_location_services
+                }
+
+                ExpertSignal.PROXIMITY_WAKEUP -> {
+                    R.string.shizuku_hint_proximity_wakeup
+                }
+
+                ExpertSignal.PICK_UP_DETECTION -> {
+                    R.string.shizuku_hint_pick_up_detection
+                }
+
+                ExpertSignal.AOD_LIGHT_WAKEUP -> {
+                    R.string.shizuku_hint_aod_light_wakeup
+                }
+
+                ExpertSignal.ACTIVITY_SENSOR -> {
                     when (deviceFamily) {
                         DeviceFamily.ONEPLUS -> R.string.shizuku_hint_oplus_activity_sensor
                         DeviceFamily.SAMSUNG -> R.string.shizuku_hint_samsung_activity_detection
                         DeviceFamily.GENERIC_ANDROID -> R.string.shizuku_hint_activity_detection
                     }
-                ExpertSignal.STEP_SENSORS -> R.string.shizuku_hint_step_sensors
-                ExpertSignal.SIGNIFICANT_MOTION -> R.string.shizuku_hint_significant_motion
-                ExpertSignal.WIFI_CONNECTED -> R.string.shizuku_hint_wifi_connected
-                ExpertSignal.CELLULAR_IMS -> R.string.shizuku_hint_cellular_ims
-                ExpertSignal.TELEPHONY_REQUESTS -> R.string.shizuku_hint_telephony_requests
-                ExpertSignal.QUALCOMM_NETWORK_OPTIMIZATION -> R.string.shizuku_hint_qualcomm_network_optimization
-            }
+                }
+
+                ExpertSignal.STEP_SENSORS -> {
+                    R.string.shizuku_hint_step_sensors
+                }
+
+                ExpertSignal.SIGNIFICANT_MOTION -> {
+                    R.string.shizuku_hint_significant_motion
+                }
+
+                ExpertSignal.WIFI_CONNECTED -> {
+                    R.string.shizuku_hint_wifi_connected
+                }
+
+                ExpertSignal.CELLULAR_IMS -> {
+                    R.string.shizuku_hint_cellular_ims
+                }
+
+                ExpertSignal.TELEPHONY_REQUESTS -> {
+                    R.string.shizuku_hint_telephony_requests
+                }
+
+                ExpertSignal.QUALCOMM_NETWORK_OPTIMIZATION -> {
+                    R.string.shizuku_hint_qualcomm_network_optimization
+                }
+            },
         )
 
-    fun diagnosticErrorLabel(error: DiagnosticError?, detail: String?): String {
-        val base =
-            when (error) {
-                DiagnosticError.SHIZUKU_UNAVAILABLE -> string(R.string.shizuku_error_not_running)
-                DiagnosticError.PERMISSION_DENIED -> string(R.string.shizuku_error_permission_missing)
-                DiagnosticError.SHELL_FAILED ->
-                    return string(R.string.shizuku_error_shell_command_failed, detail.orEmpty())
-                DiagnosticError.TIMEOUT, DiagnosticError.UNKNOWN, null ->
-                    detail ?: string(R.string.shizuku_error_unknown_netstats)
+    fun diagnosticErrorLabel(
+        error: DiagnosticError?,
+        detail: String?,
+    ): String {
+        val base = when (error) {
+            DiagnosticError.SHIZUKU_UNAVAILABLE -> {
+                string(R.string.shizuku_error_not_running)
             }
+
+            DiagnosticError.PERMISSION_DENIED -> {
+                string(R.string.shizuku_error_permission_missing)
+            }
+
+            DiagnosticError.SHELL_FAILED -> {
+                return string(R.string.shizuku_error_shell_command_failed, detail.orEmpty())
+            }
+
+            DiagnosticError.TIMEOUT, DiagnosticError.UNKNOWN, null -> {
+                detail ?: string(R.string.shizuku_error_unknown_netstats)
+            }
+        }
 
         return base
     }
@@ -406,34 +526,42 @@ class EventTextRenderer(
         }
     }
 
-    fun hintSectionTitle(screenOn: ScreenOnEvent, hint: WakeLockHint): String =
+    fun hintSectionTitle(
+        screenOn: ScreenOnEvent,
+        hint: WakeLockHint,
+    ): String =
         if (CauseAssessment.relationOf(screenOn, hint) == HintRelation.COMPANION) {
             string(R.string.event_section_companion_wakelock)
         } else {
             string(R.string.event_section_system_hint_possible_trigger)
         }
 
-    fun hintSectionTitle(screenOn: ScreenOnEvent, hint: AlarmHint): String =
+    fun hintSectionTitle(
+        screenOn: ScreenOnEvent,
+        hint: AlarmHint,
+    ): String =
         string(
             when (CauseAssessment.relationOf(screenOn, hint)) {
                 HintRelation.COMPANION -> R.string.event_section_companion_wakeup_alarm
                 HintRelation.POSSIBLE_TRIGGER -> R.string.event_section_wakeup_alarm_possible_trigger
                 HintRelation.SIMULTANEOUS -> R.string.event_section_wakeup_alarm_simultaneous
                 else -> R.string.event_section_wakeup_alarm_close_relation
-            }
+            },
         )
 
-    fun hintSectionTitle(screenOn: ScreenOnEvent, hint: JobHint): String =
+    fun hintSectionTitle(
+        screenOn: ScreenOnEvent,
+        hint: JobHint,
+    ): String =
         if (CauseAssessment.relationOf(screenOn, hint) == HintRelation.COMPANION) {
             string(R.string.event_section_companion_background_job)
         } else {
             string(R.string.event_section_background_job_time_relation)
         }
 
-    fun sourceLabel(packageName: String?): String =
-        sources.labelWithPackage(packageName)
+    fun sourceLabel(packageName: String?): String = sources.labelWithPackage(packageName)
 
-    /* ---------------- details ---------------- */
+    // ---------------- details ----------------
 
     private fun screenOnDetails(event: ScreenOnEvent): String {
         val sections = mutableListOf<List<String>>()
@@ -456,7 +584,7 @@ class EventTextRenderer(
                 labeled(R.string.event_label_source, sources.labelWithPackage(hint.packageName)),
                 labeled(R.string.event_label_kind, wakeLockKindLabel(WakeLockTags.kindOf(hint.tag))),
                 labeled(R.string.event_label_time_offset, screenRelation(hint.offsetMs)),
-                labeled(R.string.event_label_technical_tag, compact(hint.tag.ifBlank { string(R.string.event_unknown) }))
+                labeled(R.string.event_label_technical_tag, compact(hint.tag.ifBlank { string(R.string.event_unknown) })),
             )
         }
 
@@ -468,7 +596,7 @@ class EventTextRenderer(
                 hint.alarmWakeCount?.let {
                     labeled(R.string.event_label_alarm_wakeups_since_stats_start, it.toString())
                 },
-                labeled(R.string.event_label_technical_tag, compact(hint.tag))
+                labeled(R.string.event_label_technical_tag, compact(hint.tag)),
             )
         }
 
@@ -483,9 +611,9 @@ class EventTextRenderer(
                         string(R.string.event_start_type_prioritized)
                     } else {
                         string(R.string.event_start_type_regular)
-                    }
+                    },
                 ),
-                labeled(R.string.event_label_service, compact(hint.serviceName))
+                labeled(R.string.event_label_service, compact(hint.serviceName)),
             )
         }
 
@@ -499,13 +627,10 @@ class EventTextRenderer(
             labeled(R.string.event_label_time_offset, screenRelation(wakeReason.offsetMs)),
             labeled(R.string.event_label_technical_reason, technicalWakeReason(wakeReason)),
             if (wakeReason.evidence == WakeReasonEvidence.POWER_MANAGER_LOG) {
-                labeled(
-                    R.string.event_label_details,
-                    compact(wakeReason.rawDetails ?: string(R.string.event_none))
-                )
+                labeled(R.string.event_label_details, compact(wakeReason.rawDetails ?: string(R.string.event_none)))
             } else {
                 wakeReason.rawTag?.let { labeled(R.string.event_label_technical_tag, compact(it)) }
-            }
+            },
         )
 
     private fun notificationCauseLines(cause: NotificationCause): List<String> {
@@ -513,21 +638,23 @@ class EventTextRenderer(
         val offset = kotlin.math.abs(cause.offsetMs)
 
         return when (CauseAssessment.kindOf(cause)) {
-            NotificationCauseKind.PROBABLE ->
+            NotificationCauseKind.PROBABLE -> {
                 listOf(
                     string(R.string.service_cause_probable, app),
                     string(R.string.service_confidence_high),
-                    string(R.string.service_time_offset, string(R.string.bg_duration_seconds, offset / 1000.0))
+                    string(R.string.service_time_offset, string(R.string.bg_duration_seconds, offset / 1000.0)),
                 )
+            }
 
-            NotificationCauseKind.POSSIBLE ->
+            NotificationCauseKind.POSSIBLE -> {
                 listOf(
                     string(R.string.service_cause_possible, app),
                     string(R.string.service_confidence_medium),
-                    string(R.string.service_time_offset, string(R.string.bg_duration_seconds, offset / 1000.0))
+                    string(R.string.service_time_offset, string(R.string.bg_duration_seconds, offset / 1000.0)),
                 )
+            }
 
-            NotificationCauseKind.LATER_DETECTED ->
+            NotificationCauseKind.LATER_DETECTED -> {
                 listOfNotNull(
                     labeled(R.string.event_label_cause_detected_later, app),
                     labeled(
@@ -535,24 +662,21 @@ class EventTextRenderer(
                         when (CauseAssessment.confidenceOf(cause)) {
                             CauseConfidenceLevel.HIGH -> string(R.string.event_confidence_high)
                             CauseConfidenceLevel.MEDIUM -> string(R.string.event_confidence_medium)
-                        }
+                        },
                     ),
                     string(R.string.event_notification_arrived_after_screen_on, seconds(offset)),
                     cause.notificationTitle
                         ?.takeIf { it.isNotBlank() }
-                        ?.let { labeled(R.string.event_label_title, it) }
+                        ?.let { labeled(R.string.event_label_title, it) },
                 )
+            }
         }
     }
 
     private fun notificationDetails(event: NotificationEvent): String =
         buildList {
-            event.title?.takeIf { it.isNotBlank() }?.let {
-                add(string(R.string.service_notification_event_title_line, it))
-            }
-            event.text?.takeIf { it.isNotBlank() }?.let {
-                add(string(R.string.service_notification_event_text_line, it))
-            }
+            event.title?.takeIf { it.isNotBlank() }?.let { add(string(R.string.service_notification_event_title_line, it)) }
+            event.text?.takeIf { it.isNotBlank() }?.let { add(string(R.string.service_notification_event_text_line, it)) }
             if (event.title.isNullOrBlank() && event.text.isNullOrBlank()) {
                 add(string(R.string.service_notification_event_no_content))
             }
@@ -560,8 +684,7 @@ class EventTextRenderer(
         }.joinToString("\n")
 
     private fun cpuTitle(event: CpuWakeupEvent): String =
-        cpuSourceLabel(event)
-            ?.let { string(R.string.bg_title_cpu_wakeup_source, it) }
+        cpuSourceLabel(event)?.let { string(R.string.bg_title_cpu_wakeup_source, it) }
             ?: string(R.string.bg_title_cpu_woken_background)
 
     private fun cpuDetails(event: CpuWakeupEvent): String =
@@ -577,8 +700,8 @@ class EventTextRenderer(
                         string(R.string.bg_return_to_sleep_detected)
                     } else {
                         string(R.string.bg_return_to_sleep_not_determined)
-                    }
-                )
+                    },
+                ),
             )
 
             val primary = event.primaryEvidence
@@ -606,8 +729,8 @@ class EventTextRenderer(
             add(
                 string(
                     R.string.bg_detail_technical_wake_reason,
-                    event.rawWakeReason ?: string(R.string.bg_technical_wake_reason_missing)
-                )
+                    event.rawWakeReason ?: string(R.string.bg_technical_wake_reason_missing),
+                ),
             )
 
             val technicalSources = event.evidence.map { it.rawSource }.distinct()
@@ -628,7 +751,7 @@ class EventTextRenderer(
         if (measurement.status == NetworkMeasurementStatus.END_FAILED) {
             return string(
                 R.string.service_network_end_failed,
-                diagnosticErrorLabel(measurement.errorCode, measurement.errorDetail)
+                diagnosticErrorLabel(measurement.errorCode, measurement.errorDetail),
             )
         }
 
@@ -640,8 +763,8 @@ class EventTextRenderer(
                     R.string.service_network_total,
                     bytes(measurement.totalBytes),
                     bytes(measurement.rxBytes),
-                    bytes(measurement.txBytes)
-                )
+                    bytes(measurement.txBytes),
+                ),
             )
 
             if (measurement.usage.isEmpty()) {
@@ -664,48 +787,54 @@ class EventTextRenderer(
         val source = string(R.string.service_snapshot_source_background)
 
         return when (snapshot.status) {
-            SnapshotStatus.SHIZUKU_UNAVAILABLE ->
+            SnapshotStatus.SHIZUKU_UNAVAILABLE -> {
                 listOf(trigger, string(R.string.service_snapshot_status_shizuku_unavailable), source)
+            }
 
-            SnapshotStatus.ERROR ->
+            SnapshotStatus.ERROR -> {
                 listOf(
                     trigger,
                     string(R.string.service_snapshot_status_error),
                     string(R.string.service_snapshot_error, snapshot.errorDetail ?: string(R.string.service_unknown)),
-                    source
+                    source,
                 )
+            }
 
-            SnapshotStatus.TIMEOUT_OR_EMPTY ->
+            SnapshotStatus.TIMEOUT_OR_EMPTY -> {
                 listOf(trigger, string(R.string.service_snapshot_status_timeout), source)
+            }
 
-            SnapshotStatus.OK ->
+            SnapshotStatus.OK -> {
                 listOf(
                     trigger,
-                    "Power: " + compactValues(
-                        snapshot.wakefulness?.let { "Wakefulness=$it" },
-                        snapshot.interactive?.let { "Interactive=$it" },
-                        snapshot.lowPowerMode?.let { "PowerSave=$it" }
-                    ),
-                    "DeviceIdle: " + compactValues(
-                        snapshot.deepIdleState?.let { "Deep=$it" },
-                        snapshot.lightIdleState?.let { "Light=$it" },
-                        snapshot.deviceIdleMode?.let { "DeepMode=$it" },
-                        snapshot.lightDeviceIdleMode?.let { "LightMode=$it" }
-                    ),
+                    "Power: " +
+                        compactValues(
+                            snapshot.wakefulness?.let { "Wakefulness=$it" },
+                            snapshot.interactive?.let { "Interactive=$it" },
+                            snapshot.lowPowerMode?.let { "PowerSave=$it" },
+                        ),
+                    "DeviceIdle: " +
+                        compactValues(
+                            snapshot.deepIdleState?.let { "Deep=$it" },
+                            snapshot.lightIdleState?.let { "Light=$it" },
+                            snapshot.deviceIdleMode?.let { "DeepMode=$it" },
+                            snapshot.lightDeviceIdleMode?.let { "LightMode=$it" },
+                        ),
                     string(
                         R.string.service_snapshot_conditions,
                         compactValues(
                             snapshot.idleScreenOn?.let { "ScreenOn=$it" },
                             snapshot.idleCharging?.let { "Charging=$it" },
-                            snapshot.forceIdle?.let { "ForceIdle=$it" }
-                        )
+                            snapshot.forceIdle?.let { "ForceIdle=$it" },
+                        ),
                     ),
                     string(
                         R.string.service_snapshot_classification,
-                        snapshotClassificationLabel(SnapshotClassification.of(snapshot))
+                        snapshotClassificationLabel(SnapshotClassification.of(snapshot)),
                     ),
-                    source
+                    source,
                 )
+            }
         }.joinToString("\n")
     }
 
@@ -717,40 +846,44 @@ class EventTextRenderer(
                 string(R.string.service_snapshot_source_compact) + "\n\n"
 
         if (snapshot.status != ExpertSnapshotStatus.OK) {
-            return header + string(
-                R.string.service_diagnostic_error,
-                snapshot.errorDetail ?: string(R.string.service_unknown)
-            )
+            return header +
+                string(R.string.service_diagnostic_error, snapshot.errorDetail ?: string(R.string.service_unknown))
         }
 
-        val body =
-            ExpertSection.entries.joinToString("\n\n") { section ->
-                val items =
-                    snapshot.signals
-                        .filter { it.section == section }
-                        .sortedBy { it.ordinal }
-                        .map { "• " + expertSignalLabel(it, event.deviceFamily) }
+        val body = ExpertSection.entries.joinToString("\n\n") { section ->
+            val items = snapshot.signals
+                .filter { it.section == section }
+                .sortedBy { it.ordinal }
+                .map { "• " + expertSignalLabel(it, event.deviceFamily) }
 
-                expertSectionLabel(section) + "\n" +
-                    items.ifEmpty { listOf(string(R.string.shizuku_snapshot_no_hits)) }.joinToString("\n")
-            }
+            expertSectionLabel(section) + "\n" +
+                items.ifEmpty { listOf(string(R.string.shizuku_snapshot_no_hits)) }.joinToString("\n")
+        }
 
         return header + body + "\n\n" + string(R.string.shizuku_snapshot_note)
     }
 
-    /* ---------------- formatting ---------------- */
+    // ---------------- formatting ----------------
 
     fun bytes(value: Long): String {
         val safe = value.coerceAtLeast(0L)
 
         return when {
-            safe >= 1024L * 1024L * 1024L ->
+            safe >= 1024L * 1024L * 1024L -> {
                 String.format(Locale.getDefault(), "%.1f GB", safe / (1024.0 * 1024.0 * 1024.0))
-            safe >= 1024L * 1024L ->
+            }
+
+            safe >= 1024L * 1024L -> {
                 String.format(Locale.getDefault(), "%.1f MB", safe / (1024.0 * 1024.0))
-            safe >= 1024L ->
+            }
+
+            safe >= 1024L -> {
                 String.format(Locale.getDefault(), "%.1f KB", safe / 1024.0)
-            else -> "$safe B"
+            }
+
+            else -> {
+                "$safe B"
+            }
         }
     }
 
@@ -767,8 +900,7 @@ class EventTextRenderer(
         }
     }
 
-    private fun seconds(milliseconds: Long): String =
-        string(R.string.event_age_seconds, milliseconds / 1000.0)
+    private fun seconds(milliseconds: Long): String = string(R.string.event_age_seconds, milliseconds / 1000.0)
 
     private fun compactValues(vararg values: String?): String =
         values
@@ -776,14 +908,17 @@ class EventTextRenderer(
             .ifEmpty { listOf(string(R.string.service_snapshot_no_compact_values)) }
             .joinToString(", ")
 
-    private fun labeled(@StringRes labelId: Int, value: String): String =
-        string(labelId) + " " + value
+    private fun labeled(
+        @StringRes labelId: Int,
+        value: String,
+    ): String = string(labelId) + " " + value
 
-    private fun compact(value: String): String =
-        if (value.length <= 110) value else value.take(107) + "…"
+    private fun compact(value: String): String = if (value.length <= 110) value else value.take(107) + "…"
 
-    private fun string(@StringRes id: Int, vararg args: Any): String =
-        context.getString(id, *args)
+    private fun string(
+        @StringRes id: Int,
+        vararg args: Any,
+    ): String = context.getString(id, *args)
 
     companion object {
         const val NETWORK_TOP_APPS = 15

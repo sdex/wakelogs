@@ -11,18 +11,15 @@ import de.sanniki.wakesleuth.domain.ProximityState
 /** Timeline base row. Type specific facts live in the payload tables. */
 @Entity(
     tableName = "event",
-    indices = [
-        Index("session_id", "occurred_at"),
-        Index("type", "occurred_at")
-    ],
+    indices = [Index("session_id", "occurred_at"), Index("type", "occurred_at")],
     foreignKeys = [
         ForeignKey(
             entity = MonitoringSessionEntity::class,
             parentColumns = ["id"],
             childColumns = ["session_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class EventEntity(
     @PrimaryKey(autoGenerate = true)
@@ -35,5 +32,5 @@ data class EventEntity(
     @ColumnInfo(name = "proximity_state")
     val proximityState: ProximityState? = null,
     @ColumnInfo(name = "proximity_distance_cm")
-    val proximityDistanceCm: Float? = null
+    val proximityDistanceCm: Float? = null,
 )

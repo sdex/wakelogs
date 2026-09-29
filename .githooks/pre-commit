@@ -1,0 +1,12 @@
+#!/bin/sh
+# Format staged Kotlin files with ktlint (via Spotless) before committing.
+staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.kts?$')
+[ -z "$staged" ] && exit 0
+
+./gradlew spotlessApply -q || {
+    echo "spotlessApply failed; fix the ktlint errors above and commit again." >&2
+    exit 1
+}
+
+# Re-stage the files that were already staged so the formatting lands in this commit.
+echo "$staged" | xargs git add

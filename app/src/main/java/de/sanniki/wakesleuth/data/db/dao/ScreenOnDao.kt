@@ -14,7 +14,6 @@ import de.sanniki.wakesleuth.data.db.entity.ScreenOnWakeReasonEntity
 /** Inserts return -1 when the unique guard already holds such a row. */
 @Dao
 interface ScreenOnDao {
-
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertWakeReason(entity: ScreenOnWakeReasonEntity): Long
 
@@ -36,14 +35,15 @@ interface ScreenOnDao {
         SELECT * FROM event
         WHERE type = 'SCREEN_ON'
           AND occurred_at BETWEEN :from AND :to
-          AND NOT EXISTS (
-            SELECT 1 FROM screen_on_wake_reason w WHERE w.event_id = event.id
-          )
+          AND NOT EXISTS (SELECT 1 FROM screen_on_wake_reason w WHERE w.event_id = event.id)
         ORDER BY occurred_at DESC, id DESC
         LIMIT 1
-        """
+        """,
     )
-    suspend fun newestWithoutWakeReason(from: Long, to: Long): EventEntity?
+    suspend fun newestWithoutWakeReason(
+        from: Long,
+        to: Long,
+    ): EventEntity?
 
     @Query("SELECT EXISTS(SELECT 1 FROM screen_on_wake_reason WHERE event_id = :eventId)")
     suspend fun hasWakeReason(eventId: Long): Boolean

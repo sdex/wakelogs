@@ -15,15 +15,15 @@ import de.sanniki.wakesleuth.domain.ExpertSnapshotStatus
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.CASCADE,
         ),
         ForeignKey(
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["screen_on_event_id"],
-            onDelete = ForeignKey.SET_NULL
-        )
-    ]
+            onDelete = ForeignKey.SET_NULL,
+        ),
+    ],
 )
 data class ExpertSnapshotEntity(
     @PrimaryKey
@@ -40,5 +40,5 @@ data class ExpertSnapshotEntity(
     @ColumnInfo(name = "sensors_available")
     val sensorsAvailable: Boolean,
     @ColumnInfo(name = "network_available")
-    val networkAvailable: Boolean
+    val networkAvailable: Boolean,
 )

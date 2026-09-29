@@ -9,30 +9,31 @@ import de.sanniki.wakesleuth.data.db.entity.MonitoringSessionEntity
 data class AnalysisWindow(
     val startMillis: Long,
     val endMillis: Long,
-    val ongoing: Boolean
+    val ongoing: Boolean,
 ) {
     val durationMillis: Long
         get() = (endMillis - startMillis).coerceAtLeast(0L)
 
-    operator fun contains(timestamp: Long): Boolean =
-        timestamp in startMillis..endMillis
+    operator fun contains(timestamp: Long): Boolean = timestamp in startMillis..endMillis
 
     companion object {
-        fun of(session: MonitoringSessionEntity?, now: Long): AnalysisWindow? {
+        fun of(
+            session: MonitoringSessionEntity?,
+            now: Long,
+        ): AnalysisWindow? {
             session ?: return null
 
             val running = session.stopRequestedAt == null && session.finalizedAt == null
 
             return AnalysisWindow(
                 startMillis = session.startedAt,
-                endMillis =
-                    if (running) {
-                        now
-                    } else {
-                        (session.stopRequestedAt ?: session.finalizedAt ?: session.startedAt)
-                            .coerceAtLeast(session.startedAt)
-                    },
-                ongoing = running
+                endMillis = if (running) {
+                    now
+                } else {
+                    (session.stopRequestedAt ?: session.finalizedAt ?: session.startedAt)
+                        .coerceAtLeast(session.startedAt)
+                },
+                ongoing = running,
             )
         }
     }

@@ -6,20 +6,18 @@ data class SessionSourceStat(
     val cpuCount: Int,
     val displayCount: Int,
     val companionCount: Int,
-    val longestCpuAwakeMs: Long?
+    val longestCpuAwakeMs: Long?,
 )
 
 /** Source a CPU wakeup is attributed to: its primary evidence. */
-fun CpuWakeupEvent.primarySource(): SourceRef? =
-    primaryEvidence?.let { SourceClassifier.classify(it.packageName, it.rawSource) }
+fun CpuWakeupEvent.primarySource(): SourceRef? = primaryEvidence?.let { SourceClassifier.classify(it.packageName, it.rawSource) }
 
-fun CpuEvidence.source(): SourceRef =
-    SourceClassifier.classify(packageName, rawSource)
+fun CpuEvidence.source(): SourceRef = SourceClassifier.classify(packageName, rawSource)
 
 /** A source seen around a screen-on and whether it only accompanied it. */
 data class ScreenOnSource(
     val source: SourceRef,
-    val companion: Boolean
+    val companion: Boolean,
 )
 
 /**
@@ -30,24 +28,22 @@ data class ScreenOnSource(
 fun ScreenOnEvent.sources(): List<ScreenOnSource> {
     val result = linkedMapOf<String, ScreenOnSource>()
 
-    fun add(source: SourceRef, companion: Boolean) {
+    fun add(
+        source: SourceRef,
+        companion: Boolean,
+    ) {
         val existing = result[source.groupKey]
         result[source.groupKey] =
-            ScreenOnSource(
-                source = existing?.source ?: source,
-                companion = (existing?.companion ?: false) || companion
-            )
+            ScreenOnSource(source = existing?.source ?: source, companion = (existing?.companion ?: false) || companion)
     }
 
-    notificationCause?.let {
-        add(SourceClassifier.classify(it.packageName), companion = false)
-    }
+    notificationCause?.let { add(SourceClassifier.classify(it.packageName), companion = false) }
 
     wakeLockHints.forEach { hint ->
         val packageName = hint.packageName ?: return@forEach
         add(
             SourceClassifier.classify(packageName, hint.tag),
-            companion = CauseAssessment.relationOf(this, hint) == HintRelation.COMPANION
+            companion = CauseAssessment.relationOf(this, hint) == HintRelation.COMPANION,
         )
     }
 
@@ -55,7 +51,7 @@ fun ScreenOnEvent.sources(): List<ScreenOnSource> {
         val packageName = hint.packageName ?: return@forEach
         add(
             SourceClassifier.classify(packageName, hint.tag),
-            companion = CauseAssessment.relationOf(this, hint) == HintRelation.COMPANION
+            companion = CauseAssessment.relationOf(this, hint) == HintRelation.COMPANION,
         )
     }
 
@@ -63,7 +59,7 @@ fun ScreenOnEvent.sources(): List<ScreenOnSource> {
         val packageName = hint.packageName ?: return@forEach
         add(
             SourceClassifier.classify(packageName, hint.serviceName),
-            companion = CauseAssessment.relationOf(this, hint) == HintRelation.COMPANION
+            companion = CauseAssessment.relationOf(this, hint) == HintRelation.COMPANION,
         )
     }
 
@@ -71,14 +67,15 @@ fun ScreenOnEvent.sources(): List<ScreenOnSource> {
 }
 
 object SessionSources {
-
     /**
      * Aggregates display and CPU wakeups per source, merged by
      * [SourceRef.groupKey]. The stored reference keeps only what the key
      * needs, so it is stable across sessions.
      */
     fun aggregate(events: List<RecordedEvent>): List<SessionSourceStat> {
-        class Counts(val source: SourceRef) {
+        class Counts(
+            val source: SourceRef,
+        ) {
             var cpu = 0
             var display = 0
             var companion = 0
@@ -87,8 +84,7 @@ object SessionSources {
 
         val counts = linkedMapOf<String, Counts>()
 
-        fun counts(source: SourceRef): Counts =
-            counts.getOrPut(source.groupKey) { Counts(canonical(source)) }
+        fun counts(source: SourceRef): Counts = counts.getOrPut(source.groupKey) { Counts(canonical(source)) }
 
         events.forEach { event ->
             when (event) {
@@ -96,12 +92,10 @@ object SessionSources {
                     val source = event.primarySource() ?: return@forEach
                     val item = counts(source)
                     item.cpu++
-                    event.awakeMs?.let { awake ->
-                        item.longest = maxOf(item.longest ?: 0L, awake)
-                    }
+                    event.awakeMs?.let { awake -> item.longest = maxOf(item.longest ?: 0L, awake) }
                 }
 
-                is ScreenOnEvent ->
+                is ScreenOnEvent -> {
                     event.sources().forEach { linked ->
                         val item = counts(linked.source)
                         item.display++
@@ -109,8 +103,11 @@ object SessionSources {
                             item.companion++
                         }
                     }
+                }
 
-                else -> Unit
+                else -> {
+                    Unit
+                }
             }
         }
 
@@ -122,7 +119,7 @@ object SessionSources {
                     cpuCount = it.cpu,
                     displayCount = it.display,
                     companionCount = it.companion,
-                    longestCpuAwakeMs = it.longest
+                    longestCpuAwakeMs = it.longest,
                 )
             }
     }
@@ -130,19 +127,20 @@ object SessionSources {
     /** Reduces a reference to the fields its group key is built from. */
     fun canonical(source: SourceRef): SourceRef =
         when (source.kind) {
-            SourceKind.APP ->
+            SourceKind.APP -> {
                 SourceRef(SourceKind.APP, packageName = source.packageName ?: source.rawSource)
+            }
 
-            SourceKind.UID_ONLY ->
+            SourceKind.UID_ONLY -> {
                 SourceRef(SourceKind.UID_ONLY, rawSource = source.rawSource)
+            }
 
-            SourceKind.UNKNOWN_SYSTEM ->
-                SourceRef(
-                    SourceKind.UNKNOWN_SYSTEM,
-                    rawSource = SourceClassifier.technicalName(source.rawSource)
-                )
+            SourceKind.UNKNOWN_SYSTEM -> {
+                SourceRef(SourceKind.UNKNOWN_SYSTEM, rawSource = SourceClassifier.technicalName(source.rawSource))
+            }
 
-            else ->
+            else -> {
                 SourceRef(source.kind)
+            }
         }
 }

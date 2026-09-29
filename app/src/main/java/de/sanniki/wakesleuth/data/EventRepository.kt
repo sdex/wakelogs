@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.map
 
 /** Read side of the event log. */
 class EventRepository(
-    private val writer: DatabaseWriter
+    private val writer: DatabaseWriter,
 ) {
     private val database: WakelogsDatabase get() = writer.database
 
@@ -24,7 +24,8 @@ class EventRepository(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observeLatestSessionTimeline(): Flow<List<RecordedEvent>> =
-        database.sessionDao()
+        database
+            .sessionDao()
             .observeLatestSession()
             .map { it?.id }
             .distinctUntilChanged()
@@ -37,28 +38,32 @@ class EventRepository(
             }
 
     fun observeSessionTimeline(sessionId: Long): Flow<List<RecordedEvent>> =
-        database.eventDao()
+        database
+            .eventDao()
             .observeSessionTimeline(sessionId)
             .map { rows -> rows.map(EventMapper::toDomain) }
             .flowOn(Dispatchers.Default)
 
     /** Screen-ons in [from, to), across sessions. */
-    fun observeScreenOnsBetween(from: Long, to: Long): Flow<List<ScreenOnEvent>> =
-        database.eventDao()
+    fun observeScreenOnsBetween(
+        from: Long,
+        to: Long,
+    ): Flow<List<ScreenOnEvent>> =
+        database
+            .eventDao()
             .observeScreenOnsBetween(from, to)
             .map { rows -> rows.map(EventMapper::toDomain).filterIsInstance<ScreenOnEvent>() }
             .flowOn(Dispatchers.Default)
 
     /** Events of a session in insertion order, for the technical export. */
     suspend fun sessionEventsInInsertOrder(sessionId: Long): List<RecordedEvent> =
-        database.eventDao()
+        database
+            .eventDao()
             .sessionEventsInInsertOrder(sessionId)
             .map(EventMapper::toDomain)
 
     /** "Clear events". The session archive and its summary stay. */
     suspend fun clearEvents() {
-        writer.transaction {
-            database.eventDao().deleteAll()
-        }
+        writer.transaction { database.eventDao().deleteAll() }
     }
 }

@@ -14,9 +14,9 @@ import androidx.room3.PrimaryKey
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class ScreenOnWakeLockHintEntity(
     @PrimaryKey(autoGenerate = true)
@@ -28,5 +28,5 @@ data class ScreenOnWakeLockHintEntity(
     val tag: String,
     @ColumnInfo(name = "package_name")
     val packageName: String?,
-    val uid: Int? = null
+    val uid: Int? = null,
 )

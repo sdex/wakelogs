@@ -9,5 +9,5 @@ data class RecentNotificationRow(
     @ColumnInfo(name = "occurred_at")
     val occurredAt: Long,
     @ColumnInfo(name = "package_name")
-    val packageName: String
+    val packageName: String,
 )

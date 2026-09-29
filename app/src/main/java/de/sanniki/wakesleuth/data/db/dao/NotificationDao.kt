@@ -8,7 +8,6 @@ import de.sanniki.wakesleuth.data.db.relation.RecentNotificationRow
 
 @Dao
 interface NotificationDao {
-
     @Insert
     suspend fun insert(notification: NotificationEntity)
 
@@ -20,9 +19,12 @@ interface NotificationDao {
         WHERE e.occurred_at BETWEEN :from AND :to
         ORDER BY e.occurred_at DESC, e.id DESC
         LIMIT 1
-        """
+        """,
     )
-    suspend fun newestBetween(from: Long, to: Long): RecentNotificationRow?
+    suspend fun newestBetween(
+        from: Long,
+        to: Long,
+    ): RecentNotificationRow?
 
     @Query(
         """
@@ -31,7 +33,10 @@ interface NotificationDao {
             JOIN event e ON e.id = n.event_id
             WHERE n.fingerprint = :fingerprint AND e.occurred_at >= :since
         )
-        """
+        """,
     )
-    suspend fun fingerprintSeenSince(fingerprint: String, since: Long): Boolean
+    suspend fun fingerprintSeenSince(
+        fingerprint: String,
+        since: Long,
+    ): Boolean
 }

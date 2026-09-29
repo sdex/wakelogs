@@ -14,7 +14,7 @@ import kotlinx.coroutines.sync.withLock
  * Never nest [transaction] calls: the mutex is not reentrant.
  */
 class DatabaseWriter(
-    val database: WakelogsDatabase
+    val database: WakelogsDatabase,
 ) {
     private val mutex = Mutex()
 

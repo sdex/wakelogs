@@ -12,9 +12,9 @@ import androidx.room3.PrimaryKey
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class UsbDeviceEventEntity(
     @PrimaryKey
@@ -29,5 +29,5 @@ data class UsbDeviceEventEntity(
     @ColumnInfo(name = "device_name")
     val deviceName: String? = null,
     @ColumnInfo(name = "manufacturer_name")
-    val manufacturerName: String? = null
+    val manufacturerName: String? = null,
 )

@@ -10,7 +10,7 @@ enum class HintRelation {
     POSSIBLE_TRIGGER,
     SIMULTANEOUS,
     CLOSE_RELATION,
-    TIME_RELATION
+    TIME_RELATION,
 }
 
 enum class NotificationCauseKind {
@@ -21,12 +21,12 @@ enum class NotificationCauseKind {
     POSSIBLE,
 
     /** Notification arrived shortly after the screen was already on. */
-    LATER_DETECTED
+    LATER_DETECTED,
 }
 
 enum class CauseConfidenceLevel {
     HIGH,
-    MEDIUM
+    MEDIUM,
 }
 
 /** Overall verdict for a screen-on, strongest evidence first. */
@@ -37,11 +37,10 @@ enum class ScreenOnVerdict {
     POSSIBLE_WAKEUP_ALARM,
     POSSIBLE_WAKELOCK,
     COMPANION,
-    UNRESOLVED
+    UNRESOLVED,
 }
 
 object CauseAssessment {
-
     const val HIGH_CONFIDENCE_WINDOW_MILLIS = 3_000L
     const val POSSIBLE_CAUSE_WINDOW_MILLIS = 10_000L
 
@@ -63,18 +62,22 @@ object CauseAssessment {
      * Only wakelocks before the screen-on may be called a possible
      * trigger; simultaneous or later ones accompany the wake-up.
      */
-    fun relationOf(screenOn: ScreenOnEvent, hint: WakeLockHint): HintRelation =
+    fun relationOf(
+        screenOn: ScreenOnEvent,
+        hint: WakeLockHint,
+    ): HintRelation =
         if (
-            screenOn.wakeReason != null ||
-            hint.offsetMs >= 0L ||
-            WakeLockTags.isKnownFollowUp(hint.tag)
+            screenOn.wakeReason != null || hint.offsetMs >= 0L || WakeLockTags.isKnownFollowUp(hint.tag)
         ) {
             HintRelation.COMPANION
         } else {
             HintRelation.POSSIBLE_TRIGGER
         }
 
-    fun relationOf(screenOn: ScreenOnEvent, hint: AlarmHint): HintRelation =
+    fun relationOf(
+        screenOn: ScreenOnEvent,
+        hint: AlarmHint,
+    ): HintRelation =
         when {
             screenOn.wakeReason != null -> HintRelation.COMPANION
             hint.offsetMs < 0L -> HintRelation.POSSIBLE_TRIGGER
@@ -86,7 +89,10 @@ object CauseAssessment {
      * A job start right before the screen-on can matter in time, but it
      * does not prove the job turned the display on.
      */
-    fun relationOf(screenOn: ScreenOnEvent, hint: JobHint): HintRelation =
+    fun relationOf(
+        screenOn: ScreenOnEvent,
+        hint: JobHint,
+    ): HintRelation =
         if (screenOn.wakeReason != null) {
             HintRelation.COMPANION
         } else {
@@ -99,13 +105,9 @@ object CauseAssessment {
             screenOn.jobHints.any { relationOf(screenOn, it) != HintRelation.COMPANION }
 
     /** A cause or at least a hint that is more than accompanying activity. */
-    fun hasExplanationOrHint(screenOn: ScreenOnEvent): Boolean =
-        screenOn.wakeReason != null ||
-            screenOn.notificationCause != null ||
-            hasNonCompanionHint(screenOn)
+    fun hasExplanationOrHint(screenOn: ScreenOnEvent): Boolean = screenOn.wakeReason != null || screenOn.notificationCause != null || hasNonCompanionHint(screenOn)
 
-    fun isUnexplained(screenOn: ScreenOnEvent): Boolean =
-        !hasExplanationOrHint(screenOn)
+    fun isUnexplained(screenOn: ScreenOnEvent): Boolean = !hasExplanationOrHint(screenOn)
 
     fun verdictOf(screenOn: ScreenOnEvent): ScreenOnVerdict {
         if (screenOn.wakeReason != null) {
@@ -128,9 +130,7 @@ object CauseAssessment {
         }
 
         if (
-            screenOn.wakeLockHints.isNotEmpty() ||
-            screenOn.alarmHints.isNotEmpty() ||
-            screenOn.jobHints.isNotEmpty()
+            screenOn.wakeLockHints.isNotEmpty() || screenOn.alarmHints.isNotEmpty() || screenOn.jobHints.isNotEmpty()
         ) {
             return ScreenOnVerdict.COMPANION
         }
@@ -138,6 +138,5 @@ object CauseAssessment {
         return ScreenOnVerdict.UNRESOLVED
     }
 
-    fun isPowerButton(screenOn: ScreenOnEvent): Boolean =
-        screenOn.wakeReason?.reason == WakeReason.POWER_BUTTON
+    fun isPowerButton(screenOn: ScreenOnEvent): Boolean = screenOn.wakeReason?.reason == WakeReason.POWER_BUTTON
 }

@@ -6,10 +6,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ClassificationsTest {
-
     @Test
     fun `kernel wake reasons are bucketed`() {
-        assertEquals(WakeReasonCategory.FAILED_SUSPEND, WakeReasonCategory.of("Abort: Pending Wakeup Sources: failed to suspend"))
+        assertEquals(
+            WakeReasonCategory.FAILED_SUSPEND,
+            WakeReasonCategory.of("Abort: Pending Wakeup Sources: failed to suspend"),
+        )
         assertEquals(WakeReasonCategory.SCHEDULED_SYSTEM_ALARM, WakeReasonCategory.of("123:\"pm8xxx_rtc_alarm\""))
         assertEquals(WakeReasonCategory.QUALCOMM_RADIO, WakeReasonCategory.of("200:\"qcom_rx_wakelock\""))
         assertEquals(WakeReasonCategory.TIMER_SCHEDULER, WakeReasonCategory.of("0:\"timerfd\""))
@@ -40,14 +42,13 @@ class ClassificationsTest {
 
     @Test
     fun `primary evidence follows the type priority`() {
-        val types =
-            listOf(
-                EvidenceType.PARTIAL_WAKELOCK,
-                EvidenceType.WAKEUP_ALARM,
-                EvidenceType.WORKMANAGER,
-                EvidenceType.SYNC,
-                EvidenceType.SYNC
-            )
+        val types = listOf(
+            EvidenceType.PARTIAL_WAKELOCK,
+            EvidenceType.WAKEUP_ALARM,
+            EvidenceType.WORKMANAGER,
+            EvidenceType.SYNC,
+            EvidenceType.SYNC,
+        )
 
         assertEquals(3, CpuEvidenceRules.primaryIndex(types))
         assertEquals(null, CpuEvidenceRules.primaryIndex(emptyList()))
@@ -63,14 +64,14 @@ class ClassificationsTest {
             wakefulness: String? = null,
             interactive: Boolean? = null,
             deep: String? = null,
-            light: String? = null
+            light: String? = null,
         ) = SystemSnapshot(
             trigger = SnapshotTrigger.AFTER_SCREEN_OFF,
             status = SnapshotStatus.OK,
             wakefulness = wakefulness,
             interactive = interactive,
             deepIdleState = deep,
-            lightIdleState = light
+            lightIdleState = light,
         )
 
         assertEquals(SnapshotClassification.ACTIVE, SnapshotClassification.of(snapshot(interactive = true)))

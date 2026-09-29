@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NetworkDao {
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBaseline(entries: List<NetworkBaselineEntryEntity>)
 
@@ -35,7 +34,7 @@ interface NetworkDao {
         SELECT u.* FROM network_app_usage u
         JOIN monitoring_session m ON m.id = u.session_id
         WHERE m.finalized_at IS NOT NULL
-        """
+        """,
     )
     fun observeFinalizedUsage(): Flow<List<NetworkAppUsageEntity>>
 }

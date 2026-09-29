@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface EventDao {
-
     @Insert
     suspend fun insert(event: EventEntity): Long
 
@@ -24,7 +23,7 @@ interface EventDao {
         SELECT * FROM event
         WHERE session_id = :sessionId
         ORDER BY occurred_at DESC, id DESC
-        """
+        """,
     )
     fun observeSessionTimeline(sessionId: Long): Flow<List<EventWithPayload>>
 
@@ -38,9 +37,12 @@ interface EventDao {
         """
         SELECT * FROM event
         WHERE type = 'SCREEN_ON' AND occurred_at >= :from AND occurred_at < :to
-        """
+        """,
     )
-    fun observeScreenOnsBetween(from: Long, to: Long): Flow<List<EventWithPayload>>
+    fun observeScreenOnsBetween(
+        from: Long,
+        to: Long,
+    ): Flow<List<EventWithPayload>>
 
     @Transaction
     @Query("SELECT * FROM event WHERE id = :id")
@@ -51,9 +53,12 @@ interface EventDao {
         SELECT * FROM event
         WHERE type = 'SCREEN_ON' AND occurred_at BETWEEN :from AND :to
         ORDER BY occurred_at DESC, id DESC
-        """
+        """,
     )
-    suspend fun screenOnsBetween(from: Long, to: Long): List<EventEntity>
+    suspend fun screenOnsBetween(
+        from: Long,
+        to: Long,
+    ): List<EventEntity>
 
     @Query("SELECT MAX(occurred_at) FROM event WHERE session_id = :sessionId")
     suspend fun lastOccurredAt(sessionId: Long): Long?
@@ -69,7 +74,10 @@ interface EventDao {
               AND e.occurred_at < :at + 500
               AND c.raw_wake_reason IS :rawWakeReason
         )
-        """
+        """,
     )
-    suspend fun cpuWakeupExists(at: Long, rawWakeReason: String?): Boolean
+    suspend fun cpuWakeupExists(
+        at: Long,
+        rawWakeReason: String?,
+    ): Boolean
 }

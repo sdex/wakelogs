@@ -11,9 +11,7 @@ fun rememberEventTextRenderer(): EventTextRenderer {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
 
-    return remember(context, configuration) {
-        EventTextRenderer(context)
-    }
+    return remember(context, configuration) { EventTextRenderer(context) }
 }
 
 @Composable
@@ -21,7 +19,5 @@ fun rememberSourceLabelResolver(): SourceLabelResolver {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
 
-    return remember(context, configuration) {
-        SourceLabelResolver.get(context)
-    }
+    return remember(context, configuration) { SourceLabelResolver.get(context) }
 }

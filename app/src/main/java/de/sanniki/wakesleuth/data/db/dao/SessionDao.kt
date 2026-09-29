@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SessionDao {
-
     @Insert
     suspend fun insert(session: MonitoringSessionEntity): Long
 
@@ -28,7 +27,7 @@ interface SessionDao {
         WHERE finalized_at IS NULL
         ORDER BY started_at DESC, id DESC
         LIMIT 1
-        """
+        """,
     )
     suspend fun recordingSession(): MonitoringSessionEntity?
 
@@ -37,7 +36,7 @@ interface SessionDao {
         SELECT * FROM monitoring_session
         WHERE finalized_at IS NULL
         ORDER BY started_at DESC, id DESC
-        """
+        """,
     )
     suspend fun unfinalizedSessions(): List<MonitoringSessionEntity>
 
@@ -47,7 +46,7 @@ interface SessionDao {
         WHERE stop_requested_at IS NULL AND finalized_at IS NULL
         ORDER BY started_at DESC, id DESC
         LIMIT 1
-        """
+        """,
     )
     suspend fun runningSession(): MonitoringSessionEntity?
 
@@ -56,7 +55,7 @@ interface SessionDao {
         SELECT * FROM monitoring_session
         ORDER BY started_at DESC, id DESC
         LIMIT 1
-        """
+        """,
     )
     fun observeLatestSession(): Flow<MonitoringSessionEntity?>
 
@@ -65,7 +64,7 @@ interface SessionDao {
         SELECT * FROM monitoring_session
         ORDER BY started_at DESC, id DESC
         LIMIT 1
-        """
+        """,
     )
     suspend fun latestSession(): MonitoringSessionEntity?
 
@@ -74,12 +73,15 @@ interface SessionDao {
         SELECT * FROM monitoring_session
         WHERE finalized_at IS NOT NULL
         ORDER BY started_at DESC, id DESC
-        """
+        """,
     )
     fun observeFinalizedSessions(): Flow<List<MonitoringSessionEntity>>
 
     @Query("UPDATE monitoring_session SET note = :note WHERE id = :id")
-    suspend fun updateNote(id: Long, note: String?): Int
+    suspend fun updateNote(
+        id: Long,
+        note: String?,
+    ): Int
 
     @Query("DELETE FROM monitoring_session WHERE id = :id AND finalized_at IS NOT NULL")
     suspend fun deleteFinalized(id: Long): Int
@@ -98,7 +100,7 @@ interface SessionDao {
             ORDER BY started_at DESC, id DESC
             LIMIT :keep
           )
-        """
+        """,
     )
     suspend fun applyRetention(keep: Int)
 
@@ -113,7 +115,7 @@ interface SessionDao {
         SELECT s.* FROM session_source_stat s
         JOIN monitoring_session m ON m.id = s.session_id
         WHERE m.finalized_at IS NOT NULL
-        """
+        """,
     )
     fun observeFinalizedSourceStats(): Flow<List<SessionSourceStatEntity>>
 }

@@ -10,18 +10,15 @@ import de.sanniki.wakesleuth.domain.EvidenceType
 
 @Entity(
     tableName = "cpu_wakeup_evidence",
-    indices = [
-        Index("event_id", "evidence_type", "raw_source", unique = true),
-        Index("is_primary", "package_name")
-    ],
+    indices = [Index("event_id", "evidence_type", "raw_source", unique = true), Index("is_primary", "package_name")],
     foreignKeys = [
         ForeignKey(
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class CpuWakeupEvidenceEntity(
     @PrimaryKey(autoGenerate = true)
@@ -38,5 +35,5 @@ data class CpuWakeupEvidenceEntity(
     val packageName: String?,
     /** The evidence chosen as possible source; none means unattributed. */
     @ColumnInfo(name = "is_primary")
-    val isPrimary: Boolean
+    val isPrimary: Boolean,
 )

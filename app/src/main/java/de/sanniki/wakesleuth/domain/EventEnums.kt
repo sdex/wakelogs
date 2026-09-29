@@ -20,7 +20,7 @@ enum class EventType {
     CPU_WAKEUP,
     NETWORK_SESSION,
     SYSTEM_SNAPSHOT,
-    EXPERT_SNAPSHOT
+    EXPERT_SNAPSHOT,
 }
 
 enum class ProximityState {
@@ -29,12 +29,12 @@ enum class ProximityState {
     NO_READING,
     NOT_PRESENT,
     REGISTRATION_FAILED,
-    NOT_AVAILABLE
+    NOT_AVAILABLE,
 }
 
 enum class SessionEndReason {
     USER_STOP,
-    INTERRUPTED
+    INTERRUPTED,
 }
 
 /** Direct screen wake reason, derived from `WAKE_REASON_*` and details. */
@@ -47,14 +47,14 @@ enum class WakeReason {
     WAKE_KEY,
     WAKE_MOTION,
     APPLICATION,
-    OTHER
+    OTHER,
 }
 
 /** Which system source proved the direct wake reason. */
 enum class WakeReasonEvidence {
     POWER_MANAGER_LOG,
     BATTERYSTATS_POWER_KEY,
-    POWER_KEY_WAKELOCK
+    POWER_KEY_WAKELOCK,
 }
 
 /** The BatteryStats / wakelock signal that identified a power key press. */
@@ -62,14 +62,14 @@ enum class PowerKeySignal {
     PMIC_PWRKEY,
     POLICY_POWER,
     DISPLAY_REASON_KEY,
-    POWER_KEY_WAKELOCK
+    POWER_KEY_WAKELOCK,
 }
 
 /** BatteryStats history token a CPU wakeup evidence was read from. */
 enum class EvidenceOrigin {
     WAKELOCK,
     JOB,
-    SYNC
+    SYNC,
 }
 
 /**
@@ -82,13 +82,13 @@ enum class EvidenceType {
     JOBSCHEDULER,
     WAKEUP_ALARM,
     JOB_WAKELOCK,
-    PARTIAL_WAKELOCK
+    PARTIAL_WAKELOCK,
 }
 
 enum class NetworkMeasurementStatus {
     OK,
     NO_BASELINE,
-    END_FAILED
+    END_FAILED,
 }
 
 enum class DiagnosticError {
@@ -96,36 +96,36 @@ enum class DiagnosticError {
     PERMISSION_DENIED,
     SHELL_FAILED,
     TIMEOUT,
-    UNKNOWN
+    UNKNOWN,
 }
 
 enum class SnapshotTrigger {
     AFTER_SCREEN_ON,
     AFTER_SCREEN_OFF,
-    START_PROBE
+    START_PROBE,
 }
 
 enum class SnapshotStatus {
     OK,
     SHIZUKU_UNAVAILABLE,
     ERROR,
-    TIMEOUT_OR_EMPTY
+    TIMEOUT_OR_EMPTY,
 }
 
 enum class ExpertSnapshotStatus {
     OK,
     ERROR,
-    SHIZUKU_UNAVAILABLE
+    SHIZUKU_UNAVAILABLE,
 }
 
 enum class ExpertSection {
     LOCATION,
     SENSORS,
-    NETWORK
+    NETWORK,
 }
 
 enum class ExpertSignal(
-    val section: ExpertSection
+    val section: ExpertSection,
 ) {
     FUSED_LOCATION(ExpertSection.LOCATION),
     NETWORK_LOCATION(ExpertSection.LOCATION),
@@ -143,7 +143,7 @@ enum class ExpertSignal(
     WIFI_CONNECTED(ExpertSection.NETWORK),
     CELLULAR_IMS(ExpertSection.NETWORK),
     TELEPHONY_REQUESTS(ExpertSection.NETWORK),
-    QUALCOMM_NETWORK_OPTIMIZATION(ExpertSection.NETWORK)
+    QUALCOMM_NETWORK_OPTIMIZATION(ExpertSection.NETWORK),
 }
 
 /**
@@ -172,5 +172,5 @@ enum class SourceKind {
     RADIO_NETWORK,
     TIME_TICK,
     UID_ONLY,
-    UNKNOWN_SYSTEM
+    UNKNOWN_SYSTEM,
 }

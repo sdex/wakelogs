@@ -6,13 +6,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CauseAssessmentTest {
-
     private fun screenOn(
         wakeReason: DirectWakeReason? = null,
         cause: NotificationCause? = null,
         wakeLocks: List<WakeLockHint> = emptyList(),
         alarms: List<AlarmHint> = emptyList(),
-        jobs: List<JobHint> = emptyList()
+        jobs: List<JobHint> = emptyList(),
     ) = ScreenOnEvent(
         id = 1,
         sessionId = 1,
@@ -22,23 +21,25 @@ class CauseAssessmentTest {
         notificationCause = cause,
         wakeLockHints = wakeLocks,
         alarmHints = alarms,
-        jobHints = jobs
+        jobHints = jobs,
     )
 
-    private val powerButton =
-        DirectWakeReason(
-            reason = WakeReason.POWER_BUTTON,
-            evidence = WakeReasonEvidence.POWER_MANAGER_LOG,
-            powerKeySignal = null,
-            offsetMs = -40,
-            rawReason = "WAKE_REASON_POWER_BUTTON",
-            rawDetails = null,
-            rawTag = null
-        )
+    private val powerButton = DirectWakeReason(
+        reason = WakeReason.POWER_BUTTON,
+        evidence = WakeReasonEvidence.POWER_MANAGER_LOG,
+        powerKeySignal = null,
+        offsetMs = -40,
+        rawReason = "WAKE_REASON_POWER_BUTTON",
+        rawDetails = null,
+        rawTag = null,
+    )
 
     private fun cause(offset: Long) = NotificationCause(1, "com.chat", offset, null)
 
-    private fun wakeLock(offset: Long, tag: String = "GCM") = WakeLockHint(offset, tag, "com.chat", null)
+    private fun wakeLock(
+        offset: Long,
+        tag: String = "GCM",
+    ) = WakeLockHint(offset, tag, "com.chat", null)
 
     @Test
     fun `nothing known is unresolved and unexplained`() {
@@ -90,7 +91,7 @@ class CauseAssessmentTest {
         val event = screenOn(alarms = listOf(alarm(-100), alarm(0), alarm(200)))
         assertEquals(
             listOf(HintRelation.POSSIBLE_TRIGGER, HintRelation.SIMULTANEOUS, HintRelation.CLOSE_RELATION),
-            event.alarmHints.map { CauseAssessment.relationOf(event, it) }
+            event.alarmHints.map { CauseAssessment.relationOf(event, it) },
         )
         assertEquals(ScreenOnVerdict.POSSIBLE_WAKEUP_ALARM, CauseAssessment.verdictOf(event))
 

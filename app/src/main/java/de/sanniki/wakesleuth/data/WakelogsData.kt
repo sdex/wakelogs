@@ -13,7 +13,7 @@ import kotlinx.coroutines.SupervisorJob
  * the activity share one process and one write order.
  */
 class WakelogsData private constructor(
-    context: Context
+    context: Context,
 ) {
     /**
      * Application scope for writes that must outlive the caller, e.g. a
@@ -21,19 +21,17 @@ class WakelogsData private constructor(
      * coroutine at a time so launches keep their order.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val scope: CoroutineScope =
-        CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
+    val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
 
     val database: WakelogsDatabase = WakelogsDatabase.build(context)
 
     private val writer = DatabaseWriter(database)
 
-    val labels =
-        PackageLabelStore(
-            lookup = PackageLabelStore.packageManagerLookup(context),
-            dao = database.packageLabelDao(),
-            scope = scope
-        )
+    val labels = PackageLabelStore(
+        lookup = PackageLabelStore.packageManagerLookup(context),
+        dao = database.packageLabelDao(),
+        scope = scope,
+    )
 
     val recorder = EventRecorder(writer, labels)
 
@@ -42,17 +40,12 @@ class WakelogsData private constructor(
     val events = EventRepository(writer)
 
     companion object {
-
         /**
          * SharedPreferences of the text based storage. There is no data
          * migration; they are deleted on the first start of this version.
          */
         private val LEGACY_PREFERENCES =
-            listOf(
-                "wakesleuth_events",
-                "wakesleuth_session_archive",
-                "wakesleuth_notifications"
-            )
+            listOf("wakesleuth_events", "wakesleuth_session_archive", "wakesleuth_notifications")
 
         @Volatile
         private var instance: WakelogsData? = null

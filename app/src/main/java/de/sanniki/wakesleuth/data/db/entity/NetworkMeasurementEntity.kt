@@ -16,15 +16,15 @@ import de.sanniki.wakesleuth.domain.NetworkMeasurementStatus
             entity = MonitoringSessionEntity::class,
             parentColumns = ["id"],
             childColumns = ["session_id"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.CASCADE,
         ),
         ForeignKey(
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.SET_NULL
-        )
-    ]
+            onDelete = ForeignKey.SET_NULL,
+        ),
+    ],
 )
 data class NetworkMeasurementEntity(
     @PrimaryKey
@@ -38,5 +38,5 @@ data class NetworkMeasurementEntity(
     @ColumnInfo(name = "error_code")
     val errorCode: DiagnosticError? = null,
     @ColumnInfo(name = "error_detail")
-    val errorDetail: String? = null
+    val errorDetail: String? = null,
 )

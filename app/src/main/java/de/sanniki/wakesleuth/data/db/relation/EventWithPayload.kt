@@ -32,11 +32,7 @@ data class EventWithPayload(
     val session: MonitoringSessionEntity?,
     @Relation(parentColumns = ["id"], entityColumns = ["event_id"])
     val wakeReason: ScreenOnWakeReasonEntity?,
-    @Relation(
-        entity = ScreenOnNotificationCauseEntity::class,
-        parentColumns = ["id"],
-        entityColumns = ["event_id"]
-    )
+    @Relation(entity = ScreenOnNotificationCauseEntity::class, parentColumns = ["id"], entityColumns = ["event_id"])
     val notificationCause: NotificationCauseWithNotification?,
     @Relation(parentColumns = ["id"], entityColumns = ["event_id"])
     val wakeLockHints: List<ScreenOnWakeLockHintEntity>,
@@ -50,11 +46,7 @@ data class EventWithPayload(
     val cpuWakeup: CpuWakeupEntity?,
     @Relation(parentColumns = ["id"], entityColumns = ["event_id"])
     val cpuEvidence: List<CpuWakeupEvidenceEntity>,
-    @Relation(
-        entity = NetworkMeasurementEntity::class,
-        parentColumns = ["id"],
-        entityColumns = ["event_id"]
-    )
+    @Relation(entity = NetworkMeasurementEntity::class, parentColumns = ["id"], entityColumns = ["event_id"])
     val networkMeasurement: NetworkMeasurementWithUsage?,
     @Relation(parentColumns = ["id"], entityColumns = ["event_id"])
     val systemSnapshot: SystemSnapshotEntity?,
@@ -63,19 +55,19 @@ data class EventWithPayload(
     @Relation(parentColumns = ["id"], entityColumns = ["event_id"])
     val expertSignals: List<ExpertSnapshotSignalEntity>,
     @Relation(parentColumns = ["id"], entityColumns = ["event_id"])
-    val usbDevice: UsbDeviceEventEntity?
+    val usbDevice: UsbDeviceEventEntity?,
 )
 
 data class NotificationCauseWithNotification(
     @Embedded
     val cause: ScreenOnNotificationCauseEntity,
     @Relation(parentColumns = ["notification_event_id"], entityColumns = ["event_id"])
-    val notification: NotificationEntity?
+    val notification: NotificationEntity?,
 )
 
 data class NetworkMeasurementWithUsage(
     @Embedded
     val measurement: NetworkMeasurementEntity,
     @Relation(parentColumns = ["session_id"], entityColumns = ["session_id"])
-    val usage: List<NetworkAppUsageEntity>
+    val usage: List<NetworkAppUsageEntity>,
 )

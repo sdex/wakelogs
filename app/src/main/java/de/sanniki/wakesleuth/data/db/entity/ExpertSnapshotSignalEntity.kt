@@ -13,12 +13,11 @@ import de.sanniki.wakesleuth.domain.ExpertSignal
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class ExpertSnapshotSignalEntity(
-    @ColumnInfo(name = "event_id")
-    val eventId: Long,
-    val signal: ExpertSignal
+    @ColumnInfo(name = "event_id") val eventId: Long,
+    val signal: ExpertSignal,
 )

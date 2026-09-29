@@ -19,8 +19,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,264 +53,181 @@ private data class SourceStatisticsEntry(
     val totalCount: Int,
     val displayCount: Int,
     val cpuCount: Int,
-    val notificationCount: Int
+    val notificationCount: Int,
 )
 
 @Composable
 fun SourceStatisticsCard(
     events: List<RecordedEvent>,
     session: MonitoringSessionEntity?,
-    detailLevel: DetailLevel
+    detailLevel: DetailLevel,
 ) {
-    val context =
-        LocalContext.current
+    val context = LocalContext.current
 
-    val labels =
-        rememberSourceLabelResolver()
+    val labels = rememberSourceLabelResolver()
 
-    val window =
-        remember(
-            events,
-            session
-        ) {
-            AnalysisWindow.of(
-                session = session,
-                now = System.currentTimeMillis()
-            ) ?: AnalysisWindow(
-                startMillis =
-                    events.minOfOrNull { it.occurredAt } ?: 0L,
-                endMillis =
-                    events.maxOfOrNull { it.occurredAt } ?: 0L,
-                ongoing = false
-            )
-        }
-
-    val entries =
-        remember(
-            events,
-            window,
-            labels
-        ) {
-            buildSourceStatistics(
-                labels = labels,
-                events = events,
-                window = window
-            )
-        }
-
-    val visibleCount =
-        when (detailLevel) {
-            DetailLevel.SIMPLE -> 3
-            DetailLevel.NORMAL -> 5
-            DetailLevel.EXPERT -> 8
-        }
-
-    val visibleEntries =
-        entries.take(visibleCount)
-
-    val detailsExpanded =
-        remember {
-            mutableStateOf(false)
-        }
-
-    val highestCount =
-        max(
-            1,
-            visibleEntries.maxOfOrNull {
-                it.totalCount
-            } ?: 1
+    val window = remember(
+        events,
+        session,
+    ) {
+        AnalysisWindow.of(
+            session = session,
+            now = System.currentTimeMillis(),
+        ) ?: AnalysisWindow(
+            startMillis = events.minOfOrNull { it.occurredAt } ?: 0L,
+            endMillis = events.maxOfOrNull { it.occurredAt } ?: 0L,
+            ongoing = false,
         )
+    }
+
+    val entries = remember(
+        events,
+        window,
+        labels,
+    ) {
+        buildSourceStatistics(labels = labels, events = events, window = window)
+    }
+
+    val visibleCount = when (detailLevel) {
+        DetailLevel.SIMPLE -> 3
+        DetailLevel.NORMAL -> 5
+        DetailLevel.EXPERT -> 8
+    }
+
+    val visibleEntries = entries.take(visibleCount)
+
+    val detailsExpanded = remember { mutableStateOf(false) }
+
+    val highestCount = max(
+        1,
+        visibleEntries.maxOfOrNull {
+            it.totalCount
+        } ?: 1,
+    )
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp)
+        shape = RoundedCornerShape(18.dp),
     ) {
         Column(
-            modifier = Modifier.padding(18.dp)
+            modifier = Modifier.padding(18.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment =
-                    Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 ) {
                     Text(
-                        text =
-                            stringResource(
-                                R.string.stats_title
-                            ),
-                        style =
-                            MaterialTheme.typography
-                                .titleMedium,
-                        fontWeight = FontWeight.Bold
+                        text = stringResource(R.string.stats_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
                     )
 
-                    Spacer(
-                        modifier = Modifier.height(3.dp)
-                    )
+                    Spacer(modifier = Modifier.height(3.dp))
 
                     Text(
-                        text =
-                            formatSourceStatisticsWindow(
-                                context,
-                                window
-                            ),
-                        color =
-                            MaterialTheme.colorScheme
-                                .onSurfaceVariant,
-                        style =
-                            MaterialTheme.typography
-                                .bodySmall
+                        text = formatSourceStatisticsWindow(context, window),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
 
                 Text(
-                    text =
-                        pluralStringResource(
-                            R.plurals.stats_source_count,
-                            entries.size,
-                            entries.size
-                        ),
-                    color =
-                        MaterialTheme.colorScheme.primary,
-                    style =
-                        MaterialTheme.typography
-                            .labelMedium,
-                    fontWeight = FontWeight.Bold
+                    text = pluralStringResource(R.plurals.stats_source_count, entries.size, entries.size),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
                 )
             }
 
-            Spacer(
-                modifier = Modifier.height(12.dp)
-            )
+            Spacer(modifier = Modifier.height(12.dp))
 
             if (entries.isNotEmpty()) {
                 Text(
-                    text =
-                        stringResource(
-                            R.string.stats_strongest_source,
-                            entries.first().name
-                        ),
-                    color =
-                        MaterialTheme.colorScheme
-                            .onSurfaceVariant,
-                    style =
-                        MaterialTheme.typography.bodySmall,
+                    text = stringResource(R.string.stats_strongest_source, entries.first().name),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
 
-                Spacer(
-                    modifier = Modifier.height(10.dp)
-                )
+                Spacer(modifier = Modifier.height(10.dp))
             }
 
             OutlinedButton(
                 onClick = {
-                    detailsExpanded.value =
-                        !detailsExpanded.value
+                    detailsExpanded.value = !detailsExpanded.value
                 },
                 modifier = Modifier.fillMaxWidth(),
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp,
-                    androidx.compose.ui.graphics.Color(0xFF687181)
+                    androidx.compose.ui.graphics
+                        .Color(0xFF687181),
                 ),
                 colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
                     contentColor = androidx.compose.ui.graphics.Color.White,
-                    disabledContentColor =
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                    disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
                 ),
             ) {
                 Text(
                     if (detailsExpanded.value) {
-                        stringResource(
-                            R.string.stats_hide_details
-                        )
+                        stringResource(R.string.stats_hide_details)
                     } else {
-                        stringResource(
-                            R.string.stats_show_details
-                        )
-                    }
+                        stringResource(R.string.stats_show_details)
+                    },
                 )
             }
 
             if (detailsExpanded.value) {
-                Spacer(
-                    modifier = Modifier.height(14.dp)
-                )
+                Spacer(modifier = Modifier.height(14.dp))
 
                 if (visibleEntries.isEmpty()) {
                     Text(
-                        text =
-                            stringResource(
-                                R.string.stats_empty
-                            ),
-                        color =
-                            MaterialTheme.colorScheme
-                                .onSurfaceVariant,
-                        style =
-                            MaterialTheme.typography
-                                .bodyMedium
+                        text = stringResource(R.string.stats_empty),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 } else {
                     visibleEntries.forEachIndexed {
-                            index,
-                            entry ->
+                        index,
+                        entry,
+                        ->
 
                         SourceStatisticsRow(
                             position = index + 1,
                             entry = entry,
                             highestCount = highestCount,
-                            detailLevel = detailLevel
+                            detailLevel = detailLevel,
                         )
 
                         if (
                             index <
                             visibleEntries.lastIndex
                         ) {
-                            Spacer(
-                                modifier =
-                                    Modifier.height(10.dp)
-                            )
+                            Spacer(modifier = Modifier.height(10.dp))
 
                             HorizontalDivider()
 
-                            Spacer(
-                                modifier =
-                                    Modifier.height(10.dp)
-                            )
+                            Spacer(modifier = Modifier.height(10.dp))
                         }
                     }
                 }
 
                 if (
-                    detailLevel ==
-                    DetailLevel.EXPERT &&
-                    visibleEntries.isNotEmpty()
+                    detailLevel == DetailLevel.EXPERT && visibleEntries.isNotEmpty()
                 ) {
-                    Spacer(
-                        modifier = Modifier.height(14.dp)
-                    )
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     HorizontalDivider()
 
-                    Spacer(
-                        modifier = Modifier.height(10.dp)
-                    )
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text =
-                            stringResource(
-                                R.string.stats_ranking_disclaimer
-                            ),
-                        color =
-                            MaterialTheme.colorScheme
-                                .onSurfaceVariant,
-                        style =
-                            MaterialTheme.typography
-                                .bodySmall
+                        text = stringResource(R.string.stats_ranking_disclaimer),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
@@ -323,166 +240,103 @@ private fun SourceStatisticsRow(
     position: Int,
     entry: SourceStatisticsEntry,
     highestCount: Int,
-    detailLevel: DetailLevel
+    detailLevel: DetailLevel,
 ) {
-    val fraction =
-        (
-            entry.totalCount.toFloat() /
-                highestCount.toFloat()
-        ).coerceIn(
-            0.06f,
-            1f
-        )
+    val fraction = (entry.totalCount.toFloat() / highestCount.toFloat()).coerceIn(0.06f, 1f)
 
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment =
-                Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "$position.",
                 modifier = Modifier.width(28.dp),
-                color =
-                    MaterialTheme.colorScheme.primary,
-                style =
-                    MaterialTheme.typography
-                        .titleMedium,
-                fontWeight = FontWeight.Bold
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
             )
 
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) {
-                val displayName =
-                    entry.name
+                val displayName = entry.name
 
                 Text(
                     text = displayName,
-                    style =
-                        MaterialTheme.typography
-                            .bodyMedium,
-                    fontWeight =
-                        FontWeight.SemiBold,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
-                    overflow =
-                        TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
 
-                val technicalName =
-                    entry.source.packageName
-                        ?: entry.source.rawSource
+                val technicalName = entry.source.packageName
+                    ?: entry.source.rawSource
 
                 if (
-                    detailLevel ==
-                    DetailLevel.EXPERT &&
-                    technicalName != null &&
-                    displayName != technicalName
+                    detailLevel == DetailLevel.EXPERT && technicalName != null && displayName != technicalName
                 ) {
-                    Spacer(
-                        modifier =
-                            Modifier.height(2.dp)
-                    )
+                    Spacer(modifier = Modifier.height(2.dp))
 
                     Text(
                         text = technicalName,
-                        color =
-                            MaterialTheme.colorScheme
-                                .onSurfaceVariant,
-                        style =
-                            MaterialTheme.typography
-                                .labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
                         maxLines = 2,
-                        overflow =
-                            TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
 
-            Spacer(
-                modifier = Modifier.width(10.dp)
-            )
+            Spacer(modifier = Modifier.width(10.dp))
 
             Text(
                 text = entry.totalCount.toString(),
-                color =
-                    MaterialTheme.colorScheme.primary,
-                style =
-                    MaterialTheme.typography
-                        .titleMedium,
-                fontWeight = FontWeight.Bold
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
             )
         }
 
-        Spacer(
-            modifier = Modifier.height(7.dp)
-        )
+        Spacer(modifier = Modifier.height(7.dp))
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(7.dp)
-                .clip(
-                    RoundedCornerShape(50)
-                )
-                .background(
-                    MaterialTheme.colorScheme
-                        .surfaceVariant
-                )
+                .clip(RoundedCornerShape(50))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(fraction)
                     .height(7.dp)
-                    .clip(
-                        RoundedCornerShape(50)
-                    )
-                    .background(
-                        MaterialTheme.colorScheme
-                            .primary
-                    )
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.primary),
             )
         }
 
         if (
-            detailLevel !=
-            DetailLevel.SIMPLE
+            detailLevel != DetailLevel.SIMPLE
         ) {
-            Spacer(
-                modifier = Modifier.height(7.dp)
-            )
+            Spacer(modifier = Modifier.height(7.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement =
-                    Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                SourceCountLabel(
-                    label =
-                        stringResource(
-                            R.string.stats_label_display
-                        ),
-                    value = entry.displayCount
-                )
+                SourceCountLabel(label = stringResource(R.string.stats_label_display), value = entry.displayCount)
 
-                SourceCountLabel(
-                    label = "CPU",
-                    value = entry.cpuCount
-                )
+                SourceCountLabel(label = "CPU", value = entry.cpuCount)
 
                 if (
-                    detailLevel ==
-                    DetailLevel.EXPERT
+                    detailLevel == DetailLevel.EXPERT
                 ) {
                     SourceCountLabel(
-                        label =
-                            stringResource(
-                                R.string.stats_label_notifications
-                            ),
-                        value =
-                            entry.notificationCount
+                        label = stringResource(R.string.stats_label_notifications),
+                        value = entry.notificationCount,
                     )
                 }
             }
@@ -493,16 +347,12 @@ private fun SourceStatisticsRow(
 @Composable
 private fun SourceCountLabel(
     label: String,
-    value: Int
+    value: Int,
 ) {
     Text(
         text = "$label: $value",
-        color =
-            MaterialTheme.colorScheme
-                .onSurfaceVariant,
-        style =
-            MaterialTheme.typography
-                .labelSmall
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.labelSmall,
     )
 }
 
@@ -513,18 +363,17 @@ private fun SourceCountLabel(
 private fun buildSourceStatistics(
     labels: SourceLabelResolver,
     events: List<RecordedEvent>,
-    window: AnalysisWindow
+    window: AnalysisWindow,
 ): List<SourceStatisticsEntry> {
     class Counts(
-        val source: SourceRef
+        val source: SourceRef,
     ) {
         var display = 0
         var cpu = 0
         var notifications = 0
     }
 
-    val counts =
-        linkedMapOf<String, Counts>()
+    val counts = linkedMapOf<String, Counts>()
 
     fun counts(source: SourceRef): Counts =
         counts.getOrPut(source.groupKey) {
@@ -535,27 +384,23 @@ private fun buildSourceStatistics(
         .asSequence()
         .filter { event ->
             event.occurredAt in window
-        }
-        .forEach { event ->
+        }.forEach { event ->
             when (event) {
-                is ScreenOnEvent ->
-                    event.sources().forEach {
-                        counts(it.source).display += 1
-                    }
+                is ScreenOnEvent -> {
+                    event.sources().forEach { counts(it.source).display += 1 }
+                }
 
-                is CpuWakeupEvent ->
-                    event.primarySource()?.let {
-                        counts(it).cpu += 1
-                    }
+                is CpuWakeupEvent -> {
+                    event.primarySource()?.let { counts(it).cpu += 1 }
+                }
 
-                is NotificationEvent ->
-                    counts(
-                        SourceClassifier.classify(
-                            event.packageName
-                        )
-                    ).notifications += 1
+                is NotificationEvent -> {
+                    counts(SourceClassifier.classify(event.packageName)).notifications += 1
+                }
 
-                else -> Unit
+                else -> {
+                    Unit
+                }
             }
         }
 
@@ -564,24 +409,16 @@ private fun buildSourceStatistics(
             SourceStatisticsEntry(
                 source = item.source,
                 name = labels.label(item.source),
-                totalCount =
-                    item.display +
-                        item.cpu +
-                        item.notifications,
-                displayCount =
-                    item.display,
-                cpuCount =
-                    item.cpu,
-                notificationCount =
-                    item.notifications
+                totalCount = item.display + item.cpu + item.notifications,
+                displayCount = item.display,
+                cpuCount = item.cpu,
+                notificationCount = item.notifications,
             )
-        }
-        .filter {
+        }.filter {
             it.totalCount > 0
-        }
-        .sortedWith(
+        }.sortedWith(
             compareByDescending<
-                SourceStatisticsEntry
+                SourceStatisticsEntry,
             > {
                 it.totalCount
             }.thenByDescending {
@@ -589,45 +426,27 @@ private fun buildSourceStatistics(
             }.thenByDescending {
                 it.cpuCount
             }.thenBy {
-                it.name.lowercase(
-                    Locale.ROOT
-                )
-            }
+                it.name.lowercase(Locale.ROOT)
+            },
         )
 }
 
 private fun formatSourceStatisticsWindow(
     context: Context,
-    window: AnalysisWindow
+    window: AnalysisWindow,
 ): String {
-    val formatter =
-        SimpleDateFormat(
-            "dd.MM. HH:mm",
-            Locale.getDefault()
-        )
+    val formatter = SimpleDateFormat("dd.MM. HH:mm", Locale.getDefault())
 
-    val range =
-        buildString {
-            append(
-                formatter.format(
-                    Date(window.startMillis)
-                )
-            )
+    val range = buildString {
+        append(formatter.format(Date(window.startMillis)))
 
-            append(" – ")
+        append(" – ")
 
-            append(
-                formatter.format(
-                    Date(window.endMillis)
-                )
-            )
-        }
+        append(formatter.format(Date(window.endMillis)))
+    }
 
     return if (window.ongoing) {
-        context.getString(
-            R.string.stats_window_ongoing,
-            range
-        )
+        context.getString(R.string.stats_window_ongoing, range)
     } else {
         range
     }

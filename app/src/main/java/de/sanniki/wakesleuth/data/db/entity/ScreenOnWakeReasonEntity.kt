@@ -16,9 +16,9 @@ import de.sanniki.wakesleuth.domain.WakeReasonEvidence
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class ScreenOnWakeReasonEntity(
     @PrimaryKey
@@ -36,5 +36,5 @@ data class ScreenOnWakeReasonEntity(
     @ColumnInfo(name = "raw_details")
     val rawDetails: String? = null,
     @ColumnInfo(name = "raw_tag")
-    val rawTag: String? = null
+    val rawTag: String? = null,
 )

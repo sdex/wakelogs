@@ -40,7 +40,7 @@ import kotlin.math.abs
 data class EvidenceCandidate(
     val origin: EvidenceOrigin,
     val type: EvidenceType,
-    val rawSource: String
+    val rawSource: String,
 )
 
 /** A grouped CPU wakeup as detected by the BatteryStats parser. */
@@ -49,7 +49,7 @@ data class CpuWakeupCandidate(
     val rawWakeReason: String?,
     val runningObserved: Boolean,
     val returnedToSleepAt: Long?,
-    val evidence: List<EvidenceCandidate>
+    val evidence: List<EvidenceCandidate>,
 )
 
 /**
@@ -62,7 +62,7 @@ data class CpuWakeupCandidate(
  */
 class EventRecorder(
     private val writer: DatabaseWriter,
-    private val labels: PackageLabelStore
+    private val labels: PackageLabelStore,
 ) {
     private val database: WakelogsDatabase get() = writer.database
 
@@ -72,17 +72,16 @@ class EventRecorder(
     private val notificationDao get() = database.notificationDao()
 
     /** Returns the new event id, or null when no session is recording. */
-    suspend fun recordScreenOn(at: Long, proximity: Proximity?): Long? =
+    suspend fun recordScreenOn(
+        at: Long,
+        proximity: Proximity?,
+    ): Long? =
         writer.transaction {
             val sessionId = recordingSessionId() ?: return@transaction null
 
             val eventId = insertEvent(sessionId, at, EventType.SCREEN_ON, proximity)
 
-            val recent =
-                notificationDao.newestBetween(
-                    from = at - CauseAssessment.POSSIBLE_CAUSE_WINDOW_MILLIS,
-                    to = at
-                )
+            val recent = notificationDao.newestBetween(from = at - CauseAssessment.POSSIBLE_CAUSE_WINDOW_MILLIS, to = at)
 
             if (recent != null) {
                 screenOnDao.insertNotificationCause(
@@ -90,37 +89,46 @@ class EventRecorder(
                         eventId = eventId,
                         notificationEventId = recent.eventId,
                         packageName = recent.packageName,
-                        offsetMs = recent.occurredAt - at
-                    )
+                        offsetMs = recent.occurredAt - at,
+                    ),
                 )
             }
 
             eventId
         }
 
-    suspend fun recordScreenOff(at: Long, proximity: Proximity?) {
+    suspend fun recordScreenOff(
+        at: Long,
+        proximity: Proximity?,
+    ) {
         recordPlain(at, EventType.SCREEN_OFF, proximity)
     }
 
-    suspend fun recordPower(at: Long, connected: Boolean) {
+    suspend fun recordPower(
+        at: Long,
+        connected: Boolean,
+    ) {
         recordPlain(
             at = at,
             type = if (connected) EventType.POWER_CONNECTED else EventType.POWER_DISCONNECTED,
-            proximity = null
+            proximity = null,
         )
     }
 
-    suspend fun recordUsb(at: Long, attached: Boolean, device: UsbDeviceInfo?) {
+    suspend fun recordUsb(
+        at: Long,
+        attached: Boolean,
+        device: UsbDeviceInfo?,
+    ) {
         writer.transaction {
             val sessionId = recordingSessionId() ?: return@transaction
 
-            val eventId =
-                insertEvent(
-                    sessionId = sessionId,
-                    at = at,
-                    type = if (attached) EventType.USB_ATTACHED else EventType.USB_DETACHED,
-                    proximity = null
-                )
+            val eventId = insertEvent(
+                sessionId = sessionId,
+                at = at,
+                type = if (attached) EventType.USB_ATTACHED else EventType.USB_DETACHED,
+                proximity = null,
+            )
 
             if (device != null) {
                 database.snapshotDao().insertUsbDevice(
@@ -130,8 +138,8 @@ class EventRecorder(
                         vendorId = device.vendorId,
                         productId = device.productId,
                         deviceName = device.deviceName,
-                        manufacturerName = device.manufacturerName
-                    )
+                        manufacturerName = device.manufacturerName,
+                    ),
                 )
             }
         }
@@ -147,45 +155,39 @@ class EventRecorder(
         packageName: String,
         notificationKey: String?,
         title: String?,
-        text: String?
+        text: String?,
     ): Long? {
-        val fingerprint =
-            fingerprint(
-                packageName = packageName,
-                notificationKey = notificationKey.orEmpty(),
-                title = title.orEmpty(),
-                text = text.orEmpty()
+        val fingerprint = fingerprint(
+            packageName = packageName,
+            notificationKey = notificationKey.orEmpty(),
+            title = title.orEmpty(),
+            text = text.orEmpty(),
+        )
+
+        val eventId = writer.transaction {
+            val sessionId = recordingSessionId() ?: return@transaction null
+
+            if (notificationDao.fingerprintSeenSince(fingerprint, at - DUPLICATE_WINDOW_MILLIS)) {
+                return@transaction null
+            }
+
+            val eventId = insertEvent(sessionId, at, EventType.NOTIFICATION, null)
+
+            notificationDao.insert(
+                NotificationEntity(
+                    eventId = eventId,
+                    packageName = packageName,
+                    notificationKey = notificationKey,
+                    title = title?.takeIf { it.isNotBlank() },
+                    text = text?.takeIf { it.isNotBlank() },
+                    fingerprint = fingerprint,
+                ),
             )
 
-        val eventId =
-            writer.transaction {
-                val sessionId = recordingSessionId() ?: return@transaction null
+            attachLateNotification(notificationEventId = eventId, at = at, packageName = packageName)
 
-                if (notificationDao.fingerprintSeenSince(fingerprint, at - DUPLICATE_WINDOW_MILLIS)) {
-                    return@transaction null
-                }
-
-                val eventId = insertEvent(sessionId, at, EventType.NOTIFICATION, null)
-
-                notificationDao.insert(
-                    NotificationEntity(
-                        eventId = eventId,
-                        packageName = packageName,
-                        notificationKey = notificationKey,
-                        title = title?.takeIf { it.isNotBlank() },
-                        text = text?.takeIf { it.isNotBlank() },
-                        fingerprint = fingerprint
-                    )
-                )
-
-                attachLateNotification(
-                    notificationEventId = eventId,
-                    at = at,
-                    packageName = packageName
-                )
-
-                eventId
-            }
+            eventId
+        }
 
         if (eventId != null) {
             labels.remember(listOf(packageName))
@@ -195,7 +197,10 @@ class EventRecorder(
     }
 
     /** Direct wake reason from the PowerManager log. */
-    suspend fun attachWakeReason(screenOnAt: Long, diagnostic: WakeReasonDiagnostic): Boolean {
+    suspend fun attachWakeReason(
+        screenOnAt: Long,
+        diagnostic: WakeReasonDiagnostic,
+    ): Boolean {
         val reason = diagnostic.reason?.takeIf { it.isNotBlank() } ?: return false
         val wakeAt = diagnostic.timestampMillis ?: return false
 
@@ -210,11 +215,10 @@ class EventRecorder(
         }
 
         return writer.transaction {
-            val target =
-                screenOnDao.newestWithoutWakeReason(
-                    from = screenOnAt - SCREEN_EVENT_MATCH_WINDOW_MILLIS,
-                    to = screenOnAt + SCREEN_EVENT_MATCH_WINDOW_MILLIS
-                ) ?: return@transaction false
+            val target = screenOnDao.newestWithoutWakeReason(
+                from = screenOnAt - SCREEN_EVENT_MATCH_WINDOW_MILLIS,
+                to = screenOnAt + SCREEN_EVENT_MATCH_WINDOW_MILLIS,
+            ) ?: return@transaction false
 
             screenOnDao.insertWakeReason(
                 ScreenOnWakeReasonEntity(
@@ -223,8 +227,8 @@ class EventRecorder(
                     evidence = WakeReasonEvidence.POWER_MANAGER_LOG,
                     offsetMs = wakeAt - target.occurredAt,
                     rawReason = reason,
-                    rawDetails = diagnostic.details?.takeIf { it.isNotBlank() }
-                )
+                    rawDetails = diagnostic.details?.takeIf { it.isNotBlank() },
+                ),
             ) != -1L
         }
     }
@@ -234,14 +238,13 @@ class EventRecorder(
         powerKeyAt: Long,
         signal: PowerKeySignal,
         rawReason: String?,
-        rawTag: String?
+        rawTag: String?,
     ): Boolean =
         writer.transaction {
-            val target =
-                screenOnDao.newestWithoutWakeReason(
-                    from = powerKeyAt - SCREEN_EVENT_MATCH_WINDOW_MILLIS,
-                    to = powerKeyAt + SCREEN_EVENT_MATCH_WINDOW_MILLIS
-                ) ?: return@transaction false
+            val target = screenOnDao.newestWithoutWakeReason(
+                from = powerKeyAt - SCREEN_EVENT_MATCH_WINDOW_MILLIS,
+                to = powerKeyAt + SCREEN_EVENT_MATCH_WINDOW_MILLIS,
+            ) ?: return@transaction false
 
             screenOnDao.insertWakeReason(
                 ScreenOnWakeReasonEntity(
@@ -251,8 +254,8 @@ class EventRecorder(
                     powerKeySignal = signal,
                     offsetMs = powerKeyAt - target.occurredAt,
                     rawReason = rawReason?.takeIf { it.isNotBlank() },
-                    rawTag = rawTag?.takeIf { it.isNotBlank() }
-                )
+                    rawTag = rawTag?.takeIf { it.isNotBlank() },
+                ),
             ) != -1L
         }
 
@@ -260,7 +263,10 @@ class EventRecorder(
      * Wakelock close to a screen-on. The power key wakelock is a direct
      * wake reason; everything else is a hint whose relation is derived.
      */
-    suspend fun attachWakeLockHint(screenOnAt: Long, diagnostic: WakeLockDiagnostic): Boolean {
+    suspend fun attachWakeLockHint(
+        screenOnAt: Long,
+        diagnostic: WakeLockDiagnostic,
+    ): Boolean {
         val wakeLockAt = diagnostic.lastTimestampMillis ?: return false
 
         if (diagnostic.error != null || diagnostic.rawLastEntry == null) {
@@ -274,36 +280,35 @@ class EventRecorder(
         val packageName = diagnostic.lastPackage?.takeIf { it.isNotBlank() }
         val tag = diagnostic.lastTag?.takeIf { it.isNotBlank() }.orEmpty()
 
-        val attached =
-            writer.transaction {
-                val target = newestScreenOnAround(screenOnAt) ?: return@transaction false
+        val attached = writer.transaction {
+            val target = newestScreenOnAround(screenOnAt) ?: return@transaction false
 
-                if (WakeLockTags.isPowerKey(tag)) {
-                    if (screenOnDao.hasWakeReason(target.id)) {
-                        return@transaction false
-                    }
-
-                    return@transaction screenOnDao.insertWakeReason(
-                        ScreenOnWakeReasonEntity(
-                            eventId = target.id,
-                            reason = WakeReason.POWER_BUTTON,
-                            evidence = WakeReasonEvidence.POWER_KEY_WAKELOCK,
-                            powerKeySignal = PowerKeySignal.POWER_KEY_WAKELOCK,
-                            offsetMs = wakeLockAt - target.occurredAt,
-                            rawTag = tag
-                        )
-                    ) != -1L
+            if (WakeLockTags.isPowerKey(tag)) {
+                if (screenOnDao.hasWakeReason(target.id)) {
+                    return@transaction false
                 }
 
-                screenOnDao.insertWakeLockHint(
-                    ScreenOnWakeLockHintEntity(
+                return@transaction screenOnDao.insertWakeReason(
+                    ScreenOnWakeReasonEntity(
                         eventId = target.id,
+                        reason = WakeReason.POWER_BUTTON,
+                        evidence = WakeReasonEvidence.POWER_KEY_WAKELOCK,
+                        powerKeySignal = PowerKeySignal.POWER_KEY_WAKELOCK,
                         offsetMs = wakeLockAt - target.occurredAt,
-                        tag = tag,
-                        packageName = packageName
-                    )
+                        rawTag = tag,
+                    ),
                 ) != -1L
             }
+
+            screenOnDao.insertWakeLockHint(
+                ScreenOnWakeLockHintEntity(
+                    eventId = target.id,
+                    offsetMs = wakeLockAt - target.occurredAt,
+                    tag = tag,
+                    packageName = packageName,
+                ),
+            ) != -1L
+        }
 
         if (attached) {
             labels.remember(listOf(packageName))
@@ -312,7 +317,10 @@ class EventRecorder(
         return attached
     }
 
-    suspend fun attachWakeupAlarmHint(screenOnAt: Long, diagnostic: WakeupAlarmDiagnostic): Boolean {
+    suspend fun attachWakeupAlarmHint(
+        screenOnAt: Long,
+        diagnostic: WakeupAlarmDiagnostic,
+    ): Boolean {
         val packageName = diagnostic.packageName?.takeIf { it.isNotBlank() } ?: return false
         val rawTag = diagnostic.tag?.takeIf { it.isNotBlank() } ?: return false
         val alarmAt = diagnostic.triggerTimestampMillis ?: return false
@@ -329,21 +337,20 @@ class EventRecorder(
             return false
         }
 
-        val attached =
-            writer.transaction {
-                val target = newestScreenOnAround(screenOnAt) ?: return@transaction false
+        val attached = writer.transaction {
+            val target = newestScreenOnAround(screenOnAt) ?: return@transaction false
 
-                screenOnDao.insertAlarmHint(
-                    ScreenOnAlarmHintEntity(
-                        eventId = target.id,
-                        offsetMs = alarmAt - target.occurredAt,
-                        packageName = packageName,
-                        tag = rawTag.removePrefix("*walarm*:").ifBlank { rawTag },
-                        alarmWakeCount = diagnostic.wakeCount,
-                        packageWakeups = diagnostic.packageWakeups
-                    )
-                ) != -1L
-            }
+            screenOnDao.insertAlarmHint(
+                ScreenOnAlarmHintEntity(
+                    eventId = target.id,
+                    offsetMs = alarmAt - target.occurredAt,
+                    packageName = packageName,
+                    tag = rawTag.removePrefix("*walarm*:").ifBlank { rawTag },
+                    alarmWakeCount = diagnostic.wakeCount,
+                    packageWakeups = diagnostic.packageWakeups,
+                ),
+            ) != -1L
+        }
 
         if (attached) {
             labels.remember(listOf(packageName))
@@ -352,7 +359,10 @@ class EventRecorder(
         return attached
     }
 
-    suspend fun attachBackgroundJobHint(screenOnAt: Long, diagnostic: BackgroundJobDiagnostic): Boolean {
+    suspend fun attachBackgroundJobHint(
+        screenOnAt: Long,
+        diagnostic: BackgroundJobDiagnostic,
+    ): Boolean {
         val packageName = diagnostic.packageName?.takeIf { it.isNotBlank() } ?: return false
         val serviceName = diagnostic.serviceName?.takeIf { it.isNotBlank() } ?: return false
         val jobAt = diagnostic.triggerTimestampMillis ?: return false
@@ -367,20 +377,19 @@ class EventRecorder(
             return false
         }
 
-        val attached =
-            writer.transaction {
-                val target = newestScreenOnAround(screenOnAt) ?: return@transaction false
+        val attached = writer.transaction {
+            val target = newestScreenOnAround(screenOnAt) ?: return@transaction false
 
-                screenOnDao.insertJobHint(
-                    ScreenOnJobHintEntity(
-                        eventId = target.id,
-                        offsetMs = jobAt - target.occurredAt,
-                        packageName = packageName,
-                        serviceName = serviceName,
-                        prioritized = diagnostic.prioritized
-                    )
-                ) != -1L
-            }
+            screenOnDao.insertJobHint(
+                ScreenOnJobHintEntity(
+                    eventId = target.id,
+                    offsetMs = jobAt - target.occurredAt,
+                    packageName = packageName,
+                    serviceName = serviceName,
+                    prioritized = diagnostic.prioritized,
+                ),
+            ) != -1L
+        }
 
         if (attached) {
             labels.remember(listOf(packageName))
@@ -391,52 +400,46 @@ class EventRecorder(
 
     /** Returns the event id, or null when not recorded or a duplicate. */
     suspend fun recordCpuWakeup(candidate: CpuWakeupCandidate): Long? {
-        val evidence =
-            candidate.evidence.distinctBy { it.type to it.rawSource }
+        val evidence = candidate.evidence.distinctBy { it.type to it.rawSource }
 
-        val primaryIndex =
-            CpuEvidenceRules.primaryIndex(evidence.map { it.type })
+        val primaryIndex = CpuEvidenceRules.primaryIndex(evidence.map { it.type })
 
-        val packages =
-            evidence.map { CpuEvidenceRules.extractPackageName(it.rawSource) }
+        val packages = evidence.map { CpuEvidenceRules.extractPackageName(it.rawSource) }
 
-        val eventId =
-            writer.transaction {
-                val sessionId = recordingSessionId() ?: return@transaction null
+        val eventId = writer.transaction {
+            val sessionId = recordingSessionId() ?: return@transaction null
 
-                if (eventDao.cpuWakeupExists(candidate.occurredAt, candidate.rawWakeReason)) {
-                    return@transaction null
-                }
-
-                val eventId = insertEvent(sessionId, candidate.occurredAt, EventType.CPU_WAKEUP, null)
-
-                database.cpuWakeupDao().insert(
-                    CpuWakeupEntity(
-                        eventId = eventId,
-                        rawWakeReason = candidate.rawWakeReason,
-                        runningObserved = candidate.runningObserved,
-                        returnedToSleepAt = candidate.returnedToSleepAt,
-                        awakeMs = candidate.returnedToSleepAt
-                            ?.minus(candidate.occurredAt)
-                            ?.takeIf { it >= 0L }
-                    )
-                )
-
-                database.cpuWakeupDao().insertEvidence(
-                    evidence.mapIndexed { index, item ->
-                        CpuWakeupEvidenceEntity(
-                            eventId = eventId,
-                            origin = item.origin,
-                            evidenceType = item.type,
-                            rawSource = item.rawSource,
-                            packageName = packages[index],
-                            isPrimary = index == primaryIndex
-                        )
-                    }
-                )
-
-                eventId
+            if (eventDao.cpuWakeupExists(candidate.occurredAt, candidate.rawWakeReason)) {
+                return@transaction null
             }
+
+            val eventId = insertEvent(sessionId, candidate.occurredAt, EventType.CPU_WAKEUP, null)
+
+            database.cpuWakeupDao().insert(
+                CpuWakeupEntity(
+                    eventId = eventId,
+                    rawWakeReason = candidate.rawWakeReason,
+                    runningObserved = candidate.runningObserved,
+                    returnedToSleepAt = candidate.returnedToSleepAt,
+                    awakeMs = candidate.returnedToSleepAt?.minus(candidate.occurredAt)?.takeIf { it >= 0L },
+                ),
+            )
+
+            database.cpuWakeupDao().insertEvidence(
+                evidence.mapIndexed { index, item ->
+                    CpuWakeupEvidenceEntity(
+                        eventId = eventId,
+                        origin = item.origin,
+                        evidenceType = item.type,
+                        rawSource = item.rawSource,
+                        packageName = packages[index],
+                        isPrimary = index == primaryIndex,
+                    )
+                },
+            )
+
+            eventId
+        }
 
         if (eventId != null) {
             labels.remember(packages)
@@ -445,7 +448,10 @@ class EventRecorder(
         return eventId
     }
 
-    suspend fun recordSystemSnapshot(at: Long, snapshot: SystemSnapshot) {
+    suspend fun recordSystemSnapshot(
+        at: Long,
+        snapshot: SystemSnapshot,
+    ) {
         writer.transaction {
             val sessionId = recordingSessionId() ?: return@transaction
 
@@ -466,13 +472,16 @@ class EventRecorder(
                     lightIdleState = snapshot.lightIdleState,
                     idleScreenOn = snapshot.idleScreenOn,
                     idleCharging = snapshot.idleCharging,
-                    forceIdle = snapshot.forceIdle
-                )
+                    forceIdle = snapshot.forceIdle,
+                ),
             )
         }
     }
 
-    suspend fun recordExpertSnapshot(at: Long, snapshot: ExpertSnapshot) {
+    suspend fun recordExpertSnapshot(
+        at: Long,
+        snapshot: ExpertSnapshot,
+    ) {
         writer.transaction {
             val sessionId = recordingSessionId() ?: return@transaction
 
@@ -486,17 +495,19 @@ class EventRecorder(
                     errorDetail = snapshot.errorDetail,
                     locationAvailable = snapshot.locationAvailable,
                     sensorsAvailable = snapshot.sensorsAvailable,
-                    networkAvailable = snapshot.networkAvailable
-                )
+                    networkAvailable = snapshot.networkAvailable,
+                ),
             )
 
-            database.snapshotDao().insertExpertSignals(
-                snapshot.signals.map { ExpertSnapshotSignalEntity(eventId, it) }
-            )
+            database.snapshotDao().insertExpertSignals(snapshot.signals.map { ExpertSnapshotSignalEntity(eventId, it) })
         }
     }
 
-    private suspend fun recordPlain(at: Long, type: EventType, proximity: Proximity?) {
+    private suspend fun recordPlain(
+        at: Long,
+        type: EventType,
+        proximity: Proximity?,
+    ) {
         writer.transaction<Unit> {
             val sessionId = recordingSessionId() ?: return@transaction
             insertEvent(sessionId, at, type, proximity)
@@ -510,19 +521,13 @@ class EventRecorder(
     private suspend fun attachLateNotification(
         notificationEventId: Long,
         at: Long,
-        packageName: String
+        packageName: String,
     ) {
-        val candidates =
-            eventDao.screenOnsBetween(
-                from = at - LATE_NOTIFICATION_WINDOW_MILLIS,
-                to = at
-            )
+        val candidates = eventDao.screenOnsBetween(from = at - LATE_NOTIFICATION_WINDOW_MILLIS, to = at)
 
         for (candidate in candidates) {
-            val screenOn =
-                eventDao.byId(candidate.id)
-                    ?.let(EventMapper::toDomain) as? ScreenOnEvent
-                    ?: continue
+            val screenOn = eventDao.byId(candidate.id)?.let(EventMapper::toDomain) as? ScreenOnEvent
+                ?: continue
 
             if (screenOn.notificationCause != null || !CauseAssessment.isUnexplained(screenOn)) {
                 continue
@@ -533,8 +538,8 @@ class EventRecorder(
                     eventId = screenOn.id,
                     notificationEventId = notificationEventId,
                     packageName = packageName,
-                    offsetMs = at - screenOn.occurredAt
-                )
+                    offsetMs = at - screenOn.occurredAt,
+                ),
             )
 
             return
@@ -545,18 +550,16 @@ class EventRecorder(
         eventDao
             .screenOnsBetween(
                 from = at - SCREEN_EVENT_MATCH_WINDOW_MILLIS,
-                to = at + SCREEN_EVENT_MATCH_WINDOW_MILLIS
-            )
-            .firstOrNull()
+                to = at + SCREEN_EVENT_MATCH_WINDOW_MILLIS,
+            ).firstOrNull()
 
-    private suspend fun recordingSessionId(): Long? =
-        sessionDao.recordingSession()?.id
+    private suspend fun recordingSessionId(): Long? = sessionDao.recordingSession()?.id
 
     private suspend fun insertEvent(
         sessionId: Long,
         at: Long,
         type: EventType,
-        proximity: Proximity?
+        proximity: Proximity?,
     ): Long =
         eventDao.insert(
             EventEntity(
@@ -564,15 +567,15 @@ class EventRecorder(
                 occurredAt = at,
                 type = type,
                 proximityState = proximity?.state,
-                proximityDistanceCm = proximity?.distanceCm
-            )
+                proximityDistanceCm = proximity?.distanceCm,
+            ),
         )
 
     private fun fingerprint(
         packageName: String,
         notificationKey: String,
         title: String,
-        text: String
+        text: String,
     ): String {
         val source = "$packageName|$notificationKey|$title|$text"
 

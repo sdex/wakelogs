@@ -57,13 +57,12 @@ import de.sanniki.wakesleuth.data.db.entity.UsbDeviceEventEntity
         ExpertSnapshotEntity::class,
         ExpertSnapshotSignalEntity::class,
         UsbDeviceEventEntity::class,
-        PackageLabelEntity::class
+        PackageLabelEntity::class,
     ],
     version = 1,
-    exportSchema = true
+    exportSchema = true,
 )
 abstract class WakelogsDatabase : RoomDatabase() {
-
     abstract fun sessionDao(): SessionDao
 
     abstract fun eventDao(): EventDao
@@ -81,15 +80,11 @@ abstract class WakelogsDatabase : RoomDatabase() {
     abstract fun packageLabelDao(): PackageLabelDao
 
     companion object {
-
         const val FILE_NAME = "wakelogs.db"
 
         fun build(context: Context): WakelogsDatabase =
-            Room.databaseBuilder(
-                context.applicationContext,
-                WakelogsDatabase::class.java,
-                FILE_NAME
-            )
+            Room
+                .databaseBuilder(context.applicationContext, WakelogsDatabase::class.java, FILE_NAME)
                 // Platform SQLite, no native libraries (plan decision 3).
                 .setDriver(AndroidSQLiteDriver())
                 .build()

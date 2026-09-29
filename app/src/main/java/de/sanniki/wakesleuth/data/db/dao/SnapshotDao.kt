@@ -10,7 +10,6 @@ import de.sanniki.wakesleuth.data.db.entity.UsbDeviceEventEntity
 
 @Dao
 interface SnapshotDao {
-
     @Insert
     suspend fun insertSystemSnapshot(snapshot: SystemSnapshotEntity)
 

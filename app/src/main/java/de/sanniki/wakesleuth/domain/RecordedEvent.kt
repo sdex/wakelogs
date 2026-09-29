@@ -10,7 +10,7 @@ import de.sanniki.wakesleuth.DeviceFamily
 
 data class Proximity(
     val state: ProximityState,
-    val distanceCm: Float? = null
+    val distanceCm: Float? = null,
 )
 
 sealed interface RecordedEvent {
@@ -24,7 +24,7 @@ data class MonitorStartEvent(
     override val id: Long,
     override val sessionId: Long,
     override val occurredAt: Long,
-    val proximity: Proximity?
+    val proximity: Proximity?,
 ) : RecordedEvent {
     override val type get() = EventType.MONITOR_START
 }
@@ -33,7 +33,7 @@ data class MonitorStopEvent(
     override val id: Long,
     override val sessionId: Long,
     override val occurredAt: Long,
-    val finalPollCompleted: Boolean?
+    val finalPollCompleted: Boolean?,
 ) : RecordedEvent {
     override val type get() = EventType.MONITOR_STOP
 }
@@ -47,7 +47,7 @@ data class ScreenOnEvent(
     val notificationCause: NotificationCause?,
     val wakeLockHints: List<WakeLockHint>,
     val alarmHints: List<AlarmHint>,
-    val jobHints: List<JobHint>
+    val jobHints: List<JobHint>,
 ) : RecordedEvent {
     override val type get() = EventType.SCREEN_ON
 }
@@ -56,7 +56,7 @@ data class ScreenOffEvent(
     override val id: Long,
     override val sessionId: Long,
     override val occurredAt: Long,
-    val proximity: Proximity?
+    val proximity: Proximity?,
 ) : RecordedEvent {
     override val type get() = EventType.SCREEN_OFF
 }
@@ -65,15 +65,14 @@ data class PowerEvent(
     override val id: Long,
     override val sessionId: Long,
     override val occurredAt: Long,
-    val connected: Boolean
+    val connected: Boolean,
 ) : RecordedEvent {
     override val type
-        get() =
-            if (connected) {
-                EventType.POWER_CONNECTED
-            } else {
-                EventType.POWER_DISCONNECTED
-            }
+        get() = if (connected) {
+            EventType.POWER_CONNECTED
+        } else {
+            EventType.POWER_DISCONNECTED
+        }
 }
 
 data class UsbDeviceInfo(
@@ -81,7 +80,7 @@ data class UsbDeviceInfo(
     val vendorId: Int?,
     val productId: Int?,
     val deviceName: String? = null,
-    val manufacturerName: String? = null
+    val manufacturerName: String? = null,
 )
 
 data class UsbEvent(
@@ -89,15 +88,14 @@ data class UsbEvent(
     override val sessionId: Long,
     override val occurredAt: Long,
     val attached: Boolean,
-    val device: UsbDeviceInfo?
+    val device: UsbDeviceInfo?,
 ) : RecordedEvent {
     override val type
-        get() =
-            if (attached) {
-                EventType.USB_ATTACHED
-            } else {
-                EventType.USB_DETACHED
-            }
+        get() = if (attached) {
+            EventType.USB_ATTACHED
+        } else {
+            EventType.USB_DETACHED
+        }
 }
 
 data class NotificationEvent(
@@ -107,7 +105,7 @@ data class NotificationEvent(
     val packageName: String,
     val notificationKey: String?,
     val title: String?,
-    val text: String?
+    val text: String?,
 ) : RecordedEvent {
     override val type get() = EventType.NOTIFICATION
 }
@@ -121,7 +119,7 @@ data class CpuWakeupEvent(
     val returnedToSleepAt: Long?,
     val awakeMs: Long?,
     /** In detection order; at most one entry is primary. */
-    val evidence: List<CpuEvidence>
+    val evidence: List<CpuEvidence>,
 ) : RecordedEvent {
     override val type get() = EventType.CPU_WAKEUP
 
@@ -133,7 +131,7 @@ data class NetworkSessionEvent(
     override val id: Long,
     override val sessionId: Long,
     override val occurredAt: Long,
-    val measurement: NetworkMeasurement?
+    val measurement: NetworkMeasurement?,
 ) : RecordedEvent {
     override val type get() = EventType.NETWORK_SESSION
 }
@@ -142,7 +140,7 @@ data class SystemSnapshotEvent(
     override val id: Long,
     override val sessionId: Long,
     override val occurredAt: Long,
-    val snapshot: SystemSnapshot
+    val snapshot: SystemSnapshot,
 ) : RecordedEvent {
     override val type get() = EventType.SYSTEM_SNAPSHOT
 }
@@ -153,12 +151,12 @@ data class ExpertSnapshotEvent(
     override val occurredAt: Long,
     val snapshot: ExpertSnapshot,
     /** Needed to render the device specific activity sensor signal. */
-    val deviceFamily: DeviceFamily
+    val deviceFamily: DeviceFamily,
 ) : RecordedEvent {
     override val type get() = EventType.EXPERT_SNAPSHOT
 }
 
-/* ---------- SCREEN_ON payload ---------- */
+// ---------- SCREEN_ON payload ----------
 
 data class DirectWakeReason(
     val reason: WakeReason,
@@ -168,7 +166,7 @@ data class DirectWakeReason(
     val offsetMs: Long,
     val rawReason: String?,
     val rawDetails: String?,
-    val rawTag: String?
+    val rawTag: String?,
 )
 
 data class NotificationCause(
@@ -177,14 +175,14 @@ data class NotificationCause(
     /** Signed: negative when the notification arrived before screen-on. */
     val offsetMs: Long,
     /** Title of the linked notification, if it still exists. */
-    val notificationTitle: String?
+    val notificationTitle: String?,
 )
 
 data class WakeLockHint(
     val offsetMs: Long,
     val tag: String,
     val packageName: String?,
-    val uid: Int?
+    val uid: Int?,
 )
 
 data class AlarmHint(
@@ -192,27 +190,27 @@ data class AlarmHint(
     val packageName: String?,
     val tag: String,
     val alarmWakeCount: Int?,
-    val packageWakeups: Int?
+    val packageWakeups: Int?,
 )
 
 data class JobHint(
     val offsetMs: Long,
     val packageName: String?,
     val serviceName: String,
-    val prioritized: Boolean
+    val prioritized: Boolean,
 )
 
-/* ---------- CPU_WAKEUP payload ---------- */
+// ---------- CPU_WAKEUP payload ----------
 
 data class CpuEvidence(
     val origin: EvidenceOrigin,
     val type: EvidenceType,
     val rawSource: String,
     val packageName: String?,
-    val isPrimary: Boolean
+    val isPrimary: Boolean,
 )
 
-/* ---------- Network ---------- */
+// ---------- Network ----------
 
 data class NetworkAppUsage(
     val uid: Int,
@@ -220,7 +218,7 @@ data class NetworkAppUsage(
     val rxBytes: Long,
     val txBytes: Long,
     val rxPackets: Long? = null,
-    val txPackets: Long? = null
+    val txPackets: Long? = null,
 ) {
     val totalBytes: Long
         get() = saturatedAdd(rxBytes, txBytes)
@@ -234,15 +232,14 @@ data class NetworkMeasurement(
     val errorCode: DiagnosticError?,
     val errorDetail: String?,
     /** Sorted by total traffic, largest first. */
-    val usage: List<NetworkAppUsage>
+    val usage: List<NetworkAppUsage>,
 ) {
     val durationMs: Long?
-        get() =
-            if (measuredAt != null && baselineCapturedAt != null) {
-                (measuredAt - baselineCapturedAt).coerceAtLeast(0L)
-            } else {
-                null
-            }
+        get() = if (measuredAt != null && baselineCapturedAt != null) {
+            (measuredAt - baselineCapturedAt).coerceAtLeast(0L)
+        } else {
+            null
+        }
 
     val rxBytes: Long
         get() = usage.fold(0L) { total, item -> saturatedAdd(total, item.rxBytes) }
@@ -254,7 +251,7 @@ data class NetworkMeasurement(
         get() = saturatedAdd(rxBytes, txBytes)
 }
 
-/* ---------- Snapshots ---------- */
+// ---------- Snapshots ----------
 
 data class SystemSnapshot(
     val trigger: SnapshotTrigger,
@@ -269,7 +266,7 @@ data class SystemSnapshot(
     val lightIdleState: String? = null,
     val idleScreenOn: Boolean? = null,
     val idleCharging: Boolean? = null,
-    val forceIdle: String? = null
+    val forceIdle: String? = null,
 )
 
 data class ExpertSnapshot(
@@ -279,13 +276,15 @@ data class ExpertSnapshot(
     val locationAvailable: Boolean,
     val sensorsAvailable: Boolean,
     val networkAvailable: Boolean,
-    val signals: Set<ExpertSignal>
+    val signals: Set<ExpertSignal>,
 )
 
-fun saturatedAdd(a: Long, b: Long): Long {
+fun saturatedAdd(
+    a: Long,
+    b: Long,
+): Long {
     val result = a + b
     return if ((a xor result) and (b xor result) < 0) Long.MAX_VALUE else result
 }
 
-fun saturatedSum(vararg values: Long): Long =
-    values.fold(0L) { total, value -> saturatedAdd(total, value) }
+fun saturatedSum(vararg values: Long): Long = values.fold(0L) { total, value -> saturatedAdd(total, value) }

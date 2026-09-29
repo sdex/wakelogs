@@ -5,11 +5,13 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class SourceClassifierTest {
-
     @Test
     fun `packages map to their system bucket`() {
         assertEquals(SourceKind.ANDROID_SYSTEM, SourceClassifier.kindOfPackage("android"))
-        assertEquals(SourceKind.GOOGLE_PLAY_SERVICES, SourceClassifier.kindOfPackage("com.google.android.gms.persistent"))
+        assertEquals(
+            SourceKind.GOOGLE_PLAY_SERVICES,
+            SourceClassifier.kindOfPackage("com.google.android.gms.persistent"),
+        )
         assertEquals(SourceKind.PLAY_STORE, SourceClassifier.kindOfPackage("com.android.vending"))
         assertEquals(SourceKind.SYSTEM_UI, SourceClassifier.kindOfPackage("com.android.systemui"))
         assertEquals(SourceKind.SAMSUNG_TELEPHONY_SIM, SourceClassifier.kindOfPackage("com.android.stk2"))
@@ -21,7 +23,10 @@ class SourceClassifierTest {
         assertEquals(SourceKind.GOOGLE_CELLULAR_IMS, SourceClassifier.kindOfPackage("com.google.android.ims"))
         assertEquals(SourceKind.BLUETOOTH, SourceClassifier.kindOfPackage("com.android.bluetooth"))
         assertEquals(SourceKind.NETWORK_STACK, SourceClassifier.kindOfPackage("com.android.networkstack.process"))
-        assertEquals(SourceKind.SAMSUNG_SYSTEM_SERVICE, SourceClassifier.kindOfPackage("com.sec.android.app.clockpackage"))
+        assertEquals(
+            SourceKind.SAMSUNG_SYSTEM_SERVICE,
+            SourceClassifier.kindOfPackage("com.sec.android.app.clockpackage"),
+        )
         assertEquals(SourceKind.ONEPLUS_SYSTEM_SERVICE, SourceClassifier.kindOfPackage("com.oplus.athena"))
         assertEquals(SourceKind.APP, SourceClassifier.kindOfPackage("com.whatsapp"))
     }
@@ -30,7 +35,10 @@ class SourceClassifierTest {
     fun `technical tokens map to their bucket`() {
         assertEquals(SourceKind.SAMSUNG_TELEPHONY_SIM, SourceClassifier.classifyRaw("RILJ_ACK_WL").kind)
         assertEquals(SourceKind.SAMSUNG_OFFLINE_FINDING, SourceClassifier.classifyRaw("FMM-acquireWakeLock").kind)
-        assertEquals(SourceKind.ONEPLUS_SCREEN_GESTURES, SourceClassifier.classifyRaw("OplusScreenOffGestureManager").kind)
+        assertEquals(
+            SourceKind.ONEPLUS_SCREEN_GESTURES,
+            SourceClassifier.classifyRaw("OplusScreenOffGestureManager").kind,
+        )
         assertEquals(SourceKind.RADIO_NETWORK, SourceClassifier.classifyRaw("ipa_client_ws").kind)
         assertEquals(SourceKind.TIME_TICK, SourceClassifier.classifyRaw("*alarm*:android.intent.action.TIME_TICK").kind)
         assertEquals(SourceKind.GOOGLE_PLAY_SERVICES, SourceClassifier.classifyRaw("GCoreFlp").kind)
@@ -59,7 +67,10 @@ class SourceClassifierTest {
 
     @Test
     fun `package is extracted from a BatteryStats token`() {
-        assertEquals("com.foo", CpuEvidenceRules.extractPackageName("com.foo/androidx.work.impl.background.systemjob.SystemJobService"))
+        assertEquals(
+            "com.foo",
+            CpuEvidenceRules.extractPackageName("com.foo/androidx.work.impl.background.systemjob.SystemJobService"),
+        )
         assertEquals(null, CpuEvidenceRules.extractPackageName("RILJ_ACK_WL"))
     }
 }

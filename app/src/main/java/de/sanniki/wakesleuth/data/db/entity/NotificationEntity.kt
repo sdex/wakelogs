@@ -18,9 +18,9 @@ import androidx.room3.PrimaryKey
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class NotificationEntity(
     @PrimaryKey
@@ -32,5 +32,5 @@ data class NotificationEntity(
     val notificationKey: String?,
     val title: String?,
     val text: String?,
-    val fingerprint: String
+    val fingerprint: String,
 )

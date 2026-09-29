@@ -16,7 +16,7 @@ class PackageLabelStore(
     /** Live label of an installed package, null when not installed. */
     private val lookup: (String) -> String?,
     private val dao: PackageLabelDao,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
 ) {
     private val stored = ConcurrentHashMap<String, String>()
 
@@ -35,23 +35,20 @@ class PackageLabelStore(
         loaded = true
     }
 
-    fun label(packageName: String): String? =
-        liveLabel(packageName) ?: stored[packageName]
+    fun label(packageName: String): String? = liveLabel(packageName) ?: stored[packageName]
 
     fun liveLabel(packageName: String): String? =
         live
             .getOrPut(packageName) {
                 lookup(packageName)?.trim().orEmpty()
-            }
-            .ifEmpty { null }
+            }.ifEmpty { null }
 
     /** Stores the current label of every installed package not yet stored. */
     fun remember(packageNames: Collection<String?>) {
-        val candidates =
-            packageNames
-                .filterNotNull()
-                .filter { it.isNotBlank() }
-                .distinct()
+        val candidates = packageNames
+            .filterNotNull()
+            .filter { it.isNotBlank() }
+            .distinct()
 
         if (candidates.isEmpty()) {
             return
@@ -62,26 +59,23 @@ class PackageLabelStore(
 
             val now = System.currentTimeMillis()
 
-            val changed =
-                candidates.mapNotNull { packageName ->
-                    val label = liveLabel(packageName) ?: return@mapNotNull null
+            val changed = candidates.mapNotNull { packageName ->
+                val label = liveLabel(packageName) ?: return@mapNotNull null
 
-                    if (stored[packageName] == label) {
-                        null
-                    } else {
-                        PackageLabelEntity(packageName, label, now)
-                    }
+                if (stored[packageName] == label) {
+                    null
+                } else {
+                    PackageLabelEntity(packageName, label, now)
                 }
+            }
 
             if (changed.isNotEmpty()) {
-                runCatching { dao.upsert(changed) }
-                    .onSuccess { changed.forEach { stored[it.packageName] = it.label } }
+                runCatching { dao.upsert(changed) }.onSuccess { changed.forEach { stored[it.packageName] = it.label } }
             }
         }
     }
 
     companion object {
-
         /** Package manager lookup used on the device. */
         fun packageManagerLookup(context: Context): (String) -> String? {
             val packageManager = context.applicationContext.packageManager

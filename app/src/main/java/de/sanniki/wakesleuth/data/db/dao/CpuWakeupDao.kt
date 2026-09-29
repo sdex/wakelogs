@@ -8,7 +8,6 @@ import de.sanniki.wakesleuth.data.db.entity.CpuWakeupEvidenceEntity
 
 @Dao
 interface CpuWakeupDao {
-
     @Insert
     suspend fun insert(wakeup: CpuWakeupEntity)
 

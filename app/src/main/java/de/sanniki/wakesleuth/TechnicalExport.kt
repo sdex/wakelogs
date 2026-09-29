@@ -26,25 +26,19 @@ import java.util.Locale
  * computed from the typed facts.
  */
 object TechnicalExport {
-
-    private const val SEPARATOR =
-        "--------------------------------------------------"
+    private const val SEPARATOR = "--------------------------------------------------"
 
     private const val FREQUENT_SOURCES = 3
 
     fun build(
         context: Context,
         events: List<RecordedEvent>,
-        monitoring: Boolean
+        monitoring: Boolean,
     ): String {
         val renderer = EventTextRenderer(context)
         val labels = SourceLabelResolver.get(context)
 
-        val formatter =
-            SimpleDateFormat(
-                "dd.MM.yyyy HH:mm:ss",
-                Locale.getDefault()
-            )
+        val formatter = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault())
 
         val facts = ExportFacts.of(events)
 
@@ -60,8 +54,8 @@ object TechnicalExport {
                         context.getString(R.string.event_export_monitoring_active)
                     } else {
                         context.getString(R.string.event_export_monitoring_stopped)
-                    }
-                )
+                    },
+                ),
             )
             appendLine(context.getString(R.string.event_export_stored_events, events.size))
 
@@ -84,10 +78,8 @@ object TechnicalExport {
                 events.forEach { event ->
                     appendLine(formatter.format(Date(event.occurredAt)))
 
-                    val typeLabel =
-                        EventTextRenderer.typeLabel(event.type)
-                            ?.let(context::getString)
-                            ?: event.type.name
+                    val typeLabel = EventTextRenderer.typeLabel(event.type)?.let(context::getString)
+                        ?: event.type.name
 
                     appendLine("$typeLabel – " + renderer.title(event))
 
@@ -108,24 +100,19 @@ object TechnicalExport {
         val screenOns: List<ScreenOnEvent>,
         val cpuWakeups: List<CpuWakeupEvent>,
         val notificationCount: Int,
-        val frequentSources: List<Pair<SourceRef, Int>>
+        val frequentSources: List<Pair<SourceRef, Int>>,
     ) {
-        val powerButtonWakeups: Int =
-            screenOns.count(CauseAssessment::isPowerButton)
+        val powerButtonWakeups: Int = screenOns.count(CauseAssessment::isPowerButton)
 
         val longestCpuWakeup: CpuWakeupEvent? =
-            cpuWakeups
-                .filter { it.awakeMs != null }
-                .maxByOrNull { it.awakeMs ?: 0L }
+            cpuWakeups.filter { it.awakeMs != null }.maxByOrNull { it.awakeMs ?: 0L }
 
-        val unattributedCpuWakeups: Int =
-            cpuWakeups.count { it.primaryEvidence == null }
+        val unattributedCpuWakeups: Int = cpuWakeups.count { it.primaryEvidence == null }
 
-        val lockGlowWakeups: Int =
-            screenOns.count { screenOn ->
-                screenOn.wakeLockHints.any { it.tag.contains(LOCK_GLOW, ignoreCase = true) } ||
-                    screenOn.wakeReason?.rawTag?.contains(LOCK_GLOW, ignoreCase = true) == true
-            }
+        val lockGlowWakeups: Int = screenOns.count { screenOn ->
+            screenOn.wakeLockHints.any { it.tag.contains(LOCK_GLOW, ignoreCase = true) } ||
+                screenOn.wakeReason?.rawTag?.contains(LOCK_GLOW, ignoreCase = true) == true
+        }
 
         companion object {
             private const val LOCK_GLOW = "LockGlow"
@@ -135,29 +122,24 @@ object TechnicalExport {
                 val screenOns = events.filterIsInstance<ScreenOnEvent>()
 
                 // Every source an event is linked to counts once for it.
-                val perEvent =
-                    cpuWakeups.map { event ->
-                        (listOfNotNull(event.primarySource()) + event.evidence.map { it.source() })
-                    } + screenOns.map { event ->
-                        event.sources().map { it.source }
-                    }
+                val perEvent = cpuWakeups.map { event ->
+                    (listOfNotNull(event.primarySource()) + event.evidence.map { it.source() })
+                } +
+                    screenOns.map { event -> event.sources().map { it.source } }
 
-                val frequent =
-                    perEvent
-                        .flatMap { sources -> sources.distinctBy { it.groupKey } }
-                        .groupBy { it.groupKey }
-                        .map { (_, sources) -> sources.first() to sources.size }
-                        .sortedWith(
-                            compareByDescending<Pair<SourceRef, Int>> { it.second }
-                                .thenBy { it.first.groupKey }
-                        )
-                        .take(FREQUENT_SOURCES)
+                val frequent = perEvent
+                    .flatMap { sources -> sources.distinctBy { it.groupKey } }
+                    .groupBy { it.groupKey }
+                    .map { (_, sources) -> sources.first() to sources.size }
+                    .sortedWith(
+                        compareByDescending<Pair<SourceRef, Int>> { it.second }.thenBy { it.first.groupKey },
+                    ).take(FREQUENT_SOURCES)
 
                 return ExportFacts(
                     screenOns = screenOns,
                     cpuWakeups = cpuWakeups,
                     notificationCount = events.count { it is NotificationEvent },
-                    frequentSources = frequent
+                    frequentSources = frequent,
                 )
             }
         }
@@ -166,60 +148,53 @@ object TechnicalExport {
     private fun longestCpuWakeupText(
         context: Context,
         renderer: EventTextRenderer,
-        event: CpuWakeupEvent
+        event: CpuWakeupEvent,
     ): String =
         context.getString(
             R.string.event_highlight_longest_cpu_wakeup,
             renderer.cpuSourceLabel(event) ?: context.getString(R.string.event_unknown_source),
-            exportDuration(event.awakeMs ?: 0L)
+            exportDuration(event.awakeMs ?: 0L),
         )
 
     private fun highlights(
         context: Context,
         renderer: EventTextRenderer,
         labels: SourceLabelResolver,
-        facts: ExportFacts
+        facts: ExportFacts,
     ): List<String> {
         val highlights = mutableListOf<String>()
 
-        facts.longestCpuWakeup?.let {
-            highlights += longestCpuWakeupText(context, renderer, it)
-        }
+        facts.longestCpuWakeup?.let { highlights += longestCpuWakeupText(context, renderer, it) }
 
         if (facts.frequentSources.isNotEmpty()) {
-            highlights +=
-                context.getString(
-                    R.string.event_highlight_frequent_sources,
-                    facts.frequentSources.joinToString(", ") { (source, count) ->
-                        "${labels.label(source)} ($count×)"
-                    }
-                )
+            highlights += context.getString(
+                R.string.event_highlight_frequent_sources,
+                facts.frequentSources.joinToString(", ") { (source, count) ->
+                    "${labels.label(source)} ($count×)"
+                },
+            )
         }
 
         val screenOnCount = facts.screenOns.size
 
         if (screenOnCount > 0) {
-            highlights +=
-                when {
-                    facts.powerButtonWakeups == screenOnCount ->
-                        context.getString(
-                            R.string.event_highlight_screen_wakeups_all_power_button,
-                            screenOnCount
-                        )
-
-                    facts.powerButtonWakeups > 0 ->
-                        context.getString(
-                            R.string.event_highlight_screen_wakeups_some_power_button,
-                            facts.powerButtonWakeups,
-                            screenOnCount
-                        )
-
-                    else ->
-                        context.getString(
-                            R.string.event_highlight_screen_wakeups_no_power_button,
-                            screenOnCount
-                        )
+            highlights += when {
+                facts.powerButtonWakeups == screenOnCount -> {
+                    context.getString(R.string.event_highlight_screen_wakeups_all_power_button, screenOnCount)
                 }
+
+                facts.powerButtonWakeups > 0 -> {
+                    context.getString(
+                        R.string.event_highlight_screen_wakeups_some_power_button,
+                        facts.powerButtonWakeups,
+                        screenOnCount,
+                    )
+                }
+
+                else -> {
+                    context.getString(R.string.event_highlight_screen_wakeups_no_power_button, screenOnCount)
+                }
+            }
         }
 
         if (facts.notificationCount > 0) {
@@ -228,10 +203,7 @@ object TechnicalExport {
 
         if (facts.unattributedCpuWakeups > 0) {
             highlights +=
-                context.getString(
-                    R.string.event_highlight_unattributed_cpu_wakeups,
-                    facts.unattributedCpuWakeups
-                )
+                context.getString(R.string.event_highlight_unattributed_cpu_wakeups, facts.unattributedCpuWakeups)
         }
 
         if (highlights.isEmpty()) {
@@ -245,49 +217,48 @@ object TechnicalExport {
         context: Context,
         renderer: EventTextRenderer,
         labels: SourceLabelResolver,
-        facts: ExportFacts
+        facts: ExportFacts,
     ): List<String> {
         val summary = mutableListOf<String>()
         val screenOnCount = facts.screenOns.size
 
-        summary +=
-            context.getString(
-                when {
-                    screenOnCount == 0 -> R.string.event_summary_no_screen_wakeups
-                    facts.powerButtonWakeups == screenOnCount -> R.string.event_summary_not_woken_by_apps
-                    facts.powerButtonWakeups > 0 -> R.string.event_summary_some_power_button
-                    else -> R.string.event_summary_no_clear_power_button
-                }
-            )
+        summary += context.getString(
+            when {
+                screenOnCount == 0 -> R.string.event_summary_no_screen_wakeups
+                facts.powerButtonWakeups == screenOnCount -> R.string.event_summary_not_woken_by_apps
+                facts.powerButtonWakeups > 0 -> R.string.event_summary_some_power_button
+                else -> R.string.event_summary_no_clear_power_button
+            },
+        )
 
         if (screenOnCount > 0 && facts.powerButtonWakeups == screenOnCount) {
             summary += context.getString(R.string.event_summary_all_power_button)
         }
 
         when {
-            facts.frequentSources.any { it.first.kind == SourceKind.RADIO_NETWORK } ->
+            facts.frequentSources.any { it.first.kind == SourceKind.RADIO_NETWORK } -> {
                 summary += context.getString(R.string.event_summary_much_radio_network)
+            }
 
-            facts.frequentSources.isNotEmpty() ->
+            facts.frequentSources.isNotEmpty() -> {
                 summary += context.getString(R.string.event_summary_recurring_technical)
+            }
         }
 
         facts.longestCpuWakeup?.let { event ->
-            summary +=
-                context.getString(
-                    R.string.event_summary_most_notable_cpu_wakeup,
-                    (renderer.cpuSourceLabel(event) ?: context.getString(R.string.event_unknown_source)) +
-                        " · " + exportDuration(event.awakeMs ?: 0L)
-                )
+            summary += context.getString(
+                R.string.event_summary_most_notable_cpu_wakeup,
+                (renderer.cpuSourceLabel(event) ?: context.getString(R.string.event_unknown_source)) +
+                    " · " + exportDuration(event.awakeMs ?: 0L),
+            )
         }
 
         if (facts.lockGlowWakeups > 0) {
-            summary +=
-                context.resources.getQuantityString(
-                    R.plurals.event_summary_lockglow_wakeups,
-                    facts.lockGlowWakeups,
-                    facts.lockGlowWakeups
-                )
+            summary += context.resources.getQuantityString(
+                R.plurals.event_summary_lockglow_wakeups,
+                facts.lockGlowWakeups,
+                facts.lockGlowWakeups,
+            )
         }
 
         if (facts.notificationCount > 0) {
@@ -299,7 +270,7 @@ object TechnicalExport {
 
     private fun StringBuilder.appendParserDiagnostics(
         context: Context,
-        formatter: SimpleDateFormat
+        formatter: SimpleDateFormat,
     ) {
         val diagnostics = BackgroundWakeMonitor.diagnostics(context)
 
@@ -318,8 +289,8 @@ object TechnicalExport {
             appendLine(
                 context.getString(
                     R.string.event_export_last_parser_run,
-                    formatter.format(Date(diagnostics.lastPollMillis))
-                )
+                    formatter.format(Date(diagnostics.lastPollMillis)),
+                ),
             )
         }
 
@@ -328,25 +299,24 @@ object TechnicalExport {
         appendLine()
         appendLine(context.getString(R.string.event_export_raw_data_heading))
 
-        val parserFoundFreshRawData =
-            diagnostics.parsedLines > 0 ||
-                diagnostics.wakeReasons > 0 ||
-                diagnostics.runningStarts > 0 ||
-                diagnostics.wakeLocks > 0 ||
-                diagnostics.jobs > 0 ||
-                diagnostics.syncs > 0 ||
-                diagnostics.candidates > 0 ||
-                diagnostics.eventsCreated > 0
+        val parserFoundFreshRawData = diagnostics.parsedLines > 0 ||
+            diagnostics.wakeReasons > 0 ||
+            diagnostics.runningStarts > 0 ||
+            diagnostics.wakeLocks > 0 ||
+            diagnostics.jobs > 0 || diagnostics.syncs > 0 || diagnostics.candidates > 0 || diagnostics.eventsCreated > 0
 
         when {
-            !parserFoundFreshRawData ->
+            !parserFoundFreshRawData -> {
                 appendLine(context.getString(R.string.event_export_no_new_raw_data))
+            }
 
-            rawLines.isEmpty() ->
+            rawLines.isEmpty() -> {
                 appendLine(context.getString(R.string.event_export_no_raw_lines))
+            }
 
-            else ->
+            else -> {
                 rawLines.forEach { appendLine(it) }
+            }
         }
     }
 
@@ -354,7 +324,7 @@ object TechnicalExport {
     private fun exportDetails(
         context: Context,
         renderer: EventTextRenderer,
-        event: RecordedEvent
+        event: RecordedEvent,
     ): String {
         if (event !is ExpertSnapshotEvent || event.snapshot.status != ExpertSnapshotStatus.OK) {
             return renderer.details(event)
@@ -372,8 +342,8 @@ object TechnicalExport {
             appendLine(
                 context.getString(
                     R.string.service_snapshot_trigger,
-                    context.getString(R.string.service_snapshot_reason_screen_on)
-                )
+                    context.getString(R.string.service_snapshot_reason_screen_on),
+                ),
             )
             appendLine(context.getString(R.string.service_snapshot_source_compact))
             appendLine()

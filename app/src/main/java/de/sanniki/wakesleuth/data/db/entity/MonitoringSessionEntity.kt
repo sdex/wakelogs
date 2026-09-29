@@ -11,10 +11,7 @@ import de.sanniki.wakesleuth.domain.SessionEndReason
  * One monitoring run. A session is running while [stopRequestedAt] is
  * null and still accepts events until [finalizedAt] is set.
  */
-@Entity(
-    tableName = "monitoring_session",
-    indices = [Index("started_at")]
-)
+@Entity(tableName = "monitoring_session", indices = [Index("started_at")])
 data class MonitoringSessionEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
@@ -36,5 +33,5 @@ data class MonitoringSessionEntity(
     val displayWakeups: Int? = null,
     @ColumnInfo(name = "cpu_wakeups")
     val cpuWakeups: Int? = null,
-    val note: String? = null
+    val note: String? = null,
 )

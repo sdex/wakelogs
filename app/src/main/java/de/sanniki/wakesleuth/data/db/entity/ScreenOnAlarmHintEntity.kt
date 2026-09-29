@@ -14,9 +14,9 @@ import androidx.room3.PrimaryKey
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class ScreenOnAlarmHintEntity(
     @PrimaryKey(autoGenerate = true)
@@ -33,5 +33,5 @@ data class ScreenOnAlarmHintEntity(
     @ColumnInfo(name = "alarm_wake_count")
     val alarmWakeCount: Int?,
     @ColumnInfo(name = "package_wakeups")
-    val packageWakeups: Int?
+    val packageWakeups: Int?,
 )

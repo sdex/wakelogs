@@ -58,33 +58,27 @@ private data class SleepAnalysisWindow(
     val startMillis: Long,
     val endMillis: Long,
     val ongoing: Boolean,
-    val title: String
+    val title: String,
 ) {
     val durationMillis: Long
-        get() =
-            (endMillis - startMillis)
-                .coerceAtLeast(0L)
+        get() = (endMillis - startMillis).coerceAtLeast(0L)
 }
 
 private data class QuietPhase(
     val startMillis: Long,
-    val endMillis: Long
+    val endMillis: Long,
 ) {
     val durationMillis: Long
-        get() =
-            (endMillis - startMillis)
-                .coerceAtLeast(0L)
+        get() = (endMillis - startMillis).coerceAtLeast(0L)
 }
 
 private data class HourActivity(
     val hour: Int,
     val displayWakeups: Int,
-    val cpuWakeups: Int
+    val cpuWakeups: Int,
 ) {
     val total: Int
-        get() =
-            displayWakeups +
-                cpuWakeups
+        get() = displayWakeups + cpuWakeups
 }
 
 private data class NetworkSessionApp(
@@ -92,7 +86,7 @@ private data class NetworkSessionApp(
     val name: String,
     val total: String,
     val received: String?,
-    val sent: String?
+    val sent: String?,
 )
 
 private data class NetworkSessionSummary(
@@ -102,21 +96,15 @@ private data class NetworkSessionSummary(
     val received: String?,
     val sent: String?,
     val topApps: List<NetworkSessionApp>,
-    val message: String?
+    val message: String?,
 )
 
 private enum class SuspicionLevel(
-    @StringRes val labelRes: Int
+    @StringRes val labelRes: Int,
 ) {
-    LIKELY_INVOLVED(
-        R.string.sleep_level_likely_involved
-    ),
-    TEMPORALLY_NOTICEABLE(
-        R.string.sleep_level_temporally_noticeable
-    ),
-    COMPANION_ACTIVITY(
-        R.string.sleep_level_companion_activity
-    )
+    LIKELY_INVOLVED(R.string.sleep_level_likely_involved),
+    TEMPORALLY_NOTICEABLE(R.string.sleep_level_temporally_noticeable),
+    COMPANION_ACTIVITY(R.string.sleep_level_companion_activity),
 }
 
 private data class SuspicionCandidate(
@@ -125,7 +113,7 @@ private data class SuspicionCandidate(
     val level: SuspicionLevel,
     val explanation: String,
     val cpuOccurrences: Int,
-    val networkTraffic: String?
+    val networkTraffic: String?,
 )
 
 private data class SleepAnalysisData(
@@ -146,9 +134,8 @@ private data class SleepAnalysisData(
     val busiestHour: HourActivity?,
     val hourlyActivity: List<HourActivity>,
     val networkSession: NetworkSessionSummary?,
-    val suspicionCandidates:
-        List<SuspicionCandidate>,
-    val hints: List<String>
+    val suspicionCandidates: List<SuspicionCandidate>,
+    val hints: List<String>,
 )
 
 @Composable
@@ -156,415 +143,247 @@ fun SleepReportCard(
     events: List<RecordedEvent>,
     session: MonitoringSessionEntity?,
     monitoring: Boolean,
-    detailLevel: DetailLevel
+    detailLevel: DetailLevel,
 ) {
-    val context =
-        LocalContext.current
+    val context = LocalContext.current
 
-    val renderer =
-        rememberEventTextRenderer()
+    val renderer = rememberEventTextRenderer()
 
-    val labels =
-        rememberSourceLabelResolver()
+    val labels = rememberSourceLabelResolver()
 
-    val analysis =
-        remember(
-            events,
-            session,
-            renderer
-        ) {
-            buildSleepAnalysis(
-                context = context,
-                renderer = renderer,
-                labels = labels,
-                events = events,
-                session = session
-            )
-        }
+    val analysis = remember(
+        events,
+        session,
+        renderer,
+    ) {
+        buildSleepAnalysis(context = context, renderer = renderer, labels = labels, events = events, session = session)
+    }
 
-    val expandedDetailSection =
-        androidx.compose.runtime.remember {
-            androidx.compose.runtime.mutableStateOf<String?>(null)
-        }
+    val expandedDetailSection = androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf<String?>(null)
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor =
-                MaterialTheme.colorScheme.surface
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(
-            modifier = Modifier.padding(18.dp)
+            modifier = Modifier.padding(18.dp),
         ) {
-            SleepAnalysisHeader(
-                analysis = analysis
-            )
+            SleepAnalysisHeader(analysis = analysis)
 
-            Spacer(
-                modifier = Modifier.height(16.dp)
-            )
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (
                 analysis.window.durationMillis <
                 60_000L
             ) {
-                SleepAnalysisPendingCard(
-                    monitoring = monitoring,
-                    hasRecordedEvents =
-                        events.isNotEmpty()
-                )
+                SleepAnalysisPendingCard(monitoring = monitoring, hasRecordedEvents = events.isNotEmpty())
             } else {
                 SleepScoreCard(
                     score = analysis.score,
                     rating = analysis.rating,
                     summary = analysis.summary,
-                    provisional =
-                        analysis.window.durationMillis <
-                            15L * 60L * 1_000L
+                    provisional = analysis.window.durationMillis <
+                        15L * 60L * 1_000L,
                 )
 
-                Spacer(
-                    modifier = Modifier.height(14.dp)
-                )
+                Spacer(modifier = Modifier.height(14.dp))
 
-                SleepPrimaryValues(
-                    analysis = analysis
-                )
+                SleepPrimaryValues(analysis = analysis)
 
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
+                Spacer(modifier = Modifier.height(12.dp))
 
                 analysis.networkSession
                     ?.let { networkSession ->
-                        Spacer(
-                            modifier =
-                                Modifier.height(10.dp)
-                        )
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         SleepDetailSectionButton(
-                            title =
-                                stringResource(
-                                    R.string.sleep_section_network
-                                ),
-                            summary =
-                                buildString {
-                                    append(
-                                        networkSession.total
-                                            ?: stringResource(
-                                                R.string.sleep_no_traffic_data
-                                            )
-                                    )
+                            title = stringResource(R.string.sleep_section_network),
+                            summary = buildString {
+                                append(networkSession.total ?: stringResource(R.string.sleep_no_traffic_data))
 
-                                    networkSession.activeApps
-                                        ?.let { count ->
-                                            append(" · ")
+                                networkSession.activeApps
+                                    ?.let { count ->
+                                        append(" · ")
 
-                                            append(
-                                                pluralStringResource(
-                                                    R.plurals.sleep_app_count,
-                                                    count,
-                                                    count
-                                                )
-                                            )
-                                        }
-                                },
-                            expanded =
-                                expandedDetailSection.value ==
-                                    "network",
-                            onToggle = {
-                                expandedDetailSection.value =
-                                    if (
-                                        expandedDetailSection.value ==
-                                        "network"
-                                    ) {
-                                        null
-                                    } else {
-                                        "network"
+                                        append(pluralStringResource(R.plurals.sleep_app_count, count, count))
                                     }
-                            }
+                            },
+                            expanded = expandedDetailSection.value == "network",
+                            onToggle = {
+                                expandedDetailSection.value = if (
+                                    expandedDetailSection.value == "network"
+                                ) {
+                                    null
+                                } else {
+                                    "network"
+                                }
+                            },
                         )
 
                         if (
-                            expandedDetailSection.value ==
-                            "network"
+                            expandedDetailSection.value == "network"
                         ) {
-                            Spacer(
-                                modifier =
-                                    Modifier.height(8.dp)
-                            )
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                            NetworkSessionSection(
-                                summary =
-                                    networkSession,
-                                detailLevel =
-                                    detailLevel
-                            )
+                            NetworkSessionSection(summary = networkSession, detailLevel = detailLevel)
                         }
                     }
 
                 if (
-                    analysis
-                        .suspicionCandidates
-                        .isNotEmpty()
+                    analysis.suspicionCandidates.isNotEmpty()
                 ) {
-                    Spacer(
-                        modifier =
-                            Modifier.height(10.dp)
-                    )
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     SleepDetailSectionButton(
-                        title =
-                            stringResource(
-                                R.string.sleep_section_activity_classification
-                            ),
-                        summary =
-                            pluralStringResource(
-                                R.plurals.sleep_active_sources_classified,
-                                analysis.suspicionCandidates.size,
-                                analysis.suspicionCandidates.size
-                            ),
-                        expanded =
-                            expandedDetailSection.value ==
-                                "activity",
+                        title = stringResource(R.string.sleep_section_activity_classification),
+                        summary = pluralStringResource(
+                            R.plurals.sleep_active_sources_classified,
+                            analysis.suspicionCandidates.size,
+                            analysis.suspicionCandidates.size,
+                        ),
+                        expanded = expandedDetailSection.value == "activity",
                         onToggle = {
-                            expandedDetailSection.value =
-                                if (
-                                    expandedDetailSection.value ==
-                                    "activity"
-                                ) {
-                                    null
-                                } else {
-                                    "activity"
-                                }
-                        }
+                            expandedDetailSection.value = if (
+                                expandedDetailSection.value == "activity"
+                            ) {
+                                null
+                            } else {
+                                "activity"
+                            }
+                        },
                     )
 
                     if (
-                        expandedDetailSection.value ==
-                        "activity"
+                        expandedDetailSection.value == "activity"
                     ) {
-                        Spacer(
-                            modifier =
-                                Modifier.height(8.dp)
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                        SuspicionRatingSection(
-                            candidates =
-                                analysis
-                                    .suspicionCandidates,
-                            detailLevel =
-                                detailLevel
-                        )
+                        SuspicionRatingSection(candidates = analysis.suspicionCandidates, detailLevel = detailLevel)
                     }
                 }
 
                 if (
-                    detailLevel !=
-                    DetailLevel.SIMPLE
+                    detailLevel != DetailLevel.SIMPLE
                 ) {
-                    Spacer(
-                        modifier =
-                            Modifier.height(10.dp)
-                    )
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     SleepDetailSectionButton(
-                        title =
-                            stringResource(
-                                R.string.sleep_section_quiet_phases_history
-                            ),
-                        summary =
-                            analysis.longestQuietPhase
-                                ?.let { phase ->
-                                    stringResource(
-                                        R.string.sleep_longest_rest_summary,
-                                        formatDurationCompact(
-                                            phase.durationMillis
-                                        )
-                                    )
-                                }
-                                ?: stringResource(
-                                    R.string.sleep_not_determinable
-                                ),
-                        expanded =
-                            expandedDetailSection.value ==
-                                "quiet",
+                        title = stringResource(R.string.sleep_section_quiet_phases_history),
+                        summary = analysis.longestQuietPhase
+                            ?.let { phase ->
+                                stringResource(
+                                    R.string.sleep_longest_rest_summary,
+                                    formatDurationCompact(phase.durationMillis),
+                                )
+                            }
+                            ?: stringResource(R.string.sleep_not_determinable),
+                        expanded = expandedDetailSection.value == "quiet",
                         onToggle = {
-                            expandedDetailSection.value =
-                                if (
-                                    expandedDetailSection.value ==
-                                    "quiet"
-                                ) {
-                                    null
-                                } else {
-                                    "quiet"
-                                }
-                        }
+                            expandedDetailSection.value = if (
+                                expandedDetailSection.value == "quiet"
+                            ) {
+                                null
+                            } else {
+                                "quiet"
+                            }
+                        },
                     )
 
                     if (
-                        expandedDetailSection.value ==
-                        "quiet"
+                        expandedDetailSection.value == "quiet"
                     ) {
-                        Spacer(
-                            modifier =
-                                Modifier.height(12.dp)
-                        )
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        QuietPhaseSection(
-                            analysis = analysis
-                        )
+                        QuietPhaseSection(analysis = analysis)
 
-                        Spacer(
-                            modifier =
-                                Modifier.height(14.dp)
-                        )
+                        Spacer(modifier = Modifier.height(14.dp))
 
                         HorizontalDivider()
 
-                        Spacer(
-                            modifier =
-                                Modifier.height(14.dp)
-                        )
+                        Spacer(modifier = Modifier.height(14.dp))
 
-                        HourlyActivityChart(
-                            activity =
-                                analysis.hourlyActivity
-                        )
+                        HourlyActivityChart(activity = analysis.hourlyActivity)
                     }
                 }
 
                 if (
-                    detailLevel ==
-                    DetailLevel.EXPERT
+                    detailLevel == DetailLevel.EXPERT
                 ) {
-                    Spacer(
-                        modifier =
-                            Modifier.height(10.dp)
-                    )
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     SleepDetailSectionButton(
-                        title =
-                            stringResource(
-                                R.string.sleep_technical_metrics
-                            ),
-                        summary =
-                            pluralStringResource(
-                                R.plurals.sleep_total_activities,
-                                analysis.totalWakeups,
-                                analysis.totalWakeups
-                            ),
-                        expanded =
-                            expandedDetailSection.value ==
-                                "technical",
+                        title = stringResource(R.string.sleep_technical_metrics),
+                        summary = pluralStringResource(
+                            R.plurals.sleep_total_activities,
+                            analysis.totalWakeups,
+                            analysis.totalWakeups,
+                        ),
+                        expanded = expandedDetailSection.value == "technical",
                         onToggle = {
-                            expandedDetailSection.value =
-                                if (
-                                    expandedDetailSection.value ==
-                                    "technical"
-                                ) {
-                                    null
-                                } else {
-                                    "technical"
-                                }
-                        }
+                            expandedDetailSection.value = if (
+                                expandedDetailSection.value == "technical"
+                            ) {
+                                null
+                            } else {
+                                "technical"
+                            }
+                        },
                     )
 
                     if (
-                        expandedDetailSection.value ==
-                        "technical"
+                        expandedDetailSection.value == "technical"
                     ) {
-                        Spacer(
-                            modifier =
-                                Modifier.height(12.dp)
-                        )
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        ExpertMetricsSection(
-                            analysis = analysis
-                        )
+                        ExpertMetricsSection(analysis = analysis)
                     }
                 }
 
                 if (
                     analysis.hints.isNotEmpty()
                 ) {
-                    val visibleHints =
-                        when (detailLevel) {
-                            DetailLevel.SIMPLE ->
-                                analysis.hints.take(1)
+                    val visibleHints = when (detailLevel) {
+                        DetailLevel.SIMPLE -> analysis.hints.take(1)
+                        DetailLevel.NORMAL -> analysis.hints.take(3)
+                        DetailLevel.EXPERT -> analysis.hints
+                    }
 
-                            DetailLevel.NORMAL ->
-                                analysis.hints.take(3)
-
-                            DetailLevel.EXPERT ->
-                                analysis.hints
-                        }
-
-                    Spacer(
-                        modifier =
-                            Modifier.height(10.dp)
-                    )
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     SleepDetailSectionButton(
-                        title =
-                            stringResource(
-                                R.string.sleep_section_hints
-                            ),
+                        title = stringResource(R.string.sleep_section_hints),
                         summary =
-                            pluralStringResource(
-                                R.plurals.sleep_hint_count,
-                                visibleHints.size,
-                                visibleHints.size
-                            ),
-                        expanded =
-                            expandedDetailSection.value ==
-                                "hints",
+                            pluralStringResource(R.plurals.sleep_hint_count, visibleHints.size, visibleHints.size),
+                        expanded = expandedDetailSection.value == "hints",
                         onToggle = {
-                            expandedDetailSection.value =
-                                if (
-                                    expandedDetailSection.value ==
-                                    "hints"
-                                ) {
-                                    null
-                                } else {
-                                    "hints"
-                                }
-                        }
+                            expandedDetailSection.value = if (
+                                expandedDetailSection.value == "hints"
+                            ) {
+                                null
+                            } else {
+                                "hints"
+                            }
+                        },
                     )
 
                     if (
-                        expandedDetailSection.value ==
-                        "hints"
+                        expandedDetailSection.value == "hints"
                     ) {
-                        Spacer(
-                            modifier =
-                                Modifier.height(12.dp)
-                        )
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        SleepHintsSection(
-                            hints = visibleHints
-                        )
+                        SleepHintsSection(hints = visibleHints)
                     }
                 }
-            
 
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text =
-                        stringResource(
-                            R.string.sleep_score_disclaimer
-                        ),
-                    color =
-                        MaterialTheme.colorScheme
-                            .onSurfaceVariant,
-                    style =
-                        MaterialTheme.typography
-                            .bodySmall
+                    text = stringResource(R.string.sleep_score_disclaimer),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
@@ -576,93 +395,61 @@ private fun SleepDetailSectionButton(
     title: String,
     summary: String,
     expanded: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
 ) {
     androidx.compose.material3.OutlinedButton(
         onClick = onToggle,
         modifier = Modifier.fillMaxWidth(),
-        border =
-            androidx.compose.foundation.BorderStroke(
-                1.dp,
-                if (expanded) {
-                    MaterialTheme.colorScheme.primary
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (expanded) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                androidx.compose.ui.graphics
+                    .Color(0xFF687181)
+            },
+        ),
+        colors = androidx.compose.material3.ButtonDefaults
+            .outlinedButtonColors(
+                containerColor = if (expanded) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
                 } else {
-                    androidx.compose.ui.graphics.Color(
-                        0xFF687181
-                    )
-                }
+                    androidx.compose.ui.graphics.Color.Transparent
+                },
+                contentColor = MaterialTheme.colorScheme.onSurface,
             ),
-        colors =
-            androidx.compose.material3.ButtonDefaults
-                .outlinedButtonColors(
-                    containerColor =
-                        if (expanded) {
-                            MaterialTheme.colorScheme
-                                .primary
-                                .copy(alpha = 0.16f)
-                        } else {
-                            androidx.compose.ui.graphics
-                                .Color.Transparent
-                        },
-                    contentColor =
-                        MaterialTheme.colorScheme
-                            .onSurface
-                )
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment =
-                Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) {
-                Text(
-                    text = title,
-                    style =
-                        MaterialTheme.typography
-                            .bodyMedium,
-                    fontWeight =
-                        FontWeight.SemiBold
-                )
+                Text(text = title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
 
-                Spacer(
-                    modifier =
-                        Modifier.height(2.dp)
-                )
+                Spacer(modifier = Modifier.height(2.dp))
 
                 Text(
                     text = summary,
-                    color =
-                        MaterialTheme.colorScheme
-                            .onSurfaceVariant,
-                    style =
-                        MaterialTheme.typography
-                            .labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
                     maxLines = 1,
-                    overflow =
-                        TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
 
-            Spacer(
-                modifier = Modifier.width(8.dp)
-            )
+            Spacer(modifier = Modifier.width(8.dp))
 
             Text(
-                text =
-                    if (expanded) {
-                        "−"
-                    } else {
-                        "+"
-                    },
-                color =
-                    MaterialTheme.colorScheme
-                        .primary,
-                style =
-                    MaterialTheme.typography
-                        .titleLarge,
-                fontWeight = FontWeight.Bold
+                text = if (expanded) {
+                    "−"
+                } else {
+                    "+"
+                },
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -671,92 +458,66 @@ private fun SleepDetailSectionButton(
 @Composable
 private fun SleepAnalysisPendingCard(
     monitoring: Boolean,
-    hasRecordedEvents: Boolean
+    hasRecordedEvents: Boolean,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor =
-                MaterialTheme.colorScheme
-                    .surfaceVariant
-                    .copy(alpha = 0.55f)
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
         ) {
             Text(
-                text =
-                    when {
-                        monitoring ->
-                            stringResource(
-                                R.string.sleep_pending_preparing
-                            )
+                text = when {
+                    monitoring -> {
+                        stringResource(R.string.sleep_pending_preparing)
+                    }
 
-                        hasRecordedEvents ->
-                            stringResource(
-                                R.string.sleep_pending_too_short
-                            )
+                    hasRecordedEvents -> {
+                        stringResource(R.string.sleep_pending_too_short)
+                    }
 
-                        else ->
-                            stringResource(
-                                R.string.sleep_no_analysis_yet
-                            )
-                    },
-                style =
-                    MaterialTheme.typography
-                        .titleMedium,
-                fontWeight = FontWeight.Bold
+                    else -> {
+                        stringResource(R.string.sleep_no_analysis_yet)
+                    }
+                },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
             )
 
-            Spacer(
-                modifier = Modifier.height(5.dp)
-            )
+            Spacer(modifier = Modifier.height(5.dp))
 
             Text(
-                text =
-                    when {
-                        monitoring ->
-                            stringResource(
-                                R.string.sleep_pending_preparing_hint
-                            )
+                text = when {
+                    monitoring -> {
+                        stringResource(R.string.sleep_pending_preparing_hint)
+                    }
 
-                        hasRecordedEvents ->
-                            stringResource(
-                                R.string.sleep_pending_too_short_hint
-                            )
+                    hasRecordedEvents -> {
+                        stringResource(R.string.sleep_pending_too_short_hint)
+                    }
 
-                        else ->
-                            stringResource(
-                                R.string.sleep_pending_start_hint
-                            )
-                    },
-                color =
-                    MaterialTheme.colorScheme
-                        .onSurfaceVariant,
-                style =
-                    MaterialTheme.typography
-                        .bodySmall
+                    else -> {
+                        stringResource(R.string.sleep_pending_start_hint)
+                    }
+                },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
             )
 
             if (monitoring) {
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)
                         .clip(
-                            RoundedCornerShape(50)
-                        )
-                        .background(
-                            MaterialTheme.colorScheme
-                                .primary
-                                .copy(alpha = 0.45f)
-                        )
+                            RoundedCornerShape(50),
+                        ).background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
+                        ),
                 )
             }
         }
@@ -764,68 +525,40 @@ private fun SleepAnalysisPendingCard(
 }
 
 @Composable
-private fun SleepAnalysisHeader(
-    analysis: SleepAnalysisData
-) {
+private fun SleepAnalysisHeader(analysis: SleepAnalysisData) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment =
-            Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
         ) {
             Text(
-                text =
-                    stringResource(
-                        R.string.sleep_header_title
-                    ),
-                style =
-                    MaterialTheme.typography
-                        .titleMedium,
-                fontWeight = FontWeight.Bold
+                text = stringResource(R.string.sleep_header_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
             )
 
-            Spacer(
-                modifier = Modifier.height(3.dp)
-            )
+            Spacer(modifier = Modifier.height(3.dp))
 
             Text(
                 text = analysis.window.title,
-                color =
-                    MaterialTheme.colorScheme
-                        .onSurfaceVariant,
-                style =
-                    MaterialTheme.typography
-                        .bodySmall
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
             )
 
             Text(
-                text =
-                    formatSleepWindow(
-                        analysis.window
-                    ),
-                color =
-                    MaterialTheme.colorScheme
-                        .onSurfaceVariant,
-                style =
-                    MaterialTheme.typography
-                        .bodySmall
+                text = formatSleepWindow(analysis.window),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
             )
         }
 
         Text(
-            text =
-                formatDurationCompact(
-                    analysis.window
-                        .durationMillis
-                ),
-            color =
-                MaterialTheme.colorScheme.primary,
-            style =
-                MaterialTheme.typography
-                    .titleMedium,
-            fontWeight = FontWeight.Bold
+            text = formatDurationCompact(analysis.window.durationMillis),
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -835,131 +568,84 @@ private fun SleepScoreCard(
     score: Int,
     rating: String,
     summary: String,
-    provisional: Boolean
+    provisional: Boolean,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor =
-                MaterialTheme.colorScheme
-                    .primaryContainer
-                    .copy(alpha = 0.55f)
-        )
+        colors =
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment =
-                    Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 ) {
                     Text(
-                        text =
-                            if (provisional) {
-                                stringResource(
-                                    R.string.sleep_provisional_rating,
-                                    rating
-                                )
-                            } else {
-                                rating
-                            },
-                        color =
-                            MaterialTheme.colorScheme
-                                .onPrimaryContainer,
-                        style =
-                            MaterialTheme.typography
-                                .titleMedium,
-                        fontWeight = FontWeight.Bold
+                        text = if (provisional) {
+                            stringResource(R.string.sleep_provisional_rating, rating)
+                        } else {
+                            rating
+                        },
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
                     )
 
-                    Spacer(
-                        modifier = Modifier.height(3.dp)
-                    )
+                    Spacer(modifier = Modifier.height(3.dp))
 
                     Text(
-                        text =
-                            if (provisional) {
-                                stringResource(
-                                    R.string.sleep_short_measurement_summary,
-                                    summary
-                                )
-                            } else {
-                                summary
-                            },
-                        color =
-                            MaterialTheme.colorScheme
-                                .onPrimaryContainer,
-                        style =
-                            MaterialTheme.typography
-                                .bodySmall
+                        text = if (provisional) {
+                            stringResource(R.string.sleep_short_measurement_summary, summary)
+                        } else {
+                            summary
+                        },
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
 
-                Spacer(
-                    modifier = Modifier.width(14.dp)
-                )
+                Spacer(modifier = Modifier.width(14.dp))
 
                 Column(
-                    horizontalAlignment =
-                        Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text =
-                            if (provisional) {
-                                "–"
-                            } else {
-                                score.toString()
-                            },
-                        color =
-                            MaterialTheme.colorScheme
-                                .primary,
-                        style =
-                            MaterialTheme.typography
-                                .headlineMedium,
-                        fontWeight = FontWeight.Bold
+                        text = if (provisional) {
+                            "–"
+                        } else {
+                            score.toString()
+                        },
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
                     )
 
                     Text(
-                        text =
-                            if (provisional) {
-                                stringResource(
-                                    R.string.sleep_provisional
-                                )
-                            } else {
-                                stringResource(
-                                    R.string.sleep_score_of_100
-                                )
-                            },
-                        color =
-                            MaterialTheme.colorScheme
-                                .onPrimaryContainer,
-                        style =
-                            MaterialTheme.typography
-                                .labelSmall
+                        text = if (provisional) {
+                            stringResource(R.string.sleep_provisional)
+                        } else {
+                            stringResource(R.string.sleep_score_of_100)
+                        },
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        style = MaterialTheme.typography.labelSmall,
                     )
                 }
             }
 
-            Spacer(
-                modifier = Modifier.height(12.dp)
-            )
+            Spacer(modifier = Modifier.height(12.dp))
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(9.dp)
-                    .clip(
-                        RoundedCornerShape(50)
-                    )
-                    .background(
-                        MaterialTheme.colorScheme
-                            .surfaceVariant
-                    )
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Box(
                     modifier = Modifier
@@ -967,22 +653,12 @@ private fun SleepScoreCard(
                             if (provisional) {
                                 0f
                             } else {
-                                score
-                                    .coerceIn(
-                                        0,
-                                        100
-                                    ) /
+                                score.coerceIn(0, 100) /
                                     100f
-                            }
-                        )
-                        .height(9.dp)
-                        .clip(
-                            RoundedCornerShape(50)
-                        )
-                        .background(
-                            MaterialTheme.colorScheme
-                                .primary
-                        )
+                            },
+                        ).height(9.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.primary),
                 )
             }
         }
@@ -990,89 +666,56 @@ private fun SleepScoreCard(
 }
 
 @Composable
-private fun SleepPrimaryValues(
-    analysis: SleepAnalysisData
-) {
-    val shortSession =
-        analysis.window.durationMillis <
-            15L * 60L * 1_000L
+private fun SleepPrimaryValues(analysis: SleepAnalysisData) {
+    val shortSession = analysis.window.durationMillis <
+        15L * 60L * 1_000L
 
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement =
-                Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             SleepMetricCard(
-                value =
-                    analysis.displayWakeups
-                        .toString(),
-                label =
-                    stringResource(
-                        R.string.sleep_metric_screen_on
-                    ),
-                modifier = Modifier.weight(1f)
+                value = analysis.displayWakeups.toString(),
+                label = stringResource(R.string.sleep_metric_screen_on),
+                modifier = Modifier.weight(1f),
             )
 
             SleepMetricCard(
-                value =
-                    analysis.cpuWakeups
-                        .toString(),
-                label =
-                    stringResource(
-                        R.string.sleep_metric_cpu_wakes
-                    ),
-                modifier = Modifier.weight(1f)
+                value = analysis.cpuWakeups.toString(),
+                label = stringResource(R.string.sleep_metric_cpu_wakes),
+                modifier = Modifier.weight(1f),
             )
 
             SleepMetricCard(
-                value =
-                    if (shortSession) {
-                        analysis.totalWakeups
-                            .toString()
-                    } else {
-                        formatDecimal(
-                            analysis.wakeupsPerHour
-                        )
-                    },
-                label =
-                    if (shortSession) {
-                        stringResource(
-                            R.string.sleep_metric_in_duration,
-                            formatDurationPrecise(
-                                analysis.window
-                                    .durationMillis
-                            )
-                        )
-                    } else {
-                        stringResource(
-                            R.string.sleep_metric_per_hour
-                        )
-                    },
-                modifier = Modifier.weight(1f)
+                value = if (shortSession) {
+                    analysis.totalWakeups.toString()
+                } else {
+                    formatDecimal(analysis.wakeupsPerHour)
+                },
+                label = if (shortSession) {
+                    stringResource(
+                        R.string.sleep_metric_in_duration,
+                        formatDurationPrecise(analysis.window.durationMillis),
+                    )
+                } else {
+                    stringResource(R.string.sleep_metric_per_hour)
+                },
+                modifier = Modifier.weight(1f),
             )
         }
 
         if (shortSession) {
-            Spacer(
-                modifier = Modifier.height(7.dp)
-            )
+            Spacer(modifier = Modifier.height(7.dp))
 
             Text(
-                text =
-                    stringResource(
-                        R.string.sleep_hourly_value_note
-                    ),
+                text = stringResource(R.string.sleep_hourly_value_note),
                 modifier = Modifier.fillMaxWidth(),
-                color =
-                    MaterialTheme.colorScheme
-                        .onSurfaceVariant,
-                style =
-                    MaterialTheme.typography
-                        .labelSmall,
-                textAlign = TextAlign.End
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.End,
             )
         }
     }
@@ -1082,48 +725,30 @@ private fun SleepPrimaryValues(
 private fun SleepMetricCard(
     value: String,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor =
-                MaterialTheme.colorScheme
-                    .surfaceVariant
-                    .copy(alpha = 0.55f)
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = 6.dp,
-                    vertical = 12.dp
-                ),
-            horizontalAlignment =
-                Alignment.CenterHorizontally
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = value,
-                color =
-                    MaterialTheme.colorScheme.primary,
-                style =
-                    MaterialTheme.typography
-                        .titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
 
             Text(
                 text = label,
-                color =
-                    MaterialTheme.colorScheme
-                        .onSurfaceVariant,
-                style =
-                    MaterialTheme.typography
-                        .labelSmall,
-                textAlign = TextAlign.Center
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -1132,227 +757,109 @@ private fun SleepMetricCard(
 @Composable
 private fun NetworkSessionSection(
     summary: NetworkSessionSummary,
-    detailLevel: DetailLevel
+    detailLevel: DetailLevel,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor =
-                MaterialTheme.colorScheme
-                    .surfaceVariant
-                    .copy(alpha = 0.48f)
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f)),
     ) {
         Column(
-            modifier = Modifier.padding(14.dp)
+            modifier = Modifier.padding(14.dp),
         ) {
             Text(
-                text =
-                    stringResource(
-                        R.string.sleep_network_during_session
-                    ),
-                style =
-                    MaterialTheme.typography
-                        .titleSmall,
-                fontWeight = FontWeight.Bold
+                text = stringResource(R.string.sleep_network_during_session),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
             )
 
-            Spacer(
-                modifier = Modifier.height(8.dp)
-            )
+            Spacer(modifier = Modifier.height(8.dp))
 
             summary.total
-                ?.let { total ->
-                    SleepValueRow(
-                        label =
-                            stringResource(
-                                R.string.sleep_data_traffic
-                            ),
-                        value = total
-                    )
-                }
+                ?.let { total -> SleepValueRow(label = stringResource(R.string.sleep_data_traffic), value = total) }
 
             summary.activeApps
                 ?.let { activeApps ->
-                    SleepValueRow(
-                        label =
-                            stringResource(
-                                R.string.sleep_active_apps
-                            ),
-                        value =
-                            activeApps.toString()
-                    )
+                    SleepValueRow(label = stringResource(R.string.sleep_active_apps), value = activeApps.toString())
                 }
 
             if (
-                detailLevel !=
-                DetailLevel.SIMPLE
+                detailLevel != DetailLevel.SIMPLE
             ) {
                 summary.received
                     ?.let { received ->
-                        SleepValueRow(
-                            label =
-                                stringResource(
-                                    R.string.sleep_received
-                                ),
-                            value = received
-                        )
+                        SleepValueRow(label = stringResource(R.string.sleep_received), value = received)
                     }
 
-                summary.sent
-                    ?.let { sent ->
-                        SleepValueRow(
-                            label =
-                                stringResource(
-                                    R.string.sleep_sent
-                                ),
-                            value = sent
-                        )
-                    }
+                summary.sent?.let { sent -> SleepValueRow(label = stringResource(R.string.sleep_sent), value = sent) }
 
                 summary.duration
                     ?.let { duration ->
-                        SleepValueRow(
-                            label =
-                                stringResource(
-                                    R.string.sleep_measurement_duration
-                                ),
-                            value = duration
-                        )
+                        SleepValueRow(label = stringResource(R.string.sleep_measurement_duration), value = duration)
                     }
             }
 
-            val visibleApps =
-                when (detailLevel) {
-                    DetailLevel.SIMPLE ->
-                        summary.topApps.take(1)
-
-                    DetailLevel.NORMAL ->
-                        summary.topApps.take(3)
-
-                    DetailLevel.EXPERT ->
-                        summary.topApps.take(5)
-                }
+            val visibleApps = when (detailLevel) {
+                DetailLevel.SIMPLE -> summary.topApps.take(1)
+                DetailLevel.NORMAL -> summary.topApps.take(3)
+                DetailLevel.EXPERT -> summary.topApps.take(5)
+            }
 
             if (visibleApps.isNotEmpty()) {
-                Spacer(
-                    modifier = Modifier.height(8.dp)
-                )
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text =
-                        pluralStringResource(
-                            R.plurals.sleep_most_active_apps,
-                            visibleApps.size
-                        ),
-                    color =
-                        MaterialTheme.colorScheme
-                            .onSurfaceVariant,
-                    style =
-                        MaterialTheme.typography
-                            .labelMedium,
-                    fontWeight = FontWeight.Bold
+                    text = pluralStringResource(R.plurals.sleep_most_active_apps, visibleApps.size),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
                 )
 
-                Spacer(
-                    modifier = Modifier.height(4.dp)
-                )
+                Spacer(modifier = Modifier.height(4.dp))
 
                 visibleApps.forEach { app ->
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 3.dp),
-                        verticalAlignment =
-                            Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text =
-                                app.name,
-                            modifier =
-                                Modifier.weight(1f),
-                            color =
-                                MaterialTheme
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .bodySmall,
+                            text = app.name,
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
-                            overflow =
-                                TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
 
-                        Spacer(
-                            modifier =
-                                Modifier.width(10.dp)
-                        )
+                        Spacer(modifier = Modifier.width(10.dp))
 
                         Text(
                             text = app.total,
-                            color =
-                                MaterialTheme
-                                    .colorScheme
-                                    .primary,
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .bodySmall,
-                            fontWeight =
-                                FontWeight.Bold
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
                         )
                     }
 
                     if (
-                        detailLevel ==
-                        DetailLevel.EXPERT &&
-                        (
-                            app.received != null ||
-                                app.sent != null
-                        )
+                        detailLevel == DetailLevel.EXPERT && (app.received != null || app.sent != null)
                     ) {
                         Text(
                             text = buildString {
-                                app.received
-                                    ?.let {
-                                        append(
-                                            stringResource(
-                                                R.string.sleep_received_value,
-                                                it
-                                            )
-                                        )
-                                    }
+                                app.received?.let { append(stringResource(R.string.sleep_received_value, it)) }
 
                                 if (
-                                    app.received != null &&
-                                    app.sent != null
+                                    app.received != null && app.sent != null
                                 ) {
                                     append(" · ")
                                 }
 
-                                app.sent
-                                    ?.let {
-                                        append(
-                                            stringResource(
-                                                R.string.sleep_sent_value,
-                                                it
-                                            )
-                                        )
-                                    }
+                                app.sent?.let { append(stringResource(R.string.sleep_sent_value, it)) }
                             },
-                            modifier =
-                                Modifier.fillMaxWidth(),
-                            color =
-                                MaterialTheme
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .labelSmall,
-                            textAlign = TextAlign.End
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelSmall,
+                            textAlign = TextAlign.End,
                         )
                     }
                 }
@@ -1361,41 +868,22 @@ private fun NetworkSessionSection(
             summary.message
                 ?.takeIf {
                     it.isNotBlank()
-                }
-                ?.let { message ->
-                    Spacer(
-                        modifier =
-                            Modifier.height(6.dp)
-                    )
+                }?.let { message ->
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
                         text = message,
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .onSurfaceVariant,
-                        style =
-                            MaterialTheme
-                                .typography
-                                .bodySmall
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
 
-            Spacer(
-                modifier = Modifier.height(7.dp)
-            )
+            Spacer(modifier = Modifier.height(7.dp))
 
             Text(
-                text =
-                    stringResource(
-                        R.string.sleep_network_traffic_disclaimer
-                    ),
-                color =
-                    MaterialTheme.colorScheme
-                        .onSurfaceVariant,
-                style =
-                    MaterialTheme.typography
-                        .labelSmall
+                text = stringResource(R.string.sleep_network_traffic_disclaimer),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
     }
@@ -1404,197 +892,112 @@ private fun NetworkSessionSection(
 @Composable
 private fun SuspicionRatingSection(
     candidates: List<SuspicionCandidate>,
-    detailLevel: DetailLevel
+    detailLevel: DetailLevel,
 ) {
-    val showAllSources =
-        androidx.compose.runtime.remember(
-            candidates
-        ) {
-            androidx.compose.runtime
-                .mutableStateOf(false)
-        }
+    val showAllSources = androidx.compose.runtime.remember(
+        candidates,
+    ) {
+        androidx.compose.runtime.mutableStateOf(false)
+    }
 
     val compactLimit = 3
 
-    val visibleCandidates =
-        if (showAllSources.value) {
-            candidates
-        } else {
-            candidates.take(compactLimit)
-        }
+    val visibleCandidates = if (showAllSources.value) {
+        candidates
+    } else {
+        candidates.take(compactLimit)
+    }
 
-    val hiddenCount =
-        (candidates.size -
-            visibleCandidates.size)
-            .coerceAtLeast(0)
+    val hiddenCount = (candidates.size - visibleCandidates.size).coerceAtLeast(0)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor =
-                MaterialTheme.colorScheme
-                    .surfaceVariant
-                    .copy(alpha = 0.48f)
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f)),
     ) {
         Column(
-            modifier = Modifier.padding(14.dp)
+            modifier = Modifier.padding(14.dp),
         ) {
             Text(
-                text =
-                    stringResource(
-                        R.string.sleep_section_activity_classification
-                    ),
-                style =
-                    MaterialTheme.typography
-                        .titleSmall,
-                fontWeight = FontWeight.Bold
+                text = stringResource(R.string.sleep_section_activity_classification),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
             )
 
-            Spacer(
-                modifier = Modifier.height(4.dp)
-            )
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text =
-                    stringResource(
-                        R.string.sleep_activity_classification_intro
-                    ),
-                color =
-                    MaterialTheme.colorScheme
-                        .onSurfaceVariant,
-                style =
-                    MaterialTheme.typography
-                        .bodySmall
+                text = stringResource(R.string.sleep_activity_classification_intro),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
             )
 
-            Spacer(
-                modifier = Modifier.height(10.dp)
-            )
+            Spacer(modifier = Modifier.height(10.dp))
 
             visibleCandidates
                 .forEachIndexed {
-                        index,
-                        candidate ->
+                    index,
+                    candidate,
+                    ->
 
                     Text(
                         text = candidate.name,
-                        modifier =
-                            Modifier.fillMaxWidth(),
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .onSurface,
-                        style =
-                            MaterialTheme
-                                .typography
-                                .bodyMedium,
-                        fontWeight =
-                            FontWeight.SemiBold
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
                     )
 
-                    Spacer(
-                        modifier =
-                            Modifier.height(2.dp)
-                    )
+                    Spacer(modifier = Modifier.height(2.dp))
 
                     Text(
-                        text =
-                            stringResource(
-                                candidate.level.labelRes
-                            ),
-                        modifier =
-                            Modifier.fillMaxWidth(),
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .primary,
-                        style =
-                            MaterialTheme
-                                .typography
-                                .labelMedium,
-                        fontWeight =
-                            FontWeight.Bold
+                        text = stringResource(candidate.level.labelRes),
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
                     )
 
-                    Spacer(
-                        modifier =
-                            Modifier.height(5.dp)
-                    )
+                    Spacer(modifier = Modifier.height(5.dp))
 
                     Text(
-                        text =
-                            candidate.explanation,
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .onSurfaceVariant,
-                        style =
-                            MaterialTheme
-                                .typography
-                                .bodySmall
+                        text = candidate.explanation,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
                     )
 
                     if (
-                        detailLevel ==
-                        DetailLevel.EXPERT
+                        detailLevel == DetailLevel.EXPERT
                     ) {
-                        val technicalText =
-                            buildString {
-                                if (
-                                    candidate
-                                        .cpuOccurrences >
-                                    0
-                                ) {
-                                    append(
-                                        stringResource(
-                                            R.string.sleep_cpu_attributions,
-                                            candidate
-                                                .cpuOccurrences
-                                        )
-                                    )
-                                }
-
-                                candidate
-                                    .networkTraffic
-                                    ?.let { traffic ->
-                                        if (isNotEmpty()) {
-                                            append(" · ")
-                                        }
-
-                                        append(
-                                            stringResource(
-                                                R.string.sleep_network_value,
-                                                traffic
-                                            )
-                                        )
-                                    }
+                        val technicalText = buildString {
+                            if (
+                                candidate.cpuOccurrences >
+                                0
+                            ) {
+                                append(stringResource(R.string.sleep_cpu_attributions, candidate.cpuOccurrences))
                             }
 
+                            candidate
+                                .networkTraffic
+                                ?.let { traffic ->
+                                    if (isNotEmpty()) {
+                                        append(" · ")
+                                    }
+
+                                    append(stringResource(R.string.sleep_network_value, traffic))
+                                }
+                        }
+
                         if (
-                            technicalText
-                                .isNotBlank()
+                            technicalText.isNotBlank()
                         ) {
-                            Spacer(
-                                modifier =
-                                    Modifier.height(2.dp)
-                            )
+                            Spacer(modifier = Modifier.height(2.dp))
 
                             Text(
-                                text =
-                                    technicalText,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth(),
-                                color =
-                                    MaterialTheme
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                                style =
-                                    MaterialTheme
-                                        .typography
-                                        .labelSmall
+                                text = technicalText,
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelSmall,
                             )
                         }
                     }
@@ -1603,326 +1006,187 @@ private fun SuspicionRatingSection(
                         index <
                         visibleCandidates.lastIndex
                     ) {
-                        Spacer(
-                            modifier =
-                                Modifier.height(9.dp)
-                        )
+                        Spacer(modifier = Modifier.height(9.dp))
 
                         HorizontalDivider()
 
-                        Spacer(
-                            modifier =
-                                Modifier.height(9.dp)
-                        )
+                        Spacer(modifier = Modifier.height(9.dp))
                     }
                 }
 
             if (candidates.size > compactLimit) {
-                Spacer(
-                    modifier = Modifier.height(10.dp)
-                )
+                Spacer(modifier = Modifier.height(10.dp))
 
                 androidx.compose.material3
                     .OutlinedButton(
                         onClick = {
-                            showAllSources.value =
-                                !showAllSources.value
+                            showAllSources.value = !showAllSources.value
                         },
-                        modifier =
-                            Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
-                            text =
-                                if (showAllSources.value) {
-                                    stringResource(
-                                        R.string.sleep_show_less
-                                    )
-                                } else {
-                                    pluralStringResource(
-                                        R.plurals.sleep_show_more,
-                                        hiddenCount,
-                                        hiddenCount
-                                    )
-                                }
+                            text = if (showAllSources.value) {
+                                stringResource(R.string.sleep_show_less)
+                            } else {
+                                pluralStringResource(R.plurals.sleep_show_more, hiddenCount, hiddenCount)
+                            },
                         )
                     }
             }
 
-            Spacer(
-                modifier = Modifier.height(9.dp)
-            )
+            Spacer(modifier = Modifier.height(9.dp))
 
             Text(
-                text =
-                    stringResource(
-                        R.string.sleep_activity_classification_disclaimer
-                    ),
-                color =
-                    MaterialTheme.colorScheme
-                        .onSurfaceVariant,
-                style =
-                    MaterialTheme.typography
-                        .labelSmall
+                text = stringResource(R.string.sleep_activity_classification_disclaimer),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
     }
 }
 
 @Composable
-private fun QuietPhaseSection(
-    analysis: SleepAnalysisData
-) {
+private fun QuietPhaseSection(analysis: SleepAnalysisData) {
     Text(
-        text =
-            stringResource(
-                R.string.sleep_quiet_phases
-            ),
-        style =
-            MaterialTheme.typography
-                .titleSmall,
-        fontWeight = FontWeight.Bold
+        text = stringResource(R.string.sleep_quiet_phases),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
     )
 
-    Spacer(
-        modifier = Modifier.height(10.dp)
-    )
+    Spacer(modifier = Modifier.height(10.dp))
 
     SleepValueRow(
-        label =
-            stringResource(
-                R.string.sleep_longest_quiet_phase
-            ),
-        value =
-            analysis.longestQuietPhase
-                ?.let {
-                    formatDurationCompact(
-                        it.durationMillis
-                    )
-                }
-                ?: stringResource(
-                    R.string.sleep_not_determinable
-                )
+        label = stringResource(R.string.sleep_longest_quiet_phase),
+        value = analysis.longestQuietPhase?.let { formatDurationCompact(it.durationMillis) }
+            ?: stringResource(R.string.sleep_not_determinable),
     )
 
     analysis.secondLongestQuietPhase
         ?.let { phase ->
             SleepValueRow(
-                label =
-                    stringResource(
-                        R.string.sleep_second_longest_quiet_phase
-                    ),
-                value =
-                    formatDurationCompact(
-                        phase.durationMillis
-                    )
+                label = stringResource(R.string.sleep_second_longest_quiet_phase),
+                value = formatDurationCompact(phase.durationMillis),
             )
         }
 
     SleepValueRow(
-        label =
-            stringResource(
-                R.string.sleep_average_quiet_phase
-            ),
-        value =
-            if (
-                analysis.averageQuietMillis >
-                0L
-            ) {
-                formatDurationCompact(
-                    analysis.averageQuietMillis
-                )
-            } else {
-                stringResource(
-                    R.string.sleep_not_determinable
-                )
-            }
+        label = stringResource(R.string.sleep_average_quiet_phase),
+        value = if (
+            analysis.averageQuietMillis >
+            0L
+        ) {
+            formatDurationCompact(analysis.averageQuietMillis)
+        } else {
+            stringResource(R.string.sleep_not_determinable)
+        },
     )
 
     analysis.longestQuietPhase
         ?.let { phase ->
-            Spacer(
-                modifier = Modifier.height(6.dp)
-            )
+            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text =
-                    stringResource(
-                        R.string.sleep_longest_phase_range,
-                        formatTime(
-                            phase.startMillis
-                        ),
-                        formatTime(
-                            phase.endMillis
-                        )
-                    ),
-                color =
-                    MaterialTheme.colorScheme
-                        .onSurfaceVariant,
-                style =
-                    MaterialTheme.typography
-                        .bodySmall
+                text = stringResource(
+                    R.string.sleep_longest_phase_range,
+                    formatTime(phase.startMillis),
+                    formatTime(phase.endMillis),
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
             )
         }
 }
 
 @Composable
-private fun HourlyActivityChart(
-    activity: List<HourActivity>
-) {
+private fun HourlyActivityChart(activity: List<HourActivity>) {
     Text(
-        text =
-            stringResource(
-                R.string.sleep_activity_history
-            ),
-        style =
-            MaterialTheme.typography
-                .titleSmall,
-        fontWeight = FontWeight.Bold
+        text = stringResource(R.string.sleep_activity_history),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
     )
 
-    Spacer(
-        modifier = Modifier.height(4.dp)
-    )
+    Spacer(modifier = Modifier.height(4.dp))
 
     Text(
-        text =
-            stringResource(
-                R.string.sleep_activity_history_hint
-            ),
-        color =
-            MaterialTheme.colorScheme
-                .onSurfaceVariant,
-        style =
-            MaterialTheme.typography
-                .bodySmall
+        text = stringResource(R.string.sleep_activity_history_hint),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodySmall,
     )
 
-    Spacer(
-        modifier = Modifier.height(12.dp)
-    )
+    Spacer(modifier = Modifier.height(12.dp))
 
     if (activity.isEmpty()) {
         Text(
-            text =
-                stringResource(
-                    R.string.sleep_activity_history_empty
-                ),
-            color =
-                MaterialTheme.colorScheme
-                    .onSurfaceVariant,
-            style =
-                MaterialTheme.typography
-                    .bodySmall
+            text = stringResource(R.string.sleep_activity_history_empty),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
         )
 
         return
     }
 
-    val visible =
-        activity.takeLast(12)
+    val visible = activity.takeLast(12)
 
-    val highest =
-        max(
-            1,
-            visible.maxOfOrNull {
-                it.total
-            } ?: 1
-        )
+    val highest = max(
+        1,
+        visible.maxOfOrNull {
+            it.total
+        } ?: 1,
+    )
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 94.dp),
-        horizontalArrangement =
-            Arrangement.spacedBy(5.dp),
-        verticalAlignment =
-            Alignment.Bottom
+        modifier = Modifier.fillMaxWidth().heightIn(min = 94.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.Bottom,
     ) {
         visible.forEach { item ->
-            val height =
-                if (item.total == 0) {
-                    5.dp
-                } else {
-                    (
-                        14 +
-                            54 *
-                            (
-                                item.total.toFloat() /
-                                    highest.toFloat()
-                            )
-                    ).dp
-                }
+            val height = if (item.total == 0) {
+                5.dp
+            } else {
+                (14 + 54 * (item.total.toFloat() / highest.toFloat())).dp
+            }
 
             Column(
                 modifier = Modifier.weight(1f),
-                horizontalAlignment =
-                    Alignment.CenterHorizontally,
-                verticalArrangement =
-                    Arrangement.Bottom
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom,
             ) {
                 Text(
-                    text =
-                        if (item.total > 0) {
-                            item.total.toString()
-                        } else {
-                            ""
-                        },
-                    color =
-                        MaterialTheme.colorScheme
-                            .onSurfaceVariant,
-                    style =
-                        MaterialTheme.typography
-                            .labelSmall,
-                    maxLines = 1
+                    text = if (item.total > 0) {
+                        item.total.toString()
+                    } else {
+                        ""
+                    },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
                 )
 
-                Spacer(
-                    modifier = Modifier.height(3.dp)
-                )
+                Spacer(modifier = Modifier.height(3.dp))
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(height)
                         .clip(
-                            RoundedCornerShape(
-                                topStart = 5.dp,
-                                topEnd = 5.dp
-                            )
-                        )
-                        .background(
+                            RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp),
+                        ).background(
                             if (
                                 item.total > 0
                             ) {
-                                MaterialTheme
-                                    .colorScheme
-                                    .primary
+                                MaterialTheme.colorScheme.primary
                             } else {
-                                MaterialTheme
-                                    .colorScheme
-                                    .surfaceVariant
-                            }
-                        )
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                        ),
                 )
 
-                Spacer(
-                    modifier = Modifier.height(4.dp)
-                )
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text =
-                        item.hour
-                            .toString()
-                            .padStart(
-                                2,
-                                '0'
-                            ),
-                    color =
-                        MaterialTheme.colorScheme
-                            .onSurfaceVariant,
-                    style =
-                        MaterialTheme.typography
-                            .labelSmall
+                    text = item.hour.toString().padStart(2, '0'),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
                 )
             }
         }
@@ -1930,69 +1194,34 @@ private fun HourlyActivityChart(
 }
 
 @Composable
-private fun ExpertMetricsSection(
-    analysis: SleepAnalysisData
-) {
+private fun ExpertMetricsSection(analysis: SleepAnalysisData) {
     Text(
-        text =
-            stringResource(
-                R.string.sleep_technical_metrics
-            ),
-        style =
-            MaterialTheme.typography
-                .titleSmall,
-        fontWeight = FontWeight.Bold
+        text = stringResource(R.string.sleep_technical_metrics),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
     )
 
-    Spacer(
-        modifier = Modifier.height(8.dp)
+    Spacer(modifier = Modifier.height(8.dp))
+
+    SleepValueRow(
+        label = stringResource(R.string.sleep_attributed_display_wakeups),
+        value = analysis.explainedDisplayWakeups.toString(),
     )
 
     SleepValueRow(
-        label =
-            stringResource(
-                R.string.sleep_attributed_display_wakeups
-            ),
-        value =
-            analysis
-                .explainedDisplayWakeups
-                .toString()
+        label = stringResource(R.string.sleep_unexplained_display_wakeups),
+        value = analysis.unexplainedDisplayWakeups.toString(),
     )
 
     SleepValueRow(
-        label =
-            stringResource(
-                R.string.sleep_unexplained_display_wakeups
-            ),
-        value =
-            analysis
-                .unexplainedDisplayWakeups
-                .toString()
+        label = stringResource(R.string.sleep_total_activities_label),
+        value = analysis.totalWakeups.toString(),
     )
 
     SleepValueRow(
-        label =
-            stringResource(
-                R.string.sleep_total_activities_label
-            ),
-        value =
-            analysis.totalWakeups
-                .toString()
-    )
-
-    SleepValueRow(
-        label =
-            stringResource(
-                R.string.sleep_average_activity_distance
-            ),
-        value =
-            analysis.averageWakeDistanceMillis
-                ?.let {
-                    formatDurationCompact(it)
-                }
-                ?: stringResource(
-                    R.string.sleep_not_determinable
-                )
+        label = stringResource(R.string.sleep_average_activity_distance),
+        value = analysis.averageWakeDistanceMillis?.let { formatDurationCompact(it) }
+            ?: stringResource(R.string.sleep_not_determinable),
     )
 
     if (
@@ -2000,101 +1229,55 @@ private fun ExpertMetricsSection(
         15L * 60L * 1_000L
     ) {
         SleepValueRow(
-            label =
-                stringResource(
-                    R.string.sleep_short_measurement_period
-                ),
-            value =
-                pluralStringResource(
-                    R.plurals.sleep_events_in_duration,
-                    analysis.totalWakeups,
-                    analysis.totalWakeups,
-                    formatDurationPrecise(
-                        analysis.window
-                            .durationMillis
-                    )
-                )
+            label = stringResource(R.string.sleep_short_measurement_period),
+            value = pluralStringResource(
+                R.plurals.sleep_events_in_duration,
+                analysis.totalWakeups,
+                analysis.totalWakeups,
+                formatDurationPrecise(analysis.window.durationMillis),
+            ),
         )
     } else {
         analysis.busiestHour
             ?.let { hour ->
                 SleepValueRow(
-                    label =
-                        stringResource(
-                            R.string.sleep_busiest_hour
-                        ),
-                    value =
-                        pluralStringResource(
-                            R.plurals.sleep_busiest_hour_value,
-                            hour.total,
-                            hour.hour
-                                .toString()
-                                .padStart(
-                                    2,
-                                    '0'
-                                ),
-                            (
-                                (hour.hour + 1) % 24
-                            )
-                                .toString()
-                                .padStart(
-                                    2,
-                                    '0'
-                                ),
-                            hour.total
-                        )
+                    label = stringResource(R.string.sleep_busiest_hour),
+                    value = pluralStringResource(
+                        R.plurals.sleep_busiest_hour_value,
+                        hour.total,
+                        hour.hour.toString().padStart(2, '0'),
+                        ((hour.hour + 1) % 24).toString().padStart(2, '0'),
+                        hour.total,
+                    ),
                 )
             }
     }
 }
 
 @Composable
-private fun SleepHintsSection(
-    hints: List<String>
-) {
+private fun SleepHintsSection(hints: List<String>) {
     Text(
-        text =
-            stringResource(
-                R.string.sleep_classification
-            ),
-        style =
-            MaterialTheme.typography
-                .titleSmall,
-        fontWeight = FontWeight.Bold
+        text = stringResource(R.string.sleep_classification),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
     )
 
-    Spacer(
-        modifier = Modifier.height(8.dp)
-    )
+    Spacer(modifier = Modifier.height(8.dp))
 
     hints.forEach { hint ->
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 3.dp),
-            verticalAlignment =
-                Alignment.Top
+            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-            Text(
-                text = "•",
-                color =
-                    MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
+            Text(text = "•", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
 
-            Spacer(
-                modifier = Modifier.width(8.dp)
-            )
+            Spacer(modifier = Modifier.width(8.dp))
 
             Text(
                 text = hint,
                 modifier = Modifier.weight(1f),
-                color =
-                    MaterialTheme.colorScheme
-                        .onSurfaceVariant,
-                style =
-                    MaterialTheme.typography
-                        .bodySmall
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }
@@ -2103,39 +1286,27 @@ private fun SleepHintsSection(
 @Composable
 private fun SleepValueRow(
     label: String,
-    value: String
+    value: String,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment =
-            Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
             modifier = Modifier.weight(1f),
-            color =
-                MaterialTheme.colorScheme
-                    .onSurfaceVariant,
-            style =
-                MaterialTheme.typography
-                    .bodyMedium
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
         )
 
-        Spacer(
-            modifier = Modifier.width(10.dp)
-        )
+        Spacer(modifier = Modifier.width(10.dp))
 
         Text(
             text = value,
-            color =
-                MaterialTheme.colorScheme.primary,
-            style =
-                MaterialTheme.typography
-                    .bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.End
+            textAlign = TextAlign.End,
         )
     }
 }
@@ -2145,243 +1316,146 @@ private fun buildSleepAnalysis(
     renderer: EventTextRenderer,
     labels: SourceLabelResolver,
     events: List<RecordedEvent>,
-    session: MonitoringSessionEntity?
+    session: MonitoringSessionEntity?,
 ): SleepAnalysisData {
-    val window =
-        sleepAnalysisWindow(
-            context = context,
-            session = session
-        )
+    val window = sleepAnalysisWindow(context = context, session = session)
 
     // The final network measurement is written just after the stop
     // request, so it belongs to the session even outside its bounds.
-    val networkSession =
-        events
-            .filterIsInstance<NetworkSessionEvent>()
-            .maxByOrNull { it.occurredAt }
-            ?.let {
-                networkSessionSummary(
-                    context = context,
-                    renderer = renderer,
-                    labels = labels,
-                    measurement = it.measurement
-                )
-            }
-
-    val relevantEvents =
-        events
-            .asSequence()
-            .filter { event ->
-                event.occurredAt >=
-                    window.startMillis &&
-                    event.occurredAt <=
-                        window.endMillis
-            }
-            .sortedBy {
-                it.occurredAt
-            }
-            .toList()
-
-    val displayEvents =
-        relevantEvents.filterIsInstance<ScreenOnEvent>()
-
-    val cpuEvents =
-        relevantEvents.filterIsInstance<CpuWakeupEvent>()
-
-    val wakeEvents =
-        relevantEvents.filter {
-            it is ScreenOnEvent ||
-                it is CpuWakeupEvent
+    val networkSession = events
+        .filterIsInstance<NetworkSessionEvent>()
+        .maxByOrNull { it.occurredAt }
+        ?.let {
+            networkSessionSummary(context = context, renderer = renderer, labels = labels, measurement = it.measurement)
         }
 
-    val suspicionCandidates =
-        buildSuspicionCandidates(
-            context = context,
-            labels = labels,
-            cpuEvents = cpuEvents,
-            networkSession =
-                networkSession
-        )
+    val relevantEvents = events
+        .asSequence()
+        .filter { event ->
+            event.occurredAt >= window.startMillis && event.occurredAt <= window.endMillis
+        }.sortedBy {
+            it.occurredAt
+        }.toList()
 
-    val explainedDisplay =
-        displayEvents.count {
-            CauseAssessment.hasExplanationOrHint(it)
-        }
+    val displayEvents = relevantEvents.filterIsInstance<ScreenOnEvent>()
 
-    val unexplainedDisplay =
-        displayEvents.count {
-            CauseAssessment.isUnexplained(it)
-        }
+    val cpuEvents = relevantEvents.filterIsInstance<CpuWakeupEvent>()
 
-    val quietPhases =
-        buildQuietPhases(
-            window = window,
-            wakeEvents = wakeEvents
-        )
+    val wakeEvents = relevantEvents.filter { it is ScreenOnEvent || it is CpuWakeupEvent }
 
-    val sortedQuietPhases =
-        quietPhases.sortedByDescending {
-            it.durationMillis
-        }
+    val suspicionCandidates = buildSuspicionCandidates(
+        context = context,
+        labels = labels,
+        cpuEvents = cpuEvents,
+        networkSession = networkSession,
+    )
 
-    val averageQuietMillis =
-        if (quietPhases.isNotEmpty()) {
-            quietPhases
-                .map {
-                    it.durationMillis
-                }
-                .average()
-                .roundToInt()
-                .toLong()
-        } else {
-            0L
-        }
+    val explainedDisplay = displayEvents.count { CauseAssessment.hasExplanationOrHint(it) }
 
-    val averageWakeDistance =
-        wakeEvents
-            .zipWithNext()
+    val unexplainedDisplay = displayEvents.count { CauseAssessment.isUnexplained(it) }
+
+    val quietPhases = buildQuietPhases(window = window, wakeEvents = wakeEvents)
+
+    val sortedQuietPhases = quietPhases.sortedByDescending { it.durationMillis }
+
+    val averageQuietMillis = if (quietPhases.isNotEmpty()) {
+        quietPhases
             .map {
-                (first, second) ->
+                it.durationMillis
+            }.average()
+            .roundToInt()
+            .toLong()
+    } else {
+        0L
+    }
 
-                second.occurredAt -
-                    first.occurredAt
-            }
-            .takeIf {
-                it.isNotEmpty()
-            }
-            ?.average()
-            ?.roundToInt()
-            ?.toLong()
+    val averageWakeDistance = wakeEvents
+        .zipWithNext()
+        .map { (first, second) ->
 
-    val hourlyActivity =
-        buildHourlyActivity(
-            window = window,
-            displayEvents = displayEvents,
-            cpuEvents = cpuEvents
+            second.occurredAt -
+                first.occurredAt
+        }.takeIf {
+            it.isNotEmpty()
+        }?.average()
+        ?.roundToInt()
+        ?.toLong()
+
+    val hourlyActivity = buildHourlyActivity(window = window, displayEvents = displayEvents, cpuEvents = cpuEvents)
+
+    val busiestHour = hourlyActivity
+        .filter {
+            it.total > 0
+        }.maxWithOrNull(
+            compareBy<HourActivity> {
+                it.total
+            }.thenByDescending {
+                it.hour
+            },
         )
 
-    val busiestHour =
-        hourlyActivity
-            .filter {
-                it.total > 0
-            }
-            .maxWithOrNull(
-                compareBy<HourActivity> {
-                    it.total
-                }.thenByDescending {
-                    it.hour
-                }
-            )
+    val durationHours = window.durationMillis.toDouble().div(3_600_000.0)
 
-    val durationHours =
-        window.durationMillis
-            .toDouble()
-            .div(
-                3_600_000.0
-            )
+    val totalWakeups = displayEvents.size + cpuEvents.size
 
-    val totalWakeups =
-        displayEvents.size +
-            cpuEvents.size
+    val wakeupsPerHour = if (durationHours > 0.0) {
+        totalWakeups /
+            durationHours
+    } else {
+        0.0
+    }
 
-    val wakeupsPerHour =
-        if (durationHours > 0.0) {
-            totalWakeups /
-                durationHours
-        } else {
-            0.0
-        }
+    val score = calculateTechnicalSleepScore(
+        window = window,
+        displayWakeups = displayEvents.size,
+        cpuWakeups = cpuEvents.size,
+        unexplainedDisplayWakeups = unexplainedDisplay,
+        longestQuietMillis = sortedQuietPhases.firstOrNull()?.durationMillis
+            ?: 0L,
+        wakeupsPerHour = wakeupsPerHour,
+    )
 
-    val score =
-        calculateTechnicalSleepScore(
-            window = window,
-            displayWakeups =
-                displayEvents.size,
-            cpuWakeups =
-                cpuEvents.size,
-            unexplainedDisplayWakeups =
-                unexplainedDisplay,
-            longestQuietMillis =
-                sortedQuietPhases
-                    .firstOrNull()
-                    ?.durationMillis
-                    ?: 0L,
-            wakeupsPerHour =
-                wakeupsPerHour
-        )
+    val rating = sleepScoreRating(context, score)
 
-    val rating =
-        sleepScoreRating(
-            context,
-            score
-        )
+    val summary = sleepScoreSummary(
+        context = context,
+        score = score,
+        totalWakeups = totalWakeups,
+        displayWakeups = displayEvents.size,
+    )
 
-    val summary =
-        sleepScoreSummary(
-            context = context,
-            score = score,
-            totalWakeups = totalWakeups,
-            displayWakeups =
-                displayEvents.size
-        )
-
-    val hints =
-        buildSleepHints(
-            context = context,
-            window = window,
-            displayWakeups =
-                displayEvents.size,
-            cpuWakeups =
-                cpuEvents.size,
-            unexplainedDisplayWakeups =
-                unexplainedDisplay,
-            longestQuietMillis =
-                sortedQuietPhases
-                    .firstOrNull()
-                    ?.durationMillis
-                    ?: 0L,
-            wakeupsPerHour =
-                wakeupsPerHour,
-            busiestHour =
-                busiestHour
-        )
+    val hints = buildSleepHints(
+        context = context,
+        window = window,
+        displayWakeups = displayEvents.size,
+        cpuWakeups = cpuEvents.size,
+        unexplainedDisplayWakeups = unexplainedDisplay,
+        longestQuietMillis = sortedQuietPhases.firstOrNull()?.durationMillis
+            ?: 0L,
+        wakeupsPerHour = wakeupsPerHour,
+        busiestHour = busiestHour,
+    )
 
     return SleepAnalysisData(
         window = window,
         score = score,
         rating = rating,
         summary = summary,
-        displayWakeups =
-            displayEvents.size,
-        explainedDisplayWakeups =
-            explainedDisplay,
-        unexplainedDisplayWakeups =
-            unexplainedDisplay,
-        cpuWakeups =
-            cpuEvents.size,
-        totalWakeups =
-            totalWakeups,
-        wakeupsPerHour =
-            wakeupsPerHour,
-        longestQuietPhase =
-            sortedQuietPhases
-                .getOrNull(0),
-        secondLongestQuietPhase =
-            sortedQuietPhases
-                .getOrNull(1),
-        averageQuietMillis =
-            averageQuietMillis,
-        averageWakeDistanceMillis =
-            averageWakeDistance,
-        busiestHour =
-            busiestHour,
-        hourlyActivity =
-            hourlyActivity,
-        networkSession =
-            networkSession,
-        suspicionCandidates =
-            suspicionCandidates,
-        hints = hints
+        displayWakeups = displayEvents.size,
+        explainedDisplayWakeups = explainedDisplay,
+        unexplainedDisplayWakeups = unexplainedDisplay,
+        cpuWakeups = cpuEvents.size,
+        totalWakeups = totalWakeups,
+        wakeupsPerHour = wakeupsPerHour,
+        longestQuietPhase = sortedQuietPhases.getOrNull(0),
+        secondLongestQuietPhase = sortedQuietPhases.getOrNull(1),
+        averageQuietMillis = averageQuietMillis,
+        averageWakeDistanceMillis = averageWakeDistance,
+        busiestHour = busiestHour,
+        hourlyActivity = hourlyActivity,
+        networkSession = networkSession,
+        suspicionCandidates = suspicionCandidates,
+        hints = hints,
     )
 }
 
@@ -2393,68 +1467,51 @@ private fun buildSuspicionCandidates(
     context: Context,
     labels: SourceLabelResolver,
     cpuEvents: List<CpuWakeupEvent>,
-    networkSession: NetworkSessionSummary?
+    networkSession: NetworkSessionSummary?,
 ): List<SuspicionCandidate> {
-    val cpuSources =
-        cpuEvents
-            .mapNotNull { it.primarySource() }
-            .groupBy { it.groupKey }
+    val cpuSources = cpuEvents.mapNotNull { it.primarySource() }.groupBy { it.groupKey }
 
-    val networkApps =
-        networkSession
-            ?.topApps
-            .orEmpty()
+    val networkApps = networkSession?.topApps.orEmpty()
 
-    val result =
-        mutableListOf<SuspicionCandidate>()
+    val result = mutableListOf<SuspicionCandidate>()
 
     cpuSources.forEach { (groupKey, sources) ->
-        val cpuCount =
-            sources.size
+        val cpuCount = sources.size
 
-        val matchingNetwork =
-            networkApps.firstOrNull {
-                it.source.groupKey == groupKey
+        val matchingNetwork = networkApps.firstOrNull { it.source.groupKey == groupKey }
+
+        val level = when {
+            cpuCount >= 2 -> {
+                SuspicionLevel.LIKELY_INVOLVED
             }
 
-        val level =
-            when {
-                cpuCount >= 2 ->
-                    SuspicionLevel
-                        .LIKELY_INVOLVED
-
-                matchingNetwork != null ->
-                    SuspicionLevel
-                        .LIKELY_INVOLVED
-
-                else ->
-                    SuspicionLevel
-                        .TEMPORALLY_NOTICEABLE
+            matchingNetwork != null -> {
+                SuspicionLevel.LIKELY_INVOLVED
             }
 
-        val explanation =
-            when {
-                cpuCount >= 2 &&
-                    matchingNetwork != null ->
-                    context.getString(
-                        R.string.sleep_explanation_cpu_repeated_network
-                    )
-
-                cpuCount >= 2 ->
-                    context.getString(
-                        R.string.sleep_explanation_cpu_repeated
-                    )
-
-                matchingNetwork != null ->
-                    context.getString(
-                        R.string.sleep_explanation_cpu_network
-                    )
-
-                else ->
-                    context.getString(
-                        R.string.sleep_explanation_cpu_once
-                    )
+            else -> {
+                SuspicionLevel.TEMPORALLY_NOTICEABLE
             }
+        }
+
+        val explanation = when {
+            cpuCount >= 2 &&
+                matchingNetwork != null -> {
+                context.getString(R.string.sleep_explanation_cpu_repeated_network)
+            }
+
+            cpuCount >= 2 -> {
+                context.getString(R.string.sleep_explanation_cpu_repeated)
+            }
+
+            matchingNetwork != null -> {
+                context.getString(R.string.sleep_explanation_cpu_network)
+            }
+
+            else -> {
+                context.getString(R.string.sleep_explanation_cpu_once)
+            }
+        }
 
         result.add(
             SuspicionCandidate(
@@ -2462,37 +1519,25 @@ private fun buildSuspicionCandidates(
                 name = labels.label(sources.first()),
                 level = level,
                 explanation = explanation,
-                cpuOccurrences =
-                    cpuCount,
-                networkTraffic =
-                    matchingNetwork?.total
-            )
+                cpuOccurrences = cpuCount,
+                networkTraffic = matchingNetwork?.total,
+            ),
         )
     }
 
     networkApps.forEach { app ->
-        val alreadyIncluded =
-            result.any { candidate ->
-                candidate.groupKey ==
-                    app.source.groupKey
-            }
+        val alreadyIncluded = result.any { candidate -> candidate.groupKey == app.source.groupKey }
 
         if (!alreadyIncluded) {
             result.add(
                 SuspicionCandidate(
                     groupKey = app.source.groupKey,
                     name = app.name,
-                    level =
-                        SuspicionLevel
-                            .COMPANION_ACTIVITY,
-                    explanation =
-                        context.getString(
-                            R.string.sleep_explanation_network_only
-                        ),
+                    level = SuspicionLevel.COMPANION_ACTIVITY,
+                    explanation = context.getString(R.string.sleep_explanation_network_only),
                     cpuOccurrences = 0,
-                    networkTraffic =
-                        app.total
-                )
+                    networkTraffic = app.total,
+                ),
             )
         }
     }
@@ -2501,21 +1546,18 @@ private fun buildSuspicionCandidates(
         .sortedWith(
             compareBy<SuspicionCandidate> {
                 when (it.level) {
-                    SuspicionLevel
-                        .LIKELY_INVOLVED ->
-                        0
+                    SuspicionLevel.LIKELY_INVOLVED,
+                    -> 0
 
-                    SuspicionLevel
-                        .TEMPORALLY_NOTICEABLE ->
-                        1
+                    SuspicionLevel.TEMPORALLY_NOTICEABLE,
+                    -> 1
 
-                    SuspicionLevel
-                        .COMPANION_ACTIVITY ->
-                        2
+                    SuspicionLevel.COMPANION_ACTIVITY,
+                    -> 2
                 }
             }.thenByDescending {
                 it.cpuOccurrences
-            }
+            },
         )
 }
 
@@ -2523,12 +1565,10 @@ private fun networkSessionSummary(
     context: Context,
     renderer: EventTextRenderer,
     labels: SourceLabelResolver,
-    measurement: NetworkMeasurement?
+    measurement: NetworkMeasurement?,
 ): NetworkSessionSummary {
     if (
-        measurement == null ||
-        measurement.status ==
-            NetworkMeasurementStatus.NO_BASELINE
+        measurement == null || measurement.status == NetworkMeasurementStatus.NO_BASELINE
     ) {
         return NetworkSessionSummary(
             duration = null,
@@ -2537,16 +1577,12 @@ private fun networkSessionSummary(
             received = null,
             sent = null,
             topApps = emptyList(),
-            message =
-                context.getString(
-                    R.string.sleep_network_no_baseline_message
-                )
+            message = context.getString(R.string.sleep_network_no_baseline_message),
         )
     }
 
     if (
-        measurement.status ==
-        NetworkMeasurementStatus.END_FAILED
+        measurement.status == NetworkMeasurementStatus.END_FAILED
     ) {
         return NetworkSessionSummary(
             duration = null,
@@ -2555,143 +1591,96 @@ private fun networkSessionSummary(
             received = null,
             sent = null,
             topApps = emptyList(),
-            message =
-                context.getString(
-                    R.string.service_network_end_failed,
-                    renderer.diagnosticErrorLabel(
-                        measurement.errorCode,
-                        measurement.errorDetail
-                    )
-                )
+            message = context.getString(
+                R.string.service_network_end_failed,
+                renderer.diagnosticErrorLabel(measurement.errorCode, measurement.errorDetail),
+            ),
         )
     }
 
     return NetworkSessionSummary(
-        duration =
-            measurement.durationMs
-                ?.let(renderer::sessionDuration),
-        activeApps =
-            measurement.usage.size,
-        total =
-            renderer.bytes(measurement.totalBytes),
-        received =
-            renderer.bytes(measurement.rxBytes),
-        sent =
-            renderer.bytes(measurement.txBytes),
-        topApps =
-            measurement.usage
-                .take(EventTextRenderer.NETWORK_TOP_APPS)
-                .map { usage ->
-                    NetworkSessionApp(
-                        source =
-                            usage.packageName
-                                ?.let { SourceClassifier.classify(it) }
-                                ?: SourceClassifier.forUid(usage.uid),
-                        name =
-                            labels.networkLabel(
-                                usage.packageName,
-                                usage.uid
-                            ),
-                        total =
-                            renderer.bytes(usage.totalBytes),
-                        received =
-                            renderer.bytes(usage.rxBytes),
-                        sent =
-                            renderer.bytes(usage.txBytes)
-                    )
-                },
-        message =
-            if (measurement.usage.isEmpty()) {
-                context.getString(
-                    R.string.sleep_network_no_app_traffic_message
+        duration = measurement.durationMs?.let(renderer::sessionDuration),
+        activeApps = measurement.usage.size,
+        total = renderer.bytes(measurement.totalBytes),
+        received = renderer.bytes(measurement.rxBytes),
+        sent = renderer.bytes(measurement.txBytes),
+        topApps = measurement.usage
+            .take(EventTextRenderer.NETWORK_TOP_APPS)
+            .map { usage ->
+                NetworkSessionApp(
+                    source = usage.packageName?.let { SourceClassifier.classify(it) }
+                        ?: SourceClassifier.forUid(usage.uid),
+                    name = labels.networkLabel(usage.packageName, usage.uid),
+                    total = renderer.bytes(usage.totalBytes),
+                    received = renderer.bytes(usage.rxBytes),
+                    sent = renderer.bytes(usage.txBytes),
                 )
-            } else {
-                null
-            }
+            },
+        message = if (measurement.usage.isEmpty()) {
+            context.getString(R.string.sleep_network_no_app_traffic_message)
+        } else {
+            null
+        },
     )
 }
 
 private fun sleepAnalysisWindow(
     context: Context,
-    session: MonitoringSessionEntity?
+    session: MonitoringSessionEntity?,
 ): SleepAnalysisWindow {
-    val now =
-        System.currentTimeMillis()
+    val now = System.currentTimeMillis()
 
-    val window =
-        AnalysisWindow.of(
-            session = session,
-            now = now
+    val window = AnalysisWindow.of(session = session, now = now)
+        ?: return SleepAnalysisWindow(
+            startMillis = now,
+            endMillis = now,
+            ongoing = false,
+            title = context.getString(R.string.sleep_no_analysis_yet),
         )
-            ?: return SleepAnalysisWindow(
-                startMillis = now,
-                endMillis = now,
-                ongoing = false,
-                title =
-                    context.getString(
-                        R.string.sleep_no_analysis_yet
-                    )
-            )
 
     return SleepAnalysisWindow(
         startMillis = window.startMillis,
         endMillis = window.endMillis,
         ongoing = window.ongoing,
-        title =
-            if (window.ongoing) {
-                context.getString(
-                    R.string.sleep_window_running_analysis
-                )
-            } else {
-                context.getString(
-                    R.string.sleep_window_last_analysis
-                )
-            }
+        title = if (window.ongoing) {
+            context.getString(R.string.sleep_window_running_analysis)
+        } else {
+            context.getString(R.string.sleep_window_last_analysis)
+        },
     )
 }
 
 private fun buildQuietPhases(
     window: SleepAnalysisWindow,
-    wakeEvents: List<RecordedEvent>
+    wakeEvents: List<RecordedEvent>,
 ): List<QuietPhase> {
     if (
-        window.endMillis <=
-        window.startMillis
+        window.endMillis <= window.startMillis
     ) {
         return emptyList()
     }
 
-    val timestamps =
-        wakeEvents
-            .map {
-                it.occurredAt
-            }
-            .filter {
-                it in
-                    window.startMillis..
-                        window.endMillis
-            }
-            .distinct()
-            .sorted()
+    val timestamps = wakeEvents
+        .map {
+            it.occurredAt
+        }.filter {
+            it in
+                window.startMillis..window.endMillis
+        }.distinct()
+        .sorted()
 
-    val boundaries =
-        buildList {
-            add(window.startMillis)
-            addAll(timestamps)
-            add(window.endMillis)
-        }
+    val boundaries = buildList {
+        add(window.startMillis)
+        addAll(timestamps)
+        add(window.endMillis)
+    }
 
     return boundaries
         .zipWithNext()
-        .map {
-            (start, end) ->
+        .map { (start, end) ->
 
-            QuietPhase(
-                startMillis = start,
-                endMillis = end
-            )
-        }
-        .filter {
+            QuietPhase(startMillis = start, endMillis = end)
+        }.filter {
             it.durationMillis > 0L
         }
 }
@@ -2699,89 +1688,54 @@ private fun buildQuietPhases(
 private fun buildHourlyActivity(
     window: SleepAnalysisWindow,
     displayEvents: List<RecordedEvent>,
-    cpuEvents: List<RecordedEvent>
+    cpuEvents: List<RecordedEvent>,
 ): List<HourActivity> {
     if (
-        window.endMillis <=
-        window.startMillis
+        window.endMillis <= window.startMillis
     ) {
         return emptyList()
     }
 
-    val result =
-        mutableListOf<HourActivity>()
+    val result = mutableListOf<HourActivity>()
 
-    val cursor =
-        Calendar.getInstance().apply {
-            timeInMillis =
-                window.startMillis
+    val cursor = Calendar.getInstance().apply {
+        timeInMillis = window.startMillis
 
-            set(
-                Calendar.MINUTE,
-                0
-            )
+        set(Calendar.MINUTE, 0)
 
-            set(
-                Calendar.SECOND,
-                0
-            )
+        set(Calendar.SECOND, 0)
 
-            set(
-                Calendar.MILLISECOND,
-                0
-            )
-        }
+        set(Calendar.MILLISECOND, 0)
+    }
 
-    var hourStart =
-        cursor.timeInMillis
+    var hourStart = cursor.timeInMillis
 
     while (
-        hourStart <=
-        window.endMillis &&
-        result.size < 24
+        hourStart <= window.endMillis && result.size < 24
     ) {
-        val hourEnd =
-            hourStart +
-                3_600_000L
+        val hourEnd = hourStart + 3_600_000L
 
-        val hour =
-            Calendar.getInstance()
-                .apply {
-                    timeInMillis =
-                        hourStart
-                }
-                .get(
-                    Calendar.HOUR_OF_DAY
-                )
-
-        val displayCount =
-            displayEvents.count {
-                it.occurredAt >=
-                    hourStart &&
-                    it.occurredAt <
-                        hourEnd
-            }
-
-        val cpuCount =
-            cpuEvents.count {
-                it.occurredAt >=
-                    hourStart &&
-                    it.occurredAt <
-                        hourEnd
-            }
-
-        result.add(
-            HourActivity(
-                hour = hour,
-                displayWakeups =
-                    displayCount,
-                cpuWakeups =
-                    cpuCount
+        val hour = Calendar
+            .getInstance()
+            .apply {
+                timeInMillis = hourStart
+            }.get(
+                Calendar.HOUR_OF_DAY,
             )
-        )
 
-        hourStart =
-            hourEnd
+        val displayCount = displayEvents.count {
+            it.occurredAt >= hourStart && it.occurredAt <
+                hourEnd
+        }
+
+        val cpuCount = cpuEvents.count {
+            it.occurredAt >= hourStart && it.occurredAt <
+                hourEnd
+        }
+
+        result.add(HourActivity(hour = hour, displayWakeups = displayCount, cpuWakeups = cpuCount))
+
+        hourStart = hourEnd
     }
 
     return result
@@ -2793,7 +1747,7 @@ private fun calculateTechnicalSleepScore(
     cpuWakeups: Int,
     unexplainedDisplayWakeups: Int,
     longestQuietMillis: Long,
-    wakeupsPerHour: Double
+    wakeupsPerHour: Double,
 ): Int {
     if (
         window.durationMillis <
@@ -2802,161 +1756,120 @@ private fun calculateTechnicalSleepScore(
         return 100
     }
 
-    var score =
-        100.0
+    var score = 100.0
 
-    score -=
-        displayWakeups * 7.0
+    score -= displayWakeups * 7.0
 
-    score -=
-        unexplainedDisplayWakeups *
-            4.0
+    score -= unexplainedDisplayWakeups * 4.0
 
-    score -=
-        cpuWakeups * 0.7
+    score -= cpuWakeups * 0.7
 
-    score -=
-        when {
-            wakeupsPerHour <= 1.0 ->
-                0.0
-
-            wakeupsPerHour <= 3.0 ->
-                (
-                    wakeupsPerHour -
-                        1.0
-                ) * 2.0
-
-            wakeupsPerHour <= 6.0 ->
-                4.0 +
-                    (
-                        wakeupsPerHour -
-                            3.0
-                    ) * 3.0
-
-            else ->
-                13.0 +
-                    (
-                        wakeupsPerHour -
-                            6.0
-                    ) * 4.0
+    score -= when {
+        wakeupsPerHour <= 1.0 -> {
+            0.0
         }
 
-    val quietRatio =
-        longestQuietMillis
-            .toDouble()
-            .div(
-                window.durationMillis
-                    .toDouble()
-            )
-            .coerceIn(
-                0.0,
-                1.0
-            )
-
-    score +=
-        when {
-            quietRatio >= 0.75 ->
-                8.0
-
-            quietRatio >= 0.50 ->
-                5.0
-
-            quietRatio >= 0.30 ->
-                2.0
-
-            else ->
-                0.0
+        wakeupsPerHour <= 3.0 -> {
+            (wakeupsPerHour - 1.0) * 2.0
         }
 
-    return score
-        .roundToInt()
-        .coerceIn(
-            0,
-            100
-        )
+        wakeupsPerHour <= 6.0 -> {
+            4.0 + (wakeupsPerHour - 3.0) * 3.0
+        }
+
+        else -> {
+            13.0 + (wakeupsPerHour - 6.0) * 4.0
+        }
+    }
+
+    val quietRatio = longestQuietMillis.toDouble().div(window.durationMillis.toDouble()).coerceIn(0.0, 1.0)
+
+    score += when {
+        quietRatio >= 0.75 -> {
+            8.0
+        }
+
+        quietRatio >= 0.50 -> {
+            5.0
+        }
+
+        quietRatio >= 0.30 -> {
+            2.0
+        }
+
+        else -> {
+            0.0
+        }
+    }
+
+    return score.roundToInt().coerceIn(0, 100)
 }
 
 private fun sleepScoreRating(
     context: Context,
-    score: Int
-): String {
-    return when {
-        score >= 97 ->
-            context.getString(
-                R.string.sleep_rating_excellent
-            )
+    score: Int,
+): String =
+    when {
+        score >= 97 -> {
+            context.getString(R.string.sleep_rating_excellent)
+        }
 
-        score >= 90 ->
-            context.getString(
-                R.string.sleep_rating_very_quiet
-            )
+        score >= 90 -> {
+            context.getString(R.string.sleep_rating_very_quiet)
+        }
 
-        score >= 80 ->
-            context.getString(
-                R.string.sleep_rating_quiet
-            )
+        score >= 80 -> {
+            context.getString(R.string.sleep_rating_quiet)
+        }
 
-        score >= 65 ->
-            context.getString(
-                R.string.sleep_rating_normal
-            )
+        score >= 65 -> {
+            context.getString(R.string.sleep_rating_normal)
+        }
 
-        score >= 50 ->
-            context.getString(
-                R.string.sleep_rating_restless
-            )
+        score >= 50 -> {
+            context.getString(R.string.sleep_rating_restless)
+        }
 
-        else ->
-            context.getString(
-                R.string.sleep_rating_heavily_interrupted
-            )
+        else -> {
+            context.getString(R.string.sleep_rating_heavily_interrupted)
+        }
     }
-}
 
 private fun sleepScoreSummary(
     context: Context,
     score: Int,
     totalWakeups: Int,
-    displayWakeups: Int
-): String {
-    return when {
-        totalWakeups == 0 ->
-            context.getString(
-                R.string.sleep_summary_no_activity
-            )
+    displayWakeups: Int,
+): String =
+    when {
+        totalWakeups == 0 -> {
+            context.getString(R.string.sleep_summary_no_activity)
+        }
 
-        score >= 90 ->
-            context.getString(
-                R.string.sleep_summary_quiet
-            )
+        score >= 90 -> {
+            context.getString(R.string.sleep_summary_quiet)
+        }
 
-        score >= 80 ->
-            context.getString(
-                R.string.sleep_summary_few_interruptions
-            )
+        score >= 80 -> {
+            context.getString(R.string.sleep_summary_few_interruptions)
+        }
 
-        score >= 65 ->
-            context.getString(
-                R.string.sleep_summary_unremarkable
-            )
+        score >= 65 -> {
+            context.getString(R.string.sleep_summary_unremarkable)
+        }
 
-        score >= 50 &&
-            displayWakeups == 0 ->
-            context.getString(
-                R.string.sleep_summary_background
-            )
+        score >= 50 && displayWakeups == 0 -> {
+            context.getString(R.string.sleep_summary_background)
+        }
 
-        score >= 50 ->
-            context.getString(
-                R.string.sleep_summary_display_background
-            )
+        score >= 50 -> {
+            context.getString(R.string.sleep_summary_display_background)
+        }
 
-        else ->
-            context.getString(
-                R.string.sleep_summary_dense
-            )
+        else -> {
+            context.getString(R.string.sleep_summary_dense)
+        }
     }
-}
 
 private fun buildSleepHints(
     context: Context,
@@ -2966,48 +1879,30 @@ private fun buildSleepHints(
     unexplainedDisplayWakeups: Int,
     longestQuietMillis: Long,
     wakeupsPerHour: Double,
-    busiestHour: HourActivity?
+    busiestHour: HourActivity?,
 ): List<String> {
-    val hints =
-        mutableListOf<String>()
+    val hints = mutableListOf<String>()
 
-    val shortSession =
-        window.durationMillis <
-            15L * 60L * 1_000L
+    val shortSession = window.durationMillis <
+        15L * 60L * 1_000L
 
     if (
         window.durationMillis <
         30L * 60L * 1_000L
     ) {
-        hints.add(
-            context.getString(
-                R.string.sleep_hint_run_longer
-            )
-        )
+        hints.add(context.getString(R.string.sleep_hint_run_longer))
     }
 
     if (
         displayWakeups == 0
     ) {
-        hints.add(
-            context.getString(
-                R.string.sleep_hint_display_off
-            )
-        )
+        hints.add(context.getString(R.string.sleep_hint_display_off))
     } else if (
         displayWakeups <= 2
     ) {
-        hints.add(
-            context.getString(
-                R.string.sleep_hint_few_display
-            )
-        )
+        hints.add(context.getString(R.string.sleep_hint_few_display))
     } else {
-        hints.add(
-            context.getString(
-                R.string.sleep_hint_many_display
-            )
-        )
+        hints.add(context.getString(R.string.sleep_hint_many_display))
     }
 
     if (
@@ -3017,257 +1912,137 @@ private fun buildSleepHints(
             context.resources.getQuantityString(
                 R.plurals.sleep_hint_unexplained_display,
                 unexplainedDisplayWakeups,
-                unexplainedDisplayWakeups
-            )
+                unexplainedDisplayWakeups,
+            ),
         )
     }
 
     if (
         cpuWakeups == 0
     ) {
-        hints.add(
-            context.getString(
-                R.string.sleep_hint_no_cpu
-            )
-        )
+        hints.add(context.getString(R.string.sleep_hint_no_cpu))
     } else if (shortSession) {
-        hints.add(
-            context.resources.getQuantityString(
-                R.plurals.sleep_hint_short_cpu,
-                cpuWakeups,
-                cpuWakeups
-            )
-        )
+        hints.add(context.resources.getQuantityString(R.plurals.sleep_hint_short_cpu, cpuWakeups, cpuWakeups))
     } else if (
         wakeupsPerHour <= 3.0
     ) {
-        hints.add(
-            context.getString(
-                R.string.sleep_hint_low_background
-            )
-        )
+        hints.add(context.getString(R.string.sleep_hint_low_background))
     } else if (
         wakeupsPerHour <= 8.0
     ) {
-        hints.add(
-            context.getString(
-                R.string.sleep_hint_several_background
-            )
-        )
+        hints.add(context.getString(R.string.sleep_hint_several_background))
     } else {
-        hints.add(
-            context.getString(
-                R.string.sleep_hint_frequent_cpu
-            )
-        )
+        hints.add(context.getString(R.string.sleep_hint_frequent_cpu))
     }
 
     if (
-        longestQuietMillis >=
-        2L * 60L * 60L * 1_000L
+        longestQuietMillis >= 2L * 60L * 60L * 1_000L
     ) {
-        hints.add(
-            context.getString(
-                R.string.sleep_hint_long_quiet
-            )
-        )
+        hints.add(context.getString(R.string.sleep_hint_long_quiet))
     }
 
     busiestHour
         ?.takeIf {
-            !shortSession &&
-                it.total >= 3
-        }
-        ?.let { hour ->
-            val start =
-                hour.hour
-                    .toString()
-                    .padStart(
-                        2,
-                        '0'
-                    )
+            !shortSession && it.total >= 3
+        }?.let { hour ->
+            val start = hour.hour.toString().padStart(2, '0')
 
-            val end =
-                (
-                    (hour.hour + 1) % 24
-                )
-                    .toString()
-                    .padStart(
-                        2,
-                        '0'
-                    )
+            val end = ((hour.hour + 1) % 24).toString().padStart(2, '0')
 
-            hints.add(
-                context.getString(
-                    R.string.sleep_hint_busiest_hours,
-                    start,
-                    end
-                )
-            )
+            hints.add(context.getString(R.string.sleep_hint_busiest_hours, start, end))
         }
 
     return hints.distinct()
 }
 
 @Composable
-private fun formatSleepWindow(
-    window: SleepAnalysisWindow
-): String {
-    val formatter =
-        SimpleDateFormat(
-            "dd.MM. · HH:mm",
-            Locale.getDefault()
-        )
+private fun formatSleepWindow(window: SleepAnalysisWindow): String {
+    val formatter = SimpleDateFormat("dd.MM. · HH:mm", Locale.getDefault())
 
-    val range =
-        buildString {
-            append(
-                formatter.format(
-                    Date(window.startMillis)
-                )
-            )
+    val range = buildString {
+        append(formatter.format(Date(window.startMillis)))
 
-            if (
-                window.startMillis !=
-                window.endMillis
-            ) {
-                append(" – ")
+        if (
+            window.startMillis != window.endMillis
+        ) {
+            append(" – ")
 
-                append(
-                    formatter.format(
-                        Date(window.endMillis)
-                    )
-                )
-            }
+            append(formatter.format(Date(window.endMillis)))
         }
+    }
 
     return if (window.ongoing) {
-        stringResource(
-            R.string.sleep_window_running,
-            range
-        )
+        stringResource(R.string.sleep_window_running, range)
     } else {
         range
     }
 }
 
-private fun formatTime(
-    timestamp: Long
-): String {
-    return SimpleDateFormat(
-        "HH:mm",
-        Locale.getDefault()
-    ).format(
-        Date(timestamp)
-    )
-}
+private fun formatTime(timestamp: Long): String = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
 
 @Composable
-private fun formatDurationPrecise(
-    millis: Long
-): String {
-    val safeSeconds =
-        millis.coerceAtLeast(0L) /
-            1_000L
+private fun formatDurationPrecise(millis: Long): String {
+    val safeSeconds = millis.coerceAtLeast(0L) /
+        1_000L
 
-    val minutes =
-        safeSeconds /
-            60L
+    val minutes = safeSeconds /
+        60L
 
-    val seconds =
-        safeSeconds %
-            60L
+    val seconds = safeSeconds %
+        60L
 
     return when {
-        minutes > 0L &&
-            seconds > 0L ->
-            stringResource(
-                R.string.sleep_duration_minutes_seconds,
-                minutes,
-                seconds
-            )
+        minutes > 0L && seconds > 0L -> {
+            stringResource(R.string.sleep_duration_minutes_seconds, minutes, seconds)
+        }
 
-        minutes > 0L ->
-            stringResource(
-                R.string.sleep_duration_minutes,
-                minutes
-            )
+        minutes > 0L -> {
+            stringResource(R.string.sleep_duration_minutes, minutes)
+        }
 
-        else ->
-            stringResource(
-                R.string.sleep_duration_seconds,
-                seconds
-            )
+        else -> {
+            stringResource(R.string.sleep_duration_seconds, seconds)
+        }
     }
 }
 
 @Composable
-private fun formatDurationCompact(
-    millis: Long
-): String {
-    val safeMillis =
-        millis.coerceAtLeast(0L)
+private fun formatDurationCompact(millis: Long): String {
+    val safeMillis = millis.coerceAtLeast(0L)
 
-    val totalMinutes =
-        safeMillis /
-            60_000L
+    val totalMinutes = safeMillis /
+        60_000L
 
-    val days =
-        totalMinutes /
-            1_440L
+    val days = totalMinutes /
+        1_440L
 
-    val hours =
-        (
-            totalMinutes %
-                1_440L
-        ) /
-            60L
+    val hours = (totalMinutes % 1_440L) /
+        60L
 
-    val minutes =
-        totalMinutes %
-            60L
+    val minutes = totalMinutes %
+        60L
 
     return when {
-        days > 0L ->
-            stringResource(
-                R.string.sleep_duration_days_hours,
-                days,
-                hours
-            )
+        days > 0L -> {
+            stringResource(R.string.sleep_duration_days_hours, days, hours)
+        }
 
-        hours > 0L ->
-            stringResource(
-                R.string.sleep_duration_hours_minutes,
-                hours,
-                minutes
-            )
+        hours > 0L -> {
+            stringResource(R.string.sleep_duration_hours_minutes, hours, minutes)
+        }
 
-        totalMinutes > 0L ->
-            stringResource(
-                R.string.sleep_duration_minutes,
-                totalMinutes
-            )
+        totalMinutes > 0L -> {
+            stringResource(R.string.sleep_duration_minutes, totalMinutes)
+        }
 
-        safeMillis >= 1_000L ->
-            stringResource(
-                R.string.sleep_duration_seconds,
-                safeMillis / 1_000L
-            )
+        safeMillis >= 1_000L -> {
+            stringResource(R.string.sleep_duration_seconds, safeMillis / 1_000L)
+        }
 
-        else ->
-            stringResource(
-                R.string.sleep_duration_seconds,
-                0L
-            )
+        else -> {
+            stringResource(R.string.sleep_duration_seconds, 0L)
+        }
     }
 }
 
-private fun formatDecimal(
-    value: Double
-): String {
-    return String.format(
-        Locale.getDefault(),
-        "%.1f",
-        value
-    )
-}
+private fun formatDecimal(value: Double): String = String.format(Locale.getDefault(), "%.1f", value)

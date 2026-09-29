@@ -17,9 +17,9 @@ import de.sanniki.wakesleuth.domain.SourceKind
             entity = MonitoringSessionEntity::class,
             parentColumns = ["id"],
             childColumns = ["session_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class SessionSourceStatEntity(
     @ColumnInfo(name = "session_id")
@@ -37,5 +37,5 @@ data class SessionSourceStatEntity(
     @ColumnInfo(name = "companion_count")
     val companionCount: Int,
     @ColumnInfo(name = "longest_cpu_awake_ms")
-    val longestCpuAwakeMs: Long?
+    val longestCpuAwakeMs: Long?,
 )

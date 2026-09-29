@@ -31,7 +31,7 @@ data class WakeLockHistoryEntry(
     val tag: String,
     val wakeLockType: String,
     val causesWake: Boolean,
-    val stillActive: Boolean
+    val stillActive: Boolean,
 )
 
 data class WakeLockDiagnostic(
@@ -42,7 +42,7 @@ data class WakeLockDiagnostic(
     val rawLastEntry: String?,
     val lastTimestampMillis: Long? = null,
     val historyEntries: List<WakeLockHistoryEntry> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
 )
 
 data class WakeupAlarmDiagnostic(
@@ -52,7 +52,7 @@ data class WakeupAlarmDiagnostic(
     val wakeCount: Int,
     val packageWakeups: Int,
     val triggerTimestampMillis: Long? = null,
-    val error: String? = null
+    val error: String? = null,
 )
 
 data class BackgroundJobDiagnostic(
@@ -62,7 +62,7 @@ data class BackgroundJobDiagnostic(
     val prioritized: Boolean,
     val rawEntry: String?,
     val triggerTimestampMillis: Long? = null,
-    val error: String? = null
+    val error: String? = null,
 )
 
 data class WakeReasonDiagnostic(
@@ -71,7 +71,7 @@ data class WakeReasonDiagnostic(
     val timestamp: String?,
     val timestampMillis: Long? = null,
     val rawEntry: String?,
-    val error: String? = null
+    val error: String? = null,
 )
 
 data class NetworkTrafficEntry(
@@ -82,7 +82,7 @@ data class NetworkTrafficEntry(
     val txBytes: Long,
     val totalBytes: Long,
     val rxPackets: Long? = null,
-    val txPackets: Long? = null
+    val txPackets: Long? = null,
 )
 
 data class NetworkStatsDiagnostic(
@@ -91,7 +91,7 @@ data class NetworkStatsDiagnostic(
     val error: String? = null,
     val errorCode: DiagnosticError? = null,
     /** Raw exception or shell message, never localized. */
-    val errorDetail: String? = null
+    val errorDetail: String? = null,
 )
 
 private data class ParsedWakeupAlarm(
@@ -99,13 +99,13 @@ private data class ParsedWakeupAlarm(
     val tag: String,
     val ageMillis: Long,
     val wakeCount: Int,
-    val packageWakeups: Int
+    val packageWakeups: Int,
 )
 
 enum class ShizukuState {
     RUNNING_GRANTED,
     RUNNING_DENIED,
-    NOT_RUNNING
+    NOT_RUNNING,
 }
 
 private data class ParsedWakeLock(
@@ -113,7 +113,7 @@ private data class ParsedWakeLock(
     val timestamp: String,
     val timestampMillis: Long,
     val packageName: String,
-    val tag: String
+    val tag: String,
 )
 
 private data class RawWakeLockHistoryLine(
@@ -123,15 +123,13 @@ private data class RawWakeLockHistoryLine(
     val action: String,
     val tag: String,
     val wakeLockType: String,
-    val causesWake: Boolean
+    val causesWake: Boolean,
 )
 
 object ShizukuDiagnostics {
-
     const val REQUEST_CODE = 6201
 
-    private const val USER_SERVICE_TAG =
-        "wakesleuth_shell"
+    private const val USER_SERVICE_TAG = "wakesleuth_shell"
 
     private const val USER_SERVICE_VERSION = 1
 
@@ -143,38 +141,29 @@ object ShizukuDiagnostics {
     @Volatile
     private var binding = false
 
-    private var pendingConnection =
-        CompletableDeferred<IWakeSleuthShell>()
+    private var pendingConnection = CompletableDeferred<IWakeSleuthShell>()
 
-    private val serviceConnection =
-        object : ServiceConnection {
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(
+            name: ComponentName?,
+            binder: IBinder?,
+        ) {
+            val service = IWakeSleuthShell.Stub.asInterface(binder)
 
-            override fun onServiceConnected(
-                name: ComponentName?,
-                binder: IBinder?
-            ) {
-                val service =
-                    IWakeSleuthShell.Stub.asInterface(
-                        binder
-                    )
+            remoteService = service
+            binding = false
 
-                remoteService = service
-                binding = false
-
-                if (!pendingConnection.isCompleted) {
-                    pendingConnection.complete(service)
-                }
-            }
-
-            override fun onServiceDisconnected(
-                name: ComponentName?
-            ) {
-                remoteService = null
-                binding = false
-                pendingConnection =
-                    CompletableDeferred()
+            if (!pendingConnection.isCompleted) {
+                pendingConnection.complete(service)
             }
         }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            remoteService = null
+            binding = false
+            pendingConnection = CompletableDeferred()
+        }
+    }
 
     fun state(): ShizukuState {
         if (
@@ -189,7 +178,7 @@ object ShizukuDiagnostics {
             runCatching {
                 Shizuku.checkSelfPermission()
             }.getOrDefault(
-                PackageManager.PERMISSION_DENIED
+                PackageManager.PERMISSION_DENIED,
             ) == PackageManager.PERMISSION_GRANTED
         ) {
             ShizukuState.RUNNING_GRANTED
@@ -210,104 +199,61 @@ object ShizukuDiagnostics {
 
     suspend fun readWakeLocks(
         context: Context,
-        referenceTimestamp: Long? = null
+        referenceTimestamp: Long? = null,
     ): WakeLockDiagnostic =
         withContext(Dispatchers.IO) {
-
             if (
-                state() ==
-                ShizukuState.NOT_RUNNING
+                state() == ShizukuState.NOT_RUNNING
             ) {
-                return@withContext errorResult(
-                    context.getString(
-                        R.string.shizuku_error_not_running
-                    )
-                )
+                return@withContext errorResult(context.getString(R.string.shizuku_error_not_running))
             }
 
             if (
-                state() !=
-                ShizukuState.RUNNING_GRANTED
+                state() != ShizukuState.RUNNING_GRANTED
             ) {
-                return@withContext errorResult(
-                    context.getString(
-                        R.string.shizuku_error_permission_missing
-                    )
-                )
+                return@withContext errorResult(context.getString(R.string.shizuku_error_permission_missing))
             }
 
             runCatching {
-                val service =
-                    getOrBindService(context)
+                val service = getOrBindService(context)
 
-                val output =
-                    service.runCommand(
-                        "timeout 5s dumpsys power"
-                    )
+                val output = service.runCommand("timeout 5s dumpsys power")
 
                 parsePowerDump(
                     context = context,
                     output = output,
                     ownPackageName = context.packageName,
-                    referenceTimestamp =
-                        referenceTimestamp
+                    referenceTimestamp = referenceTimestamp,
                 )
             }.getOrElse { throwable ->
                 remoteService = null
 
                 errorResult(
-                    failureMessage(
-                        context = context,
-                        throwable = throwable,
-                        fallback =
-                            R.string.shizuku_error_unknown
-                    )
+                    failureMessage(context = context, throwable = throwable, fallback = R.string.shizuku_error_unknown),
                 )
             }
         }
 
-    suspend fun readWakeupAlarms(
-        context: Context
-    ): WakeupAlarmDiagnostic =
+    suspend fun readWakeupAlarms(context: Context): WakeupAlarmDiagnostic =
         withContext(Dispatchers.IO) {
-
             if (
-                state() ==
-                ShizukuState.NOT_RUNNING
+                state() == ShizukuState.NOT_RUNNING
             ) {
-                return@withContext alarmErrorResult(
-                    context.getString(
-                        R.string.shizuku_error_not_running
-                    )
-                )
+                return@withContext alarmErrorResult(context.getString(R.string.shizuku_error_not_running))
             }
 
             if (
-                state() !=
-                ShizukuState.RUNNING_GRANTED
+                state() != ShizukuState.RUNNING_GRANTED
             ) {
-                return@withContext alarmErrorResult(
-                    context.getString(
-                        R.string.shizuku_error_permission_missing
-                    )
-                )
+                return@withContext alarmErrorResult(context.getString(R.string.shizuku_error_permission_missing))
             }
 
             runCatching {
-                val service =
-                    getOrBindService(context)
+                val service = getOrBindService(context)
 
-                val output =
-                    service.runCommand(
-                        "timeout 5s dumpsys alarm"
-                    )
+                val output = service.runCommand("timeout 5s dumpsys alarm")
 
-                parseAlarmDump(
-                    context = context,
-                    output = output,
-                    ownPackageName =
-                        context.packageName
-                )
+                parseAlarmDump(context = context, output = output, ownPackageName = context.packageName)
             }.getOrElse { throwable ->
                 remoteService = null
 
@@ -315,43 +261,28 @@ object ShizukuDiagnostics {
                     failureMessage(
                         context = context,
                         throwable = throwable,
-                        fallback =
-                            R.string.shizuku_error_unknown_alarm
-                    )
+                        fallback = R.string.shizuku_error_unknown_alarm,
+                    ),
                 )
             }
         }
 
-    suspend fun readBackgroundJobs(
-        context: Context
-    ): BackgroundJobDiagnostic =
+    suspend fun readBackgroundJobs(context: Context): BackgroundJobDiagnostic =
         withContext(Dispatchers.IO) {
-
             if (
-                state() ==
-                ShizukuState.NOT_RUNNING
+                state() == ShizukuState.NOT_RUNNING
             ) {
-                return@withContext jobErrorResult(
-                    context.getString(
-                        R.string.shizuku_error_not_running
-                    )
-                )
+                return@withContext jobErrorResult(context.getString(R.string.shizuku_error_not_running))
             }
 
             if (
-                state() !=
-                ShizukuState.RUNNING_GRANTED
+                state() != ShizukuState.RUNNING_GRANTED
             ) {
-                return@withContext jobErrorResult(
-                    context.getString(
-                        R.string.shizuku_error_permission_missing
-                    )
-                )
+                return@withContext jobErrorResult(context.getString(R.string.shizuku_error_permission_missing))
             }
 
             runCatching {
-                val service =
-                    getOrBindService(context)
+                val service = getOrBindService(context)
 
                 /*
                  * Der vollständige JobScheduler-Dump kann mehrere
@@ -359,18 +290,11 @@ object ShizukuDiagnostics {
                  * überschreiten. Für unsere Diagnose werden nur
                  * historische START- und START-P-Zeilen benötigt.
                  */
-                val output =
-                    service.runCommand(
-                        "timeout 5s dumpsys jobscheduler " +
-                            "| grep -E 'START(-P)?:' " +
-                            "| tail -n 250"
-                    )
-
-                parseJobSchedulerDump(
-                    output = output,
-                    ownPackageName =
-                        context.packageName
+                val output = service.runCommand(
+                    "timeout 5s dumpsys jobscheduler " + "| grep -E 'START(-P)?:' " + "| tail -n 250",
                 )
+
+                parseJobSchedulerDump(output = output, ownPackageName = context.packageName)
             }.getOrElse { throwable ->
                 remoteService = null
 
@@ -378,66 +302,50 @@ object ShizukuDiagnostics {
                     failureMessage(
                         context = context,
                         throwable = throwable,
-                        fallback =
-                            R.string.shizuku_error_unknown_jobscheduler
-                    )
+                        fallback = R.string.shizuku_error_unknown_jobscheduler,
+                    ),
                 )
             }
         }
 
     suspend fun readNetworkStats(
         context: Context,
-        maxEntries: Int? = 8
+        maxEntries: Int? = 8,
     ): NetworkStatsDiagnostic =
         withContext(Dispatchers.IO) {
-
             if (
-                state() ==
-                ShizukuState.NOT_RUNNING
+                state() == ShizukuState.NOT_RUNNING
             ) {
                 return@withContext networkStatsErrorResult(
-                    context.getString(
-                        R.string.shizuku_error_not_running
-                    ),
-                    DiagnosticError.SHIZUKU_UNAVAILABLE
+                    context.getString(R.string.shizuku_error_not_running),
+                    DiagnosticError.SHIZUKU_UNAVAILABLE,
                 )
             }
 
             if (
-                state() !=
-                ShizukuState.RUNNING_GRANTED
+                state() != ShizukuState.RUNNING_GRANTED
             ) {
                 return@withContext networkStatsErrorResult(
-                    context.getString(
-                        R.string.shizuku_error_permission_missing
-                    ),
-                    DiagnosticError.PERMISSION_DENIED
+                    context.getString(R.string.shizuku_error_permission_missing),
+                    DiagnosticError.PERMISSION_DENIED,
                 )
             }
 
             runCatching {
-                val service =
-                    getOrBindService(context)
+                val service = getOrBindService(context)
 
                 /*
                  * Der komplette netstats-Dump ist groß.
                  * Für die Diagnose genügt die UID-Traffic-Tabelle.
                  */
-                val output =
-                    service.runCommand(
-                        "echo __NETSTATS__; " +
-                            "timeout 6s dumpsys netstats " +
-                            "| sed -n '/mAppUidStatsMap:/,/mStatsMapA:/p' " +
-                            "| head -n 260; " +
-                            "echo __PACKAGES__; " +
-                            "timeout 5s cmd package list packages -U"
-                    )
-
-                parseNetworkStatsDump(
-                    output = output,
-                    context = context,
-                    maxEntries = maxEntries
+                val output = service.runCommand(
+                    "echo __NETSTATS__; " +
+                        "timeout 6s dumpsys netstats " +
+                        "| sed -n '/mAppUidStatsMap:/,/mStatsMapA:/p' " +
+                        "| head -n 260; " + "echo __PACKAGES__; " + "timeout 5s cmd package list packages -U",
                 )
+
+                parseNetworkStatsDump(output = output, context = context, maxEntries = maxEntries)
             }.getOrElse { throwable ->
                 remoteService = null
 
@@ -445,62 +353,41 @@ object ShizukuDiagnostics {
                     failureMessage(
                         context = context,
                         throwable = throwable,
-                        fallback =
-                            R.string.shizuku_error_unknown_netstats
+                        fallback = R.string.shizuku_error_unknown_netstats,
                     ),
                     failureCode(throwable),
-                    throwable.message?.removePrefix(
-                        WakeSleuthUserService.EXIT_CODE_ERROR_PREFIX
-                    )
+                    throwable.message?.removePrefix(WakeSleuthUserService.EXIT_CODE_ERROR_PREFIX),
                 )
             }
         }
 
-    suspend fun readWakeReason(
-        context: Context
-    ): WakeReasonDiagnostic =
+    suspend fun readWakeReason(context: Context): WakeReasonDiagnostic =
         withContext(Dispatchers.IO) {
-
             if (
-                state() ==
-                ShizukuState.NOT_RUNNING
+                state() == ShizukuState.NOT_RUNNING
             ) {
-                return@withContext wakeReasonErrorResult(
-                    context.getString(
-                        R.string.shizuku_error_not_running
-                    )
-                )
+                return@withContext wakeReasonErrorResult(context.getString(R.string.shizuku_error_not_running))
             }
 
             if (
-                state() !=
-                ShizukuState.RUNNING_GRANTED
+                state() != ShizukuState.RUNNING_GRANTED
             ) {
-                return@withContext wakeReasonErrorResult(
-                    context.getString(
-                        R.string.shizuku_error_permission_missing
-                    )
-                )
+                return@withContext wakeReasonErrorResult(context.getString(R.string.shizuku_error_permission_missing))
             }
 
             runCatching {
-                val service =
-                    getOrBindService(context)
+                val service = getOrBindService(context)
 
                 /*
                  * Nur direkte PowerManager-Aufweckzeilen
                  * abrufen. Dadurch bleibt die Binder-Antwort
                  * klein, auch wenn Logcat sehr groß ist.
                  */
-                val output =
-                    service.runCommand(
-                        "timeout 5s logcat -d -b system " +
-                            "-v threadtime " +
-                            "| grep -E " +
-                            "'(PowerManagerService|PowerGroup): " +
-                            "Waking up' " +
-                            "| tail -n 50"
-                    )
+                val output = service.runCommand(
+                    "timeout 5s logcat -d -b system " +
+                        "-v threadtime " +
+                        "| grep -E " + "'(PowerManagerService|PowerGroup): " + "Waking up' " + "| tail -n 50",
+                )
 
                 parseWakeReasonLog(output)
             }.getOrElse { throwable ->
@@ -510,32 +397,25 @@ object ShizukuDiagnostics {
                     failureMessage(
                         context = context,
                         throwable = throwable,
-                        fallback =
-                            R.string.shizuku_error_unknown_wake_reason
-                    )
+                        fallback = R.string.shizuku_error_unknown_wake_reason,
+                    ),
                 )
             }
         }
 
     suspend fun runDiagnosticCommand(
         context: Context,
-        command: String
+        command: String,
     ): String =
         withContext(Dispatchers.IO) {
             if (
-                state() !=
-                ShizukuState.RUNNING_GRANTED
+                state() != ShizukuState.RUNNING_GRANTED
             ) {
-                throw IllegalStateException(
-                    context.getString(
-                        R.string.shizuku_error_diagnostics_unavailable
-                    )
-                )
+                throw IllegalStateException(context.getString(R.string.shizuku_error_diagnostics_unavailable))
             }
 
             runCatching {
-                getOrBindService(context)
-                    .runCommand(command)
+                getOrBindService(context).runCommand(command)
             }.getOrElse { throwable ->
                 remoteService = null
 
@@ -543,25 +423,18 @@ object ShizukuDiagnostics {
                     failureMessage(
                         context = context,
                         throwable = throwable,
-                        fallback =
-                            R.string.shizuku_error_diagnostic_command_failed
+                        fallback = R.string.shizuku_error_diagnostic_command_failed,
                     ),
-                    throwable
+                    throwable,
                 )
             }
         }
 
-    private suspend fun getOrBindService(
-        context: Context
-    ): IWakeSleuthShell {
-        remoteService?.let {
-            return it
-        }
+    private suspend fun getOrBindService(context: Context): IWakeSleuthShell {
+        remoteService?.let { return it }
 
         synchronized(this) {
-            remoteService?.let {
-                return it
-            }
+            remoteService?.let { return it }
 
             if (!binding) {
                 binding = true
@@ -569,36 +442,24 @@ object ShizukuDiagnostics {
                 if (
                     pendingConnection.isCompleted
                 ) {
-                    pendingConnection =
-                        CompletableDeferred()
+                    pendingConnection = CompletableDeferred()
                 }
 
-                val args =
-                    Shizuku.UserServiceArgs(
-                        ComponentName(
-                            context,
-                            WakeSleuthUserService::class.java
-                        )
+                val args = Shizuku
+                    .UserServiceArgs(ComponentName(context, WakeSleuthUserService::class.java))
+                    .daemon(false)
+                    .processNameSuffix(
+                        "wakesleuth",
+                    ).debuggable(
+                        BuildConfig.DEBUG,
+                    ).version(
+                        USER_SERVICE_VERSION,
+                    ).tag(
+                        USER_SERVICE_TAG,
                     )
-                        .daemon(false)
-                        .processNameSuffix(
-                            "wakesleuth"
-                        )
-                        .debuggable(
-                            BuildConfig.DEBUG
-                        )
-                        .version(
-                            USER_SERVICE_VERSION
-                        )
-                        .tag(
-                            USER_SERVICE_TAG
-                        )
 
                 try {
-                    Shizuku.bindUserService(
-                        args,
-                        serviceConnection
-                    )
+                    Shizuku.bindUserService(args, serviceConnection)
                 } catch (throwable: Throwable) {
                     binding = false
                     throw throwable
@@ -607,63 +468,51 @@ object ShizukuDiagnostics {
         }
 
         return try {
-            withTimeout(10_000L) {
-                pendingConnection.await()
-            }
+            withTimeout(10_000L) { pendingConnection.await() }
         } catch (
-            throwable: TimeoutCancellationException
+            throwable: TimeoutCancellationException,
         ) {
             binding = false
 
-            throw IllegalStateException(
-                context.getString(
-                    R.string.shizuku_error_user_service_not_responding
-                )
-            )
+            throw IllegalStateException(context.getString(R.string.shizuku_error_user_service_not_responding))
         }
     }
 
-    private fun failureCode(
-        throwable: Throwable
-    ): DiagnosticError =
+    private fun failureCode(throwable: Throwable): DiagnosticError =
         when {
-            throwable is TimeoutCancellationException ->
+            throwable is TimeoutCancellationException -> {
                 DiagnosticError.TIMEOUT
+            }
 
             throwable.message
                 ?.startsWith(
-                    WakeSleuthUserService.EXIT_CODE_ERROR_PREFIX
-                ) == true ->
+                    WakeSleuthUserService.EXIT_CODE_ERROR_PREFIX,
+                ) == true -> {
                 DiagnosticError.SHELL_FAILED
+            }
 
-            else ->
+            else -> {
                 DiagnosticError.UNKNOWN
+            }
         }
 
     private fun failureMessage(
         context: Context,
         throwable: Throwable,
-        @StringRes fallback: Int
+        @StringRes fallback: Int,
     ): String {
-        val message =
-            throwable.message
-                ?: return context.getString(
-                    fallback
-                )
+        val message = throwable.message
+            ?: return context.getString(fallback)
 
         if (
-            !message.startsWith(
-                WakeSleuthUserService.EXIT_CODE_ERROR_PREFIX
-            )
+            !message.startsWith(WakeSleuthUserService.EXIT_CODE_ERROR_PREFIX)
         ) {
             return message
         }
 
         return context.getString(
             R.string.shizuku_error_shell_command_failed,
-            message.removePrefix(
-                WakeSleuthUserService.EXIT_CODE_ERROR_PREFIX
-            )
+            message.removePrefix(WakeSleuthUserService.EXIT_CODE_ERROR_PREFIX),
         )
     }
 
@@ -671,246 +520,148 @@ object ShizukuDiagnostics {
         context: Context,
         output: String,
         ownPackageName: String,
-        referenceTimestamp: Long?
+        referenceTimestamp: Long?,
     ): WakeLockDiagnostic {
         val lines = output.lines()
 
         val activeCount = lines
             .firstOrNull { line ->
-                line.trim().startsWith(
-                    "Wake Locks: size="
-                )
-            }
-            ?.substringAfter("size=")
+                line.trim().startsWith("Wake Locks: size=")
+            }?.substringAfter("size=")
             ?.trim()
             ?.toIntOrNull()
             ?: 0
 
-        val logStart =
-            lines.indexOfFirst { line ->
-                line.trim() ==
-                    "Partial Wakelock Log:"
-            }
+        val logStart = lines.indexOfFirst { line -> line.trim() == "Partial Wakelock Log:" }
 
-        val parsedEntries =
-            if (logStart >= 0) {
-                lines.drop(logStart + 1)
-                    .mapNotNull { line ->
-                        parseWakeLockLine(
-                            line = line.trim(),
-                            ownPackageName =
-                                ownPackageName
-                        )
-                    }
-            } else {
-                emptyList()
-            }
+        val parsedEntries = if (logStart >= 0) {
+            lines
+                .drop(logStart + 1)
+                .mapNotNull { line -> parseWakeLockLine(line = line.trim(), ownPackageName = ownPackageName) }
+        } else {
+            emptyList()
+        }
 
-        val selectedEntry =
-            selectBestEntry(
-                entries = parsedEntries,
-                referenceTimestamp =
-                    referenceTimestamp
-            )
+        val selectedEntry = selectBestEntry(entries = parsedEntries, referenceTimestamp = referenceTimestamp)
 
-        val historyEntries =
-            parseWakeLockHistory(
-                context = context,
-                lines = lines,
-                ownPackageName =
-                    ownPackageName
-            )
+        val historyEntries = parseWakeLockHistory(context = context, lines = lines, ownPackageName = ownPackageName)
 
         return WakeLockDiagnostic(
             activeCount = activeCount,
-            lastTimestamp =
-                selectedEntry?.timestamp,
-            lastPackage =
-                selectedEntry?.packageName,
-            lastTag =
-                selectedEntry?.tag,
-            rawLastEntry =
-                selectedEntry?.rawEntry,
-            lastTimestampMillis =
-                selectedEntry?.timestampMillis,
-            historyEntries =
-                historyEntries
+            lastTimestamp = selectedEntry?.timestamp,
+            lastPackage = selectedEntry?.packageName,
+            lastTag = selectedEntry?.tag,
+            rawLastEntry = selectedEntry?.rawEntry,
+            lastTimestampMillis = selectedEntry?.timestampMillis,
+            historyEntries = historyEntries,
         )
     }
 
     private fun parseWakeLockHistory(
         context: Context,
         lines: List<String>,
-        ownPackageName: String
+        ownPackageName: String,
     ): List<WakeLockHistoryEntry> {
-        val partialStart =
-            lines.indexOfFirst { line ->
-                line.trim() ==
-                    "Partial Wakelock Log:"
-            }
+        val partialStart = lines.indexOfFirst { line -> line.trim() == "Partial Wakelock Log:" }
 
-        val fullStart =
-            lines.indexOfFirst { line ->
-                line.trim() ==
-                    "Full Wakelock Log:"
-            }
+        val fullStart = lines.indexOfFirst { line -> line.trim() == "Full Wakelock Log:" }
 
-        val historyLines =
-            buildList {
-                if (partialStart >= 0) {
-                    val end =
-                        if (
-                            fullStart > partialStart
-                        ) {
-                            fullStart
-                        } else {
-                            lines.size
-                        }
-
-                    addAll(
-                        lines.subList(
-                            partialStart + 1,
-                            end
-                        )
-                    )
+        val historyLines = buildList {
+            if (partialStart >= 0) {
+                val end = if (
+                    fullStart > partialStart
+                ) {
+                    fullStart
+                } else {
+                    lines.size
                 }
 
-                if (fullStart >= 0) {
-                    val endOffset =
-                        lines.drop(fullStart + 1)
-                            .indexOfFirst { line ->
-                                val trimmed =
-                                    line.trim()
-
-                                trimmed.endsWith(":") &&
-                                    !trimmed.matches(
-                                        WAKELOCK_HISTORY_LINE_REGEX
-                                    )
-                            }
-
-                    val end =
-                        if (endOffset >= 0) {
-                            fullStart + 1 +
-                                endOffset
-                        } else {
-                            lines.size
-                        }
-
-                    addAll(
-                        lines.subList(
-                            fullStart + 1,
-                            end
-                        )
-                    )
-                }
+                addAll(lines.subList(partialStart + 1, end))
             }
 
-        val parsed =
-            historyLines.mapNotNull { rawLine ->
-                parseWakeLockHistoryLine(
-                    context = context,
-                    line = rawLine.trim(),
-                    ownPackageName =
-                        ownPackageName
-                )
+            if (fullStart >= 0) {
+                val endOffset = lines
+                    .drop(fullStart + 1)
+                    .indexOfFirst { line ->
+                        val trimmed = line.trim()
+
+                        trimmed.endsWith(":") && !trimmed.matches(WAKELOCK_HISTORY_LINE_REGEX)
+                    }
+
+                val end = if (endOffset >= 0) {
+                    fullStart + 1 + endOffset
+                } else {
+                    lines.size
+                }
+
+                addAll(lines.subList(fullStart + 1, end))
             }
-                .distinctBy { entry ->
-                    entry.timestampMillis.toString() +
-                        "|" +
-                        entry.packageName.lowercase(
-                            Locale.ROOT
-                        ) +
-                        "|" +
-                        entry.action +
-                        "|" +
-                        entry.tag.lowercase(
-                            Locale.ROOT
-                        ) +
-                        "|" +
-                        entry.wakeLockType
-                }
-                .sortedBy {
-                    it.timestampMillis
-                }
+        }
+
+        val parsed = historyLines
+            .mapNotNull { rawLine ->
+                parseWakeLockHistoryLine(context = context, line = rawLine.trim(), ownPackageName = ownPackageName)
+            }.distinctBy { entry ->
+                entry.timestampMillis.toString() +
+                    "|" +
+                    entry.packageName.lowercase(Locale.ROOT) +
+                    "|" + entry.action + "|" + entry.tag.lowercase(Locale.ROOT) + "|" + entry.wakeLockType
+            }.sortedBy {
+                it.timestampMillis
+            }
 
         data class OpenWakeLock(
-            val line: RawWakeLockHistoryLine
+            val line: RawWakeLockHistoryLine,
         )
 
-        val openByKey =
-            mutableMapOf<
-                String,
-                ArrayDeque<OpenWakeLock>
-            >()
+        val openByKey = mutableMapOf<
+            String,
+            ArrayDeque<OpenWakeLock>,
+        >()
 
-        val completed =
-            mutableListOf<WakeLockHistoryEntry>()
+        val completed = mutableListOf<WakeLockHistoryEntry>()
 
         parsed.forEach { entry ->
-            val key =
-                entry.packageName.lowercase(
-                    Locale.ROOT
-                ) +
-                    "|" +
-                    entry.tag.lowercase(
-                        Locale.ROOT
-                    )
+            val key = entry.packageName.lowercase(Locale.ROOT) + "|" + entry.tag.lowercase(Locale.ROOT)
 
             if (entry.action == "ACQ") {
                 openByKey
                     .getOrPut(key) {
                         ArrayDeque()
-                    }
-                    .addLast(
-                        OpenWakeLock(entry)
+                    }.addLast(
+                        OpenWakeLock(entry),
                     )
             } else {
-                val queue =
-                    openByKey[key]
+                val queue = openByKey[key]
 
-                val start =
-                    if (
-                        queue != null &&
-                        queue.isNotEmpty()
-                    ) {
-                        queue.removeFirst().line
-                    } else {
-                        null
-                    }
+                val start = if (
+                    queue != null && queue.isNotEmpty()
+                ) {
+                    queue.removeFirst().line
+                } else {
+                    null
+                }
 
                 if (start != null) {
-                    val durationMillis =
-                        entry.timestampMillis -
-                            start.timestampMillis
+                    val durationMillis = entry.timestampMillis -
+                        start.timestampMillis
 
                     if (
-                        durationMillis >= 0L &&
-                        durationMillis <=
-                            7L * 24L * 60L * 60L * 1000L
+                        durationMillis >= 0L && durationMillis <= 7L * 24L * 60L * 60L * 1000L
                     ) {
                         completed.add(
                             WakeLockHistoryEntry(
-                                startTimestamp =
-                                    start.timestamp,
-                                startTimestampMillis =
-                                    start.timestampMillis,
-                                endTimestamp =
-                                    entry.timestamp,
-                                endTimestampMillis =
-                                    entry.timestampMillis,
-                                durationMillis =
-                                    durationMillis,
-                                packageName =
-                                    start.packageName,
-                                tag =
-                                    start.tag,
-                                wakeLockType =
-                                    start.wakeLockType,
-                                causesWake =
-                                    start.causesWake,
-                                stillActive =
-                                    false
-                            )
+                                startTimestamp = start.timestamp,
+                                startTimestampMillis = start.timestampMillis,
+                                endTimestamp = entry.timestamp,
+                                endTimestampMillis = entry.timestampMillis,
+                                durationMillis = durationMillis,
+                                packageName = start.packageName,
+                                tag = start.tag,
+                                wakeLockType = start.wakeLockType,
+                                causesWake = start.causesWake,
+                                stillActive = false,
+                            ),
                         )
                     }
                 }
@@ -919,176 +670,127 @@ object ShizukuDiagnostics {
 
         openByKey.values
             .flatMap { queue ->
-                queue.map {
-                    it.line
-                }
-            }
-            .forEach { start ->
+                queue.map { it.line }
+            }.forEach { start ->
                 completed.add(
                     WakeLockHistoryEntry(
-                        startTimestamp =
-                            start.timestamp,
-                        startTimestampMillis =
-                            start.timestampMillis,
+                        startTimestamp = start.timestamp,
+                        startTimestampMillis = start.timestampMillis,
                         endTimestamp = null,
                         endTimestampMillis = null,
                         durationMillis = null,
-                        packageName =
-                            start.packageName,
-                        tag =
-                            start.tag,
-                        wakeLockType =
-                            start.wakeLockType,
-                        causesWake =
-                            start.causesWake,
-                        stillActive =
-                            true
-                    )
+                        packageName = start.packageName,
+                        tag = start.tag,
+                        wakeLockType = start.wakeLockType,
+                        causesWake = start.causesWake,
+                        stillActive = true,
+                    ),
                 )
             }
 
         return completed
             .sortedByDescending {
                 it.startTimestampMillis
-            }
-            .take(30)
+            }.take(30)
     }
 
     private fun parseWakeLockHistoryLine(
         context: Context,
         line: String,
-        ownPackageName: String
+        ownPackageName: String,
     ): RawWakeLockHistoryLine? {
-        val match =
-            WAKELOCK_HISTORY_LINE_REGEX
-                .matchEntire(line)
-                ?: return null
+        val match = WAKELOCK_HISTORY_LINE_REGEX.matchEntire(line)
+            ?: return null
 
-        val timestamp =
-            match.groups["timestamp"]
-                ?.value
-                ?: return null
+        val timestamp = match.groups["timestamp"]?.value
+            ?: return null
 
-        val timestampMillis =
-            parseTimestampMillis(timestamp)
-                ?: return null
+        val timestampMillis = parseTimestampMillis(timestamp)
+            ?: return null
 
-        val packageName =
-            match.groups["package"]
-                ?.value
-                ?.trim()
-                .orEmpty()
+        val packageName = match.groups["package"]
+            ?.value
+            ?.trim()
+            .orEmpty()
 
-        val action =
-            match.groups["action"]
-                ?.value
-                ?: return null
+        val action = match.groups["action"]?.value
+            ?: return null
 
-        val rawTail =
-            match.groups["tail"]
-                ?.value
-                ?.trim()
-                .orEmpty()
+        val rawTail = match.groups["tail"]
+            ?.value
+            ?.trim()
+            .orEmpty()
 
         if (
-            packageName.equals(
-                ownPackageName,
-                ignoreCase = true
-            ) ||
-            rawTail.contains(
-                ownPackageName,
-                ignoreCase = true
-            )
+            packageName.equals(ownPackageName, ignoreCase = true) || rawTail.contains(ownPackageName, ignoreCase = true)
         ) {
             return null
         }
 
-        val flags =
-            if (
-                action == "ACQ" &&
-                rawTail.endsWith(")") &&
-                rawTail.contains(" (")
-            ) {
-                rawTail.substringAfterLast(" (")
-                    .removeSuffix(")")
-                    .trim()
-            } else {
-                ""
+        val flags = if (
+            action == "ACQ" && rawTail.endsWith(")") && rawTail.contains(" (")
+        ) {
+            rawTail
+                .substringAfterLast(" (")
+                .removeSuffix(")")
+                .trim()
+        } else {
+            ""
+        }
+
+        val tag = if (flags.isNotBlank()) {
+            rawTail.substringBeforeLast(" (").trim()
+        } else {
+            rawTail
+        }
+
+        val lowerFlags = flags.lowercase(Locale.ROOT)
+
+        val wakeLockType = when {
+            lowerFlags.contains(
+                "screen-bright",
+            ) -> {
+                context.getString(R.string.shizuku_wakelock_type_screen_bright)
             }
 
-        val tag =
-            if (flags.isNotBlank()) {
-                rawTail.substringBeforeLast(" (")
-                    .trim()
-            } else {
-                rawTail
+            lowerFlags.contains(
+                "screen-dim",
+            ) -> {
+                context.getString(R.string.shizuku_wakelock_type_screen_dim)
             }
 
-        val lowerFlags =
-            flags.lowercase(Locale.ROOT)
-
-        val wakeLockType =
-            when {
-                lowerFlags.contains(
-                    "screen-bright"
-                ) ->
-                    context.getString(
-                        R.string.shizuku_wakelock_type_screen_bright
-                    )
-
-                lowerFlags.contains(
-                    "screen-dim"
-                ) ->
-                    context.getString(
-                        R.string.shizuku_wakelock_type_screen_dim
-                    )
-
-                lowerFlags.contains("full") ->
-                    context.getString(
-                        R.string.shizuku_wakelock_type_full
-                    )
-
-                lowerFlags.contains("partial") ->
-                    context.getString(
-                        R.string.shizuku_wakelock_type_partial
-                    )
-
-                else ->
-                    context.getString(
-                        R.string.shizuku_wakelock_type_unknown
-                    )
+            lowerFlags.contains("full") -> {
+                context.getString(R.string.shizuku_wakelock_type_full)
             }
+
+            lowerFlags.contains("partial") -> {
+                context.getString(R.string.shizuku_wakelock_type_partial)
+            }
+
+            else -> {
+                context.getString(R.string.shizuku_wakelock_type_unknown)
+            }
+        }
 
         return RawWakeLockHistoryLine(
             timestamp = timestamp,
-            timestampMillis =
-                timestampMillis,
-            packageName =
-                packageName,
-            action =
-                action,
-            tag =
-                tag,
-            wakeLockType =
-                wakeLockType,
-            causesWake =
-                lowerFlags.contains(
-                    "acq-causes-wake"
-                )
+            timestampMillis = timestampMillis,
+            packageName = packageName,
+            action = action,
+            tag = tag,
+            wakeLockType = wakeLockType,
+            causesWake = lowerFlags.contains("acq-causes-wake"),
         )
     }
 
     private fun parseWakeLockLine(
         line: String,
-        ownPackageName: String
+        ownPackageName: String,
     ): ParsedWakeLock? {
-        val match =
-            ENTRY_REGEX.matchEntire(line)
-                ?: return null
+        val match = ENTRY_REGEX.matchEntire(line)
+            ?: return null
 
-        val timestamp = match
-            .groups["timestamp"]
-            ?.value
+        val timestamp = match.groups["timestamp"]?.value
             ?: return null
 
         val packageName = match
@@ -1104,54 +806,39 @@ object ShizukuDiagnostics {
             .orEmpty()
 
         val isOwnWakeLock =
-            packageName.equals(
-                ownPackageName,
-                ignoreCase = true
-            ) ||
-            tag.contains(
-                ownPackageName,
-                ignoreCase = true
-            )
+            packageName.equals(ownPackageName, ignoreCase = true) || tag.contains(ownPackageName, ignoreCase = true)
 
         if (isOwnWakeLock) {
             return null
         }
 
-        val timestampMillis =
-            parseTimestampMillis(timestamp)
-                ?: return null
+        val timestampMillis = parseTimestampMillis(timestamp)
+            ?: return null
 
         return ParsedWakeLock(
             rawEntry = line,
             timestamp = timestamp,
-            timestampMillis =
-                timestampMillis,
+            timestampMillis = timestampMillis,
             packageName = packageName,
-            tag = tag
+            tag = tag,
         )
     }
 
     private fun selectBestEntry(
         entries: List<ParsedWakeLock>,
-        referenceTimestamp: Long?
+        referenceTimestamp: Long?,
     ): ParsedWakeLock? {
         if (entries.isEmpty()) {
             return null
         }
 
         if (referenceTimestamp == null) {
-            return entries.maxByOrNull {
-                it.timestampMillis
-            }
+            return entries.maxByOrNull { it.timestampMillis }
         }
 
-        val nearbyEntries =
-            entries.filter { entry ->
-                abs(
-                    entry.timestampMillis -
-                        referenceTimestamp
-                ) <= MATCH_WINDOW_MILLIS
-            }
+        val nearbyEntries = entries.filter { entry ->
+            abs(entry.timestampMillis - referenceTimestamp) <= MATCH_WINDOW_MILLIS
+        }
 
         if (nearbyEntries.isEmpty()) {
             return null
@@ -1162,11 +849,7 @@ object ShizukuDiagnostics {
          * geweckt haben. Ein Eintrag danach ist häufiger
          * eine Reaktion auf das bereits aktive Display.
          */
-        val entriesBeforeOrAt =
-            nearbyEntries.filter { entry ->
-                entry.timestampMillis <=
-                    referenceTimestamp
-            }
+        val entriesBeforeOrAt = nearbyEntries.filter { entry -> entry.timestampMillis <= referenceTimestamp }
 
         if (entriesBeforeOrAt.isNotEmpty()) {
             return entriesBeforeOrAt.minByOrNull {
@@ -1181,13 +864,8 @@ object ShizukuDiagnostics {
         }
     }
 
-    private fun parseTimestampMillis(
-        rawTimestamp: String?
-    ): Long? {
-        val raw =
-            rawTimestamp
-                ?.trim()
-                .orEmpty()
+    private fun parseTimestampMillis(rawTimestamp: String?): Long? {
+        val raw = rawTimestamp?.trim().orEmpty()
 
         if (raw.isBlank()) {
             return null
@@ -1195,31 +873,24 @@ object ShizukuDiagnostics {
 
         val now = System.currentTimeMillis()
 
-        val currentYear =
-            Calendar.getInstance().get(
-                Calendar.YEAR
-            )
+        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
 
-        val parser =
-            SimpleDateFormat(
-                "yyyy-MM-dd HH:mm:ss.SSS",
-                Locale.US
-            ).apply {
-                isLenient = false
-            }
+        val parser = SimpleDateFormat(
+            "yyyy-MM-dd HH:mm:ss.SSS",
+            Locale.US,
+        ).apply {
+            isLenient = false
+        }
 
-        val candidates =
-            listOf(
-                currentYear - 1,
-                currentYear,
-                currentYear + 1
-            ).mapNotNull { year ->
-                runCatching {
-                    parser.parse(
-                        "$year-$raw"
-                    )?.time
-                }.getOrNull()
-            }
+        val candidates = listOf(
+            currentYear - 1,
+            currentYear,
+            currentYear + 1,
+        ).mapNotNull { year ->
+            runCatching {
+                parser.parse("$year-$raw")?.time
+            }.getOrNull()
+        }
 
         /*
          * Android-Zeilen enthalten meist keinen Jahreswert.
@@ -1229,34 +900,23 @@ object ShizukuDiagnostics {
          */
         return candidates
             .filter { timestamp ->
-                timestamp <=
-                    now + 24L * 60L * 60L * 1000L
-            }
-            .minByOrNull { timestamp ->
-                kotlin.math.abs(
-                    now - timestamp
-                )
+                timestamp <= now + 24L * 60L * 60L * 1000L
+            }.minByOrNull { timestamp ->
+                kotlin.math.abs(now - timestamp)
             }
     }
 
     private fun parseAlarmDump(
         context: Context,
         output: String,
-        ownPackageName: String
+        ownPackageName: String,
     ): WakeupAlarmDiagnostic {
         val lines = output.lines()
 
-        val statsStart =
-            lines.indexOfFirst { line ->
-                line.trim() == "Alarm Stats:"
-            }
+        val statsStart = lines.indexOfFirst { line -> line.trim() == "Alarm Stats:" }
 
         if (statsStart < 0) {
-            return alarmErrorResult(
-                context.getString(
-                    R.string.shizuku_error_alarm_stats_not_found
-                )
-            )
+            return alarmErrorResult(context.getString(R.string.shizuku_error_alarm_stats_not_found))
         }
 
         var currentPackage: String? = null
@@ -1264,29 +924,23 @@ object ShizukuDiagnostics {
         var pendingAgeMillis: Long? = null
         var pendingWakeCount = 0
 
-        val candidates =
-            mutableListOf<ParsedWakeupAlarm>()
+        val candidates = mutableListOf<ParsedWakeupAlarm>()
 
-        lines.drop(statsStart + 1)
+        lines
+            .drop(statsStart + 1)
             .forEach { rawLine ->
                 val line = rawLine.trim()
 
-                val packageMatch =
-                    PACKAGE_STATS_REGEX
-                        .matchEntire(line)
+                val packageMatch = PACKAGE_STATS_REGEX.matchEntire(line)
 
                 if (packageMatch != null) {
-                    currentPackage =
-                        packageMatch
-                            .groups["package"]
-                            ?.value
+                    currentPackage = packageMatch.groups["package"]?.value
 
-                    currentPackageWakeups =
-                        packageMatch
-                            .groups["wakeups"]
-                            ?.value
-                            ?.toIntOrNull()
-                            ?: 0
+                    currentPackageWakeups = packageMatch
+                        .groups["wakeups"]
+                        ?.value
+                        ?.toIntOrNull()
+                        ?: 0
 
                     pendingAgeMillis = null
                     pendingWakeCount = 0
@@ -1294,64 +948,39 @@ object ShizukuDiagnostics {
                     return@forEach
                 }
 
-                val alarmMatch =
-                    ALARM_STATS_REGEX
-                        .matchEntire(line)
+                val alarmMatch = ALARM_STATS_REGEX.matchEntire(line)
 
                 if (alarmMatch != null) {
-                    pendingWakeCount =
-                        alarmMatch
-                            .groups["wakes"]
-                            ?.value
-                            ?.toIntOrNull()
-                            ?: 0
+                    pendingWakeCount = alarmMatch
+                        .groups["wakes"]
+                        ?.value
+                        ?.toIntOrNull()
+                        ?: 0
 
-                    pendingAgeMillis =
-                        parseRelativeAgeMillis(
-                            alarmMatch
-                                .groups["last"]
-                                ?.value
-                        )
+                    pendingAgeMillis = parseRelativeAgeMillis(alarmMatch.groups["last"]?.value)
 
                     return@forEach
                 }
 
                 if (
-                    line.startsWith("*walarm*:") &&
-                    pendingWakeCount > 0 &&
-                    pendingAgeMillis != null
+                    line.startsWith("*walarm*:") && pendingWakeCount > 0 && pendingAgeMillis != null
                 ) {
-                    val packageName =
-                        currentPackage
-                            ?.trim()
-                            .orEmpty()
+                    val packageName = currentPackage?.trim().orEmpty()
 
-                    val isOwnAlarm =
-                        packageName.equals(
-                            ownPackageName,
-                            ignoreCase = true
-                        ) ||
-                        line.contains(
-                            ownPackageName,
-                            ignoreCase = true
-                        )
+                    val isOwnAlarm = packageName.equals(ownPackageName, ignoreCase = true) ||
+                        line.contains(ownPackageName, ignoreCase = true)
 
                     if (
-                        packageName.isNotBlank() &&
-                        !isOwnAlarm
+                        packageName.isNotBlank() && !isOwnAlarm
                     ) {
                         candidates.add(
                             ParsedWakeupAlarm(
-                                packageName =
-                                    packageName,
+                                packageName = packageName,
                                 tag = line,
-                                ageMillis =
-                                    pendingAgeMillis!!,
-                                wakeCount =
-                                    pendingWakeCount,
-                                packageWakeups =
-                                    currentPackageWakeups
-                            )
+                                ageMillis = pendingAgeMillis,
+                                wakeCount = pendingWakeCount,
+                                packageWakeups = currentPackageWakeups,
+                            ),
                         )
                     }
 
@@ -1360,10 +989,7 @@ object ShizukuDiagnostics {
                 }
             }
 
-        val latest =
-            candidates.minByOrNull {
-                it.ageMillis
-            }
+        val latest = candidates.minByOrNull { it.ageMillis }
 
         if (latest == null) {
             return WakeupAlarmDiagnostic(
@@ -1371,113 +997,75 @@ object ShizukuDiagnostics {
                 tag = null,
                 ageMillis = null,
                 wakeCount = 0,
-                packageWakeups = 0
+                packageWakeups = 0,
             )
         }
 
-        val snapshotTimestamp =
-            System.currentTimeMillis()
+        val snapshotTimestamp = System.currentTimeMillis()
 
         return WakeupAlarmDiagnostic(
-            packageName =
-                latest.packageName,
-            tag =
-                latest.tag,
-            ageMillis =
+            packageName = latest.packageName,
+            tag = latest.tag,
+            ageMillis = latest.ageMillis,
+            wakeCount = latest.wakeCount,
+            packageWakeups = latest.packageWakeups,
+            triggerTimestampMillis = snapshotTimestamp -
                 latest.ageMillis,
-            wakeCount =
-                latest.wakeCount,
-            packageWakeups =
-                latest.packageWakeups,
-            triggerTimestampMillis =
-                snapshotTimestamp -
-                    latest.ageMillis
         )
     }
 
     private fun parseJobSchedulerDump(
         output: String,
-        ownPackageName: String
+        ownPackageName: String,
     ): BackgroundJobDiagnostic {
-        val snapshotTimestamp =
-            System.currentTimeMillis()
+        val snapshotTimestamp = System.currentTimeMillis()
 
-        val candidates =
-            output.lineSequence()
-                .mapNotNull { rawLine ->
-                    val line = rawLine.trim()
+        val candidates = output
+            .lineSequence()
+            .mapNotNull { rawLine ->
+                val line = rawLine.trim()
 
-                    val match =
-                        JOB_HISTORY_REGEX
-                            .matchEntire(line)
-                            ?: return@mapNotNull null
+                val match = JOB_HISTORY_REGEX.matchEntire(line)
+                    ?: return@mapNotNull null
 
-                    val ageMillis =
-                        parseRelativeAgeMillis(
-                            match.groups["age"]
-                                ?.value
-                        ) ?: return@mapNotNull null
+                val ageMillis = parseRelativeAgeMillis(match.groups["age"]?.value) ?: return@mapNotNull null
 
-                    val target =
-                        match.groups["target"]
-                            ?.value
-                            ?.trim()
-                            .orEmpty()
+                val target = match.groups["target"]
+                    ?.value
+                    ?.trim()
+                    .orEmpty()
 
-                    val ownerPart =
-                        target.substringBefore("/")
+                val ownerPart = target.substringBefore("/")
 
-                    val packageName =
-                        if (
-                            ownerPart.startsWith("@")
-                        ) {
-                            ownerPart
-                                .substringAfterLast("@")
-                        } else {
-                            ownerPart
-                        }.trim()
+                val packageName = if (
+                    ownerPart.startsWith("@")
+                ) {
+                    ownerPart.substringAfterLast("@")
+                } else {
+                    ownerPart
+                }.trim()
 
-                    if (
-                        packageName.isBlank() ||
-                        packageName.equals(
-                            ownPackageName,
-                            ignoreCase = true
-                        ) ||
-                        target.contains(
-                            ownPackageName,
-                            ignoreCase = true
-                        )
-                    ) {
-                        return@mapNotNull null
-                    }
-
-                    val serviceName =
-                        target.substringAfter(
-                            "/",
-                            missingDelimiterValue =
-                                target
-                        )
-
-                    BackgroundJobDiagnostic(
-                        packageName =
-                            packageName,
-                        serviceName =
-                            serviceName,
-                        ageMillis =
-                            ageMillis,
-                        prioritized =
-                            match.groups["action"]
-                                ?.value
-                                ?.endsWith("-P")
-                                == true,
-                        rawEntry =
-                            line,
-                        triggerTimestampMillis =
-                            snapshotTimestamp -
-                                ageMillis
-                    )
+                if (
+                    packageName.isBlank() ||
+                    packageName.equals(ownPackageName, ignoreCase = true) ||
+                    target.contains(ownPackageName, ignoreCase = true)
+                ) {
+                    return@mapNotNull null
                 }
-                .toList()
+
+                val serviceName = target.substringAfter("/", missingDelimiterValue = target)
+
+                BackgroundJobDiagnostic(
+                    packageName = packageName,
+                    serviceName = serviceName,
+                    ageMillis = ageMillis,
+                    prioritized = match.groups["action"]?.value?.endsWith("-P")
+                        == true,
+                    rawEntry = line,
+                    triggerTimestampMillis = snapshotTimestamp -
+                        ageMillis,
+                )
+            }.toList()
 
         return candidates.minByOrNull {
             it.ageMillis ?: Long.MAX_VALUE
@@ -1486,281 +1074,182 @@ object ShizukuDiagnostics {
             serviceName = null,
             ageMillis = null,
             prioritized = false,
-            rawEntry = null
+            rawEntry = null,
         )
     }
 
     private fun parseNetworkStatsDump(
         output: String,
         context: Context,
-        maxEntries: Int?
+        maxEntries: Int?,
     ): NetworkStatsDiagnostic {
-        val packageManager =
-            context.packageManager
+        val packageManager = context.packageManager
 
-        val ownPackageName =
-            context.packageName
+        val ownPackageName = context.packageName
 
-        val packageUidMap =
-            output.lineSequence()
-                .mapNotNull { rawLine ->
-                    val line =
-                        rawLine.trim()
+        val packageUidMap = output
+            .lineSequence()
+            .mapNotNull { rawLine ->
+                val line = rawLine.trim()
 
-                    val match =
-                        PACKAGE_UID_LINE_REGEX
-                            .matchEntire(line)
-                            ?: return@mapNotNull null
+                val match = PACKAGE_UID_LINE_REGEX.matchEntire(line)
+                    ?: return@mapNotNull null
 
-                    val packageName =
-                        match.groups["package"]
-                            ?.value
-                            ?.trim()
-                            ?: return@mapNotNull null
+                val packageName = match.groups["package"]?.value?.trim()
+                    ?: return@mapNotNull null
 
-                    val uid =
-                        match.groups["uid"]
-                            ?.value
-                            ?.toIntOrNull()
-                            ?: return@mapNotNull null
+                val uid = match.groups["uid"]?.value?.toIntOrNull()
+                    ?: return@mapNotNull null
 
-                    uid to packageName
+                uid to packageName
+            }.groupBy(
+                keySelector = { it.first },
+                valueTransform = { it.second },
+            )
+
+        val netstatsPart = output.substringBefore("__PACKAGES__")
+
+        val ignoredPackages = setOf(ownPackageName, "com.android.shell")
+
+        val ignoredUids = setOf(0, 2000)
+
+        val entries = netstatsPart
+            .lineSequence()
+            .mapNotNull { rawLine ->
+                val line = rawLine.trim()
+
+                val match = NETSTATS_UID_LINE_REGEX.matchEntire(line)
+                    ?: return@mapNotNull null
+
+                val uid = match.groups["uid"]?.value?.toIntOrNull()
+                    ?: return@mapNotNull null
+
+                if (uid in ignoredUids) {
+                    return@mapNotNull null
                 }
-                .groupBy(
-                    keySelector = { it.first },
-                    valueTransform = { it.second }
+
+                val rxBytes = match.groups["rxBytes"]?.value?.toLongOrNull()
+                    ?: 0L
+
+                val txBytes = match.groups["txBytes"]?.value?.toLongOrNull()
+                    ?: 0L
+
+                val rxPackets = match.groups["rxPackets"]?.value?.toLongOrNull()
+
+                val txPackets = match.groups["txPackets"]?.value?.toLongOrNull()
+
+                val packagesFromManager = runCatching {
+                    packageManager
+                        .getPackagesForUid(uid)
+                        ?.toList()
+                        .orEmpty()
+                }.getOrDefault(emptyList())
+
+                val packagesFromShell = packageUidMap[uid].orEmpty()
+
+                val allPackages = (packagesFromManager + packagesFromShell).distinct()
+
+                val packageName = allPackages.firstOrNull { packageName ->
+                    ignoredPackages.none { ignored -> packageName.equals(ignored, ignoreCase = true) }
+                } ?: allPackages.firstOrNull()
+
+                if (
+                    packageName != null &&
+                    ignoredPackages.any { ignored -> packageName.equals(ignored, ignoreCase = true) }
+                ) {
+                    return@mapNotNull null
+                }
+
+                if (
+                    rxBytes < 0L || txBytes < 0L
+                ) {
+                    return@mapNotNull null
+                }
+
+                val totalBytes = runCatching {
+                    Math.addExact(rxBytes, txBytes)
+                }.getOrNull()
+                    ?: return@mapNotNull null
+
+                if (totalBytes <= 0L) {
+                    return@mapNotNull null
+                }
+
+                val appLabel = packageName?.let { resolvedPackage ->
+                    runCatching {
+                        val appInfo = packageManager.getApplicationInfo(resolvedPackage, 0)
+
+                        packageManager
+                            .getApplicationLabel(appInfo)
+                            .toString()
+                            .trim()
+                            .ifBlank { null }
+                    }.getOrNull()
+                }
+
+                NetworkTrafficEntry(
+                    uid = uid,
+                    packageName = packageName,
+                    appLabel = appLabel,
+                    rxBytes = rxBytes,
+                    txBytes = txBytes,
+                    totalBytes = totalBytes,
+                    rxPackets = rxPackets,
+                    txPackets = txPackets,
                 )
-
-        val netstatsPart =
-            output.substringBefore(
-                "__PACKAGES__"
-            )
-
-        val ignoredPackages =
-            setOf(
-                ownPackageName,
-                "com.android.shell"
-            )
-
-        val ignoredUids =
-            setOf(
-                0,
-                2000
-            )
-
-        val entries =
-            netstatsPart.lineSequence()
-                .mapNotNull { rawLine ->
-                    val line =
-                        rawLine.trim()
-
-                    val match =
-                        NETSTATS_UID_LINE_REGEX
-                            .matchEntire(line)
-                            ?: return@mapNotNull null
-
-                    val uid =
-                        match.groups["uid"]
-                            ?.value
-                            ?.toIntOrNull()
-                            ?: return@mapNotNull null
-
-                    if (uid in ignoredUids) {
-                        return@mapNotNull null
-                    }
-
-                    val rxBytes =
-                        match.groups["rxBytes"]
-                            ?.value
-                            ?.toLongOrNull()
-                            ?: 0L
-
-                    val txBytes =
-                        match.groups["txBytes"]
-                            ?.value
-                            ?.toLongOrNull()
-                            ?: 0L
-
-                    val rxPackets =
-                        match.groups["rxPackets"]
-                            ?.value
-                            ?.toLongOrNull()
-
-                    val txPackets =
-                        match.groups["txPackets"]
-                            ?.value
-                            ?.toLongOrNull()
-
-                    val packagesFromManager =
-                        runCatching {
-                            packageManager
-                                .getPackagesForUid(uid)
-                                ?.toList()
-                                .orEmpty()
-                        }.getOrDefault(emptyList())
-
-                    val packagesFromShell =
-                        packageUidMap[uid]
-                            .orEmpty()
-
-                    val allPackages =
-                        (
-                            packagesFromManager +
-                                packagesFromShell
-                        ).distinct()
-
-                    val packageName =
-                        allPackages.firstOrNull { packageName ->
-                            ignoredPackages.none { ignored ->
-                                packageName.equals(
-                                    ignored,
-                                    ignoreCase = true
-                                )
-                            }
-                        } ?: allPackages.firstOrNull()
-
-                    if (
-                        packageName != null &&
-                        ignoredPackages.any { ignored ->
-                            packageName.equals(
-                                ignored,
-                                ignoreCase = true
-                            )
-                        }
-                    ) {
-                        return@mapNotNull null
-                    }
-
-                    if (
-                        rxBytes < 0L ||
-                        txBytes < 0L
-                    ) {
-                        return@mapNotNull null
-                    }
-
-                    val totalBytes =
-                        runCatching {
-                            Math.addExact(
-                                rxBytes,
-                                txBytes
-                            )
-                        }.getOrNull()
-                            ?: return@mapNotNull null
-
-                    if (totalBytes <= 0L) {
-                        return@mapNotNull null
-                    }
-
-                    val appLabel =
-                        packageName?.let { resolvedPackage ->
-                            runCatching {
-                                val appInfo =
-                                    packageManager.getApplicationInfo(
-                                        resolvedPackage,
-                                        0
-                                    )
-
-                                packageManager
-                                    .getApplicationLabel(appInfo)
-                                    .toString()
-                                    .trim()
-                                    .ifBlank { null }
-                            }.getOrNull()
-                        }
-
-                    NetworkTrafficEntry(
-                        uid = uid,
-                        packageName = packageName,
-                        appLabel = appLabel,
-                        rxBytes = rxBytes,
-                        txBytes = txBytes,
-                        totalBytes = totalBytes,
-                        rxPackets = rxPackets,
-                        txPackets = txPackets
-                    )
+            }.sortedByDescending {
+                it.totalBytes
+            }.toList()
+            .let { sortedEntries ->
+                if (maxEntries == null) {
+                    sortedEntries
+                } else {
+                    sortedEntries.take(maxEntries.coerceAtLeast(0))
                 }
-                .sortedByDescending {
-                    it.totalBytes
-                }
-                .toList()
-                .let { sortedEntries ->
-                    if (maxEntries == null) {
-                        sortedEntries
-                    } else {
-                        sortedEntries.take(
-                            maxEntries.coerceAtLeast(0)
-                        )
-                    }
-                }
+            }
 
-        return NetworkStatsDiagnostic(
-            entries = entries
-        )
+        return NetworkStatsDiagnostic(entries = entries)
     }
 
-    private fun parseWakeReasonLog(
-        output: String
-    ): WakeReasonDiagnostic {
-        val parsed =
-            output.lineSequence()
-                .mapNotNull { rawLine ->
-                    val line = rawLine.trim()
+    private fun parseWakeReasonLog(output: String): WakeReasonDiagnostic {
+        val parsed = output
+            .lineSequence()
+            .mapNotNull { rawLine ->
+                val line = rawLine.trim()
 
-                    val match =
-                        WAKE_REASON_REGEX.find(line)
-                            ?: return@mapNotNull null
+                val match = WAKE_REASON_REGEX.find(line)
+                    ?: return@mapNotNull null
 
-                    val timestamp =
-                        match.groups["timestamp"]
-                            ?.value
-                            ?.trim()
-                            ?: return@mapNotNull null
+                val timestamp = match.groups["timestamp"]?.value?.trim()
+                    ?: return@mapNotNull null
 
-                    val reason =
-                        match.groups["reason"]
-                            ?.value
-                            ?.trim()
-                            .orEmpty()
+                val reason = match.groups["reason"]
+                    ?.value
+                    ?.trim()
+                    .orEmpty()
 
-                    val details =
-                        match.groups["details"]
-                            ?.value
-                            ?.trim()
-                            .orEmpty()
+                val details = match.groups["details"]
+                    ?.value
+                    ?.trim()
+                    .orEmpty()
 
-                    val timestampMillis =
-                        parseTimestampMillis(
-                            timestamp
-                        ) ?: return@mapNotNull null
+                val timestampMillis = parseTimestampMillis(timestamp) ?: return@mapNotNull null
 
-                    WakeReasonDiagnostic(
-                        reason =
-                            reason.ifBlank { null },
-                        details =
-                            details.ifBlank { null },
-                        timestamp =
-                            timestamp,
-                        timestampMillis =
-                            timestampMillis,
-                        rawEntry =
-                            line
-                    )
-                }
-                .maxByOrNull {
-                    it.timestampMillis ?: Long.MIN_VALUE
-                }
+                WakeReasonDiagnostic(
+                    reason = reason.ifBlank { null },
+                    details = details.ifBlank { null },
+                    timestamp = timestamp,
+                    timestampMillis = timestampMillis,
+                    rawEntry = line,
+                )
+            }.maxByOrNull {
+                it.timestampMillis ?: Long.MIN_VALUE
+            }
 
-        return parsed ?: WakeReasonDiagnostic(
-            reason = null,
-            details = null,
-            timestamp = null,
-            rawEntry = null
-        )
+        return parsed ?: WakeReasonDiagnostic(reason = null, details = null, timestamp = null, rawEntry = null)
     }
 
-    private fun parseRelativeAgeMillis(
-        rawValue: String?
-    ): Long? {
+    private fun parseRelativeAgeMillis(rawValue: String?): Long? {
         val value = rawValue
             ?.trim()
             ?.removePrefix("-")
@@ -1770,302 +1259,227 @@ object ShizukuDiagnostics {
             return null
         }
 
-        val match =
-            RELATIVE_TIME_REGEX
-                .matchEntire(value)
-                ?: return null
+        val match = RELATIVE_TIME_REGEX.matchEntire(value)
+            ?: return null
 
-        val days =
-            match.groups["days"]
-                ?.value
-                ?.toLongOrNull()
-                ?: 0L
+        val days = match.groups["days"]?.value?.toLongOrNull()
+            ?: 0L
 
-        val hours =
-            match.groups["hours"]
-                ?.value
-                ?.toLongOrNull()
-                ?: 0L
+        val hours = match.groups["hours"]?.value?.toLongOrNull()
+            ?: 0L
 
-        val minutes =
-            match.groups["minutes"]
-                ?.value
-                ?.toLongOrNull()
-                ?: 0L
+        val minutes = match.groups["minutes"]?.value?.toLongOrNull()
+            ?: 0L
 
-        val seconds =
-            match.groups["seconds"]
-                ?.value
-                ?.toLongOrNull()
-                ?: 0L
+        val seconds = match.groups["seconds"]?.value?.toLongOrNull()
+            ?: 0L
 
-        val millis =
-            match.groups["millis"]
-                ?.value
-                ?.toLongOrNull()
-                ?: 0L
+        val millis = match.groups["millis"]?.value?.toLongOrNull()
+            ?: 0L
 
-        val totalMillis =
-            runCatching {
+        val totalMillis = runCatching {
+            Math.addExact(
+                Math.addExact(Math.multiplyExact(days, 86_400_000L), Math.multiplyExact(hours, 3_600_000L)),
                 Math.addExact(
-                    Math.addExact(
-                        Math.multiplyExact(
-                            days,
-                            86_400_000L
-                        ),
-                        Math.multiplyExact(
-                            hours,
-                            3_600_000L
-                        )
-                    ),
-                    Math.addExact(
-                        Math.addExact(
-                            Math.multiplyExact(
-                                minutes,
-                                60_000L
-                            ),
-                            Math.multiplyExact(
-                                seconds,
-                                1_000L
-                            )
-                        ),
-                        millis
-                    )
-                )
-            }.getOrNull()
-                ?: return null
+                    Math.addExact(Math.multiplyExact(minutes, 60_000L), Math.multiplyExact(seconds, 1_000L)),
+                    millis,
+                ),
+            )
+        }.getOrNull()
+            ?: return null
 
-        return totalMillis
-            .takeIf { value ->
-                value in 0L..
-                    365L * 24L * 60L * 60L * 1000L
-            }
+        return totalMillis.takeIf { value -> value in 0L..365L * 24L * 60L * 60L * 1000L }
     }
 
     private fun networkStatsErrorResult(
         message: String,
         code: DiagnosticError,
-        detail: String? = null
-    ): NetworkStatsDiagnostic {
-        return NetworkStatsDiagnostic(
-            entries = emptyList(),
-            error = message,
-            errorCode = code,
-            errorDetail = detail
-        )
-    }
+        detail: String? = null,
+    ): NetworkStatsDiagnostic = NetworkStatsDiagnostic(entries = emptyList(), error = message, errorCode = code, errorDetail = detail)
 
-    private fun wakeReasonErrorResult(
-        message: String
-    ): WakeReasonDiagnostic {
-        return WakeReasonDiagnostic(
-            reason = null,
-            details = null,
-            timestamp = null,
-            rawEntry = null,
-            error = message
-        )
-    }
+    private fun wakeReasonErrorResult(message: String): WakeReasonDiagnostic = WakeReasonDiagnostic(reason = null, details = null, timestamp = null, rawEntry = null, error = message)
 
-    private fun jobErrorResult(
-        message: String
-    ): BackgroundJobDiagnostic {
-        return BackgroundJobDiagnostic(
+    private fun jobErrorResult(message: String): BackgroundJobDiagnostic =
+        BackgroundJobDiagnostic(
             packageName = null,
             serviceName = null,
             ageMillis = null,
             prioritized = false,
             rawEntry = null,
-            error = message
+            error = message,
         )
-    }
 
-    private fun alarmErrorResult(
-        message: String
-    ): WakeupAlarmDiagnostic {
-        return WakeupAlarmDiagnostic(
+    private fun alarmErrorResult(message: String): WakeupAlarmDiagnostic =
+        WakeupAlarmDiagnostic(
             packageName = null,
             tag = null,
             ageMillis = null,
             wakeCount = 0,
             packageWakeups = 0,
-            error = message
+            error = message,
         )
-    }
 
-    private fun errorResult(
-        message: String
-    ): WakeLockDiagnostic {
-        return WakeLockDiagnostic(
+    private fun errorResult(message: String): WakeLockDiagnostic =
+        WakeLockDiagnostic(
             activeCount = 0,
             lastTimestamp = null,
             lastPackage = null,
             lastTag = null,
             rawLastEntry = null,
-            error = message
+            error = message,
         )
-    }
 
-    private val NETSTATS_UID_LINE_REGEX = Regex(
-        """(?<uid>\d+)\s+(?<rxBytes>\d+)\s+(?<rxPackets>\d+)\s+(?<txBytes>\d+)\s+(?<txPackets>\d+)"""
-    )
+    private val NETSTATS_UID_LINE_REGEX =
+        Regex(
+            """(?<uid>\d+)\s+(?<rxBytes>\d+)\s+(?<rxPackets>\d+)\s+(?<txBytes>\d+)\s+(?<txPackets>\d+)""",
+        )
 
-    private val PACKAGE_UID_LINE_REGEX = Regex(
-        """package:(?<package>\S+)\s+uid:(?<uid>\d+)"""
-    )
+    private val PACKAGE_UID_LINE_REGEX =
+        Regex(
+            """package:(?<package>\S+)\s+uid:(?<uid>\d+)""",
+        )
 
-    private val WAKE_REASON_REGEX = Regex(
-        """(?<timestamp>\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3}).*?PowerManagerService:\s+Waking up from.*?reason=(?<reason>[A-Z0-9_]+),\s+details=(?<details>[^)]+)\)"""
-    )
+    private val WAKE_REASON_REGEX =
+        Regex(
+            """(?<timestamp>\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3}).*?PowerManagerService:\s+Waking up from.*?reason=(?<reason>[A-Z0-9_]+),\s+details=(?<details>[^)]+)\)""",
+        )
 
-    private val JOB_HISTORY_REGEX = Regex(
-        """-(?<age>\S+)\s+(?<action>START(?:-P)?):\s+#\S+\s+(?<target>\S+)(?:\s+.*)?"""
-    )
+    private val JOB_HISTORY_REGEX =
+        Regex(
+            """-(?<age>\S+)\s+(?<action>START(?:-P)?):\s+#\S+\s+(?<target>\S+)(?:\s+.*)?""",
+        )
 
-    private val PACKAGE_STATS_REGEX = Regex(
-        """(?:\S+:)?(?<package>[A-Za-z0-9._:$-]+)\s+.+,\s+(?<wakeups>\d+)\s+wakeups:"""
-    )
+    private val PACKAGE_STATS_REGEX =
+        Regex(
+            """(?:\S+:)?(?<package>[A-Za-z0-9._:$-]+)\s+.+,\s+(?<wakeups>\d+)\s+wakeups:""",
+        )
 
-    private val ALARM_STATS_REGEX = Regex(
-        """\+\S+\s+(?<wakes>\d+)\s+wakes\s+\d+\s+alarms,\s+last\s+(?<last>-\S+):"""
-    )
+    private val ALARM_STATS_REGEX =
+        Regex(
+            """\+\S+\s+(?<wakes>\d+)\s+wakes\s+\d+\s+alarms,\s+last\s+(?<last>-\S+):""",
+        )
 
-    private val RELATIVE_TIME_REGEX = Regex(
-        """(?:(?<days>\d+)d)?(?:(?<hours>\d+)h)?(?:(?<minutes>\d+)m)?(?:(?<seconds>\d+)s)?(?:(?<millis>\d+)ms)?"""
-    )
+    private val RELATIVE_TIME_REGEX =
+        Regex(
+            """(?:(?<days>\d+)d)?(?:(?<hours>\d+)h)?(?:(?<minutes>\d+)m)?(?:(?<seconds>\d+)s)?(?:(?<millis>\d+)ms)?""",
+        )
 
-    private val ENTRY_REGEX = Regex(
-        """(?<timestamp>\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+-\s+\d+\s+\((?<package>[^)]+)\)\s+-\s+ACQ\s+(?<tag>.+?)\s+\(partial\)"""
-    )
+    private val ENTRY_REGEX =
+        Regex(
+            """(?<timestamp>\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+-\s+\d+\s+\((?<package>[^)]+)\)\s+-\s+ACQ\s+(?<tag>.+?)\s+\(partial\)""",
+        )
 
     private val WAKELOCK_HISTORY_LINE_REGEX =
         Regex(
-            """(?<timestamp>\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+-\s+\d+\s+\((?<package>[^)]+)\)\s+-\s+(?<action>ACQ|REL)\s+(?<tail>.+)"""
+            """(?<timestamp>\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+-\s+\d+\s+\((?<package>[^)]+)\)\s+-\s+(?<action>ACQ|REL)\s+(?<tail>.+)""",
         )
+
     /**
      * Compact location, sensor and network context right after a
      * screen-on. Only which signals are visible is kept; raw dumps and
      * coordinates are never stored.
      */
-    suspend fun readCompactExpertSnapshot(
-        context: Context
-    ): ExpertSnapshot {
-        val deviceFamily =
-            DeviceProfile.detect(context).family
+    suspend fun readCompactExpertSnapshot(context: Context): ExpertSnapshot {
+        val deviceFamily = DeviceProfile.detect(context).family
 
         fun hasAny(
             text: String,
-            vararg needles: String
+            vararg needles: String,
         ): Boolean {
-            val lower =
-                text.lowercase(Locale.ROOT)
+            val lower = text.lowercase(Locale.ROOT)
 
-            return needles.any {
-                lower.contains(
-                    it.lowercase(Locale.ROOT)
-                )
-            }
+            return needles.any { lower.contains(it.lowercase(Locale.ROOT)) }
         }
 
         suspend fun dump(command: String): String? =
             runCatching {
-                runDiagnosticCommand(
-                    context = context,
-                    command = command
-                )
+                runDiagnosticCommand(context = context, command = command)
             }.getOrNull()
 
-        val locationRaw =
-            dump("timeout 3s dumpsys location")
+        val locationRaw = dump("timeout 3s dumpsys location")
 
-        val sensorRaw =
-            dump("timeout 3s dumpsys sensorservice")
+        val sensorRaw = dump("timeout 3s dumpsys sensorservice")
 
-        val connectivityRaw =
-            dump("timeout 3s dumpsys connectivity")
+        val connectivityRaw = dump("timeout 3s dumpsys connectivity")
 
-        val location =
-            locationRaw.orEmpty()
+        val location = locationRaw.orEmpty()
 
-        val sensors =
-            sensorRaw.orEmpty()
+        val sensors = sensorRaw.orEmpty()
 
-        val connectivity =
-            connectivityRaw.orEmpty()
+        val connectivity = connectivityRaw.orEmpty()
 
-        val signals =
-            buildSet {
-                if (hasAny(location, "fused_location_provider", "fused provider", "FusedLocationService")) {
-                    add(ExpertSignal.FUSED_LOCATION)
-                }
-
-                if (hasAny(location, "network_location_provider", "NetworkLocationService", "network provider")) {
-                    add(ExpertSignal.NETWORK_LOCATION)
-                }
-
-                if (hasAny(location, "gnss_location_provider", "GnssService", "gps provider")) {
-                    add(ExpertSignal.GNSS_LOCATION)
-                }
-
-                if (hasAny(location, "activity_recognition_provider", "ALARM_WAKEUP_ACTIVITY_DETECTION", "activity")) {
-                    add(ExpertSignal.ACTIVITY_RECOGNITION)
-                }
-
-                if (hasAny(location, "geofencer_provider", "geofence", "Geofencer")) {
-                    add(ExpertSignal.GEOFENCING)
-                }
-
-                if (hasAny(location, "com.coloros.weather", "weather")) {
-                    add(ExpertSignal.WEATHER_PASSIVE_LOCATION)
-                }
-
-                if (
-                    deviceFamily == DeviceFamily.ONEPLUS &&
-                    hasAny(location, "com.oplus.nas", "com.oplus.nhs", "OplusLBS", "SensorNotificationService")
-                ) {
-                    add(ExpertSignal.OPLUS_LOCATION_SERVICES)
-                }
-
-                if (hasAny(sensors, "Proximity Sensor Wakeup", "android.sensor.proximity")) {
-                    add(ExpertSignal.PROXIMITY_WAKEUP)
-                }
-
-                if (hasAny(sensors, "pick_up_motion", "tilt_detector")) {
-                    add(ExpertSignal.PICK_UP_DETECTION)
-                }
-
-                if (hasAny(sensors, "lux_aod", "aod")) {
-                    add(ExpertSignal.AOD_LIGHT_WAKEUP)
-                }
-
-                if (hasAny(sensors, "oplus_activity_recognition", "activity_recognition")) {
-                    add(ExpertSignal.ACTIVITY_SENSOR)
-                }
-
-                if (hasAny(sensors, "pedometer_minute", "step_counter", "step_detector")) {
-                    add(ExpertSignal.STEP_SENSORS)
-                }
-
-                if (hasAny(sensors, "significant_motion", "motion_detect")) {
-                    add(ExpertSignal.SIGNIFICANT_MOTION)
-                }
-
-                if (hasAny(connectivity, "WIFI CONNECTED", "Transports: WIFI", "wlan0")) {
-                    add(ExpertSignal.WIFI_CONNECTED)
-                }
-
-                if (hasAny(connectivity, "MOBILE", "CELLULAR", "rmnet")) {
-                    add(ExpertSignal.CELLULAR_IMS)
-                }
-
-                if (hasAny(connectivity, "com.android.phone", "TelephonyNetworkSpecifier")) {
-                    add(ExpertSignal.TELEPHONY_REQUESTS)
-                }
-
-                if (hasAny(connectivity, "com.qualcomm", "qti", "cne")) {
-                    add(ExpertSignal.QUALCOMM_NETWORK_OPTIMIZATION)
-                }
+        val signals = buildSet {
+            if (hasAny(location, "fused_location_provider", "fused provider", "FusedLocationService")) {
+                add(ExpertSignal.FUSED_LOCATION)
             }
+
+            if (hasAny(location, "network_location_provider", "NetworkLocationService", "network provider")) {
+                add(ExpertSignal.NETWORK_LOCATION)
+            }
+
+            if (hasAny(location, "gnss_location_provider", "GnssService", "gps provider")) {
+                add(ExpertSignal.GNSS_LOCATION)
+            }
+
+            if (hasAny(location, "activity_recognition_provider", "ALARM_WAKEUP_ACTIVITY_DETECTION", "activity")) {
+                add(ExpertSignal.ACTIVITY_RECOGNITION)
+            }
+
+            if (hasAny(location, "geofencer_provider", "geofence", "Geofencer")) {
+                add(ExpertSignal.GEOFENCING)
+            }
+
+            if (hasAny(location, "com.coloros.weather", "weather")) {
+                add(ExpertSignal.WEATHER_PASSIVE_LOCATION)
+            }
+
+            if (
+                deviceFamily == DeviceFamily.ONEPLUS &&
+                hasAny(location, "com.oplus.nas", "com.oplus.nhs", "OplusLBS", "SensorNotificationService")
+            ) {
+                add(ExpertSignal.OPLUS_LOCATION_SERVICES)
+            }
+
+            if (hasAny(sensors, "Proximity Sensor Wakeup", "android.sensor.proximity")) {
+                add(ExpertSignal.PROXIMITY_WAKEUP)
+            }
+
+            if (hasAny(sensors, "pick_up_motion", "tilt_detector")) {
+                add(ExpertSignal.PICK_UP_DETECTION)
+            }
+
+            if (hasAny(sensors, "lux_aod", "aod")) {
+                add(ExpertSignal.AOD_LIGHT_WAKEUP)
+            }
+
+            if (hasAny(sensors, "oplus_activity_recognition", "activity_recognition")) {
+                add(ExpertSignal.ACTIVITY_SENSOR)
+            }
+
+            if (hasAny(sensors, "pedometer_minute", "step_counter", "step_detector")) {
+                add(ExpertSignal.STEP_SENSORS)
+            }
+
+            if (hasAny(sensors, "significant_motion", "motion_detect")) {
+                add(ExpertSignal.SIGNIFICANT_MOTION)
+            }
+
+            if (hasAny(connectivity, "WIFI CONNECTED", "Transports: WIFI", "wlan0")) {
+                add(ExpertSignal.WIFI_CONNECTED)
+            }
+
+            if (hasAny(connectivity, "MOBILE", "CELLULAR", "rmnet")) {
+                add(ExpertSignal.CELLULAR_IMS)
+            }
+
+            if (hasAny(connectivity, "com.android.phone", "TelephonyNetworkSpecifier")) {
+                add(ExpertSignal.TELEPHONY_REQUESTS)
+            }
+
+            if (hasAny(connectivity, "com.qualcomm", "qti", "cne")) {
+                add(ExpertSignal.QUALCOMM_NETWORK_OPTIMIZATION)
+            }
+        }
 
         return ExpertSnapshot(
             screenOnEventId = null,
@@ -2073,7 +1487,7 @@ object ShizukuDiagnostics {
             locationAvailable = locationRaw != null,
             sensorsAvailable = sensorRaw != null,
             networkAvailable = connectivityRaw != null,
-            signals = signals
+            signals = signals,
         )
     }
 }

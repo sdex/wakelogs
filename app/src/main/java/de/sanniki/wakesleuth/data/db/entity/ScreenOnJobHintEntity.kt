@@ -14,9 +14,9 @@ import androidx.room3.PrimaryKey
             entity = EventEntity::class,
             parentColumns = ["id"],
             childColumns = ["event_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
 )
 data class ScreenOnJobHintEntity(
     @PrimaryKey(autoGenerate = true)
@@ -29,5 +29,5 @@ data class ScreenOnJobHintEntity(
     val packageName: String?,
     @ColumnInfo(name = "service_name")
     val serviceName: String,
-    val prioritized: Boolean
+    val prioritized: Boolean,
 )

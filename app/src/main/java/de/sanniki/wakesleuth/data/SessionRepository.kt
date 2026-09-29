@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.Flow
  */
 class SessionRepository(
     private val writer: DatabaseWriter,
-    private val labels: PackageLabelStore
+    private val labels: PackageLabelStore,
 ) {
     private val database: WakelogsDatabase get() = writer.database
 
@@ -32,8 +32,7 @@ class SessionRepository(
     private val eventDao get() = database.eventDao()
     private val networkDao get() = database.networkDao()
 
-    fun observeLatestSession(): Flow<MonitoringSessionEntity?> =
-        sessionDao.observeLatestSession()
+    fun observeLatestSession(): Flow<MonitoringSessionEntity?> = sessionDao.observeLatestSession()
 
     /**
      * Reuses a session that is still running (service restarted after
@@ -42,18 +41,12 @@ class SessionRepository(
     suspend fun startOrResume(
         at: Long,
         deviceFamily: DeviceFamily,
-        proximity: Proximity?
+        proximity: Proximity?,
     ): Long =
         writer.transaction {
             sessionDao.runningSession()?.let { return@transaction it.id }
 
-            val sessionId =
-                sessionDao.insert(
-                    MonitoringSessionEntity(
-                        startedAt = at,
-                        deviceFamily = deviceFamily
-                    )
-                )
+            val sessionId = sessionDao.insert(MonitoringSessionEntity(startedAt = at, deviceFamily = deviceFamily))
 
             eventDao.insert(
                 EventEntity(
@@ -61,20 +54,19 @@ class SessionRepository(
                     occurredAt = at,
                     type = EventType.MONITOR_START,
                     proximityState = proximity?.state,
-                    proximityDistanceCm = proximity?.distanceCm
-                )
+                    proximityDistanceCm = proximity?.distanceCm,
+                ),
             )
 
             sessionId
         }
 
-    suspend fun hasNetworkBaseline(sessionId: Long): Boolean =
-        sessionDao.byId(sessionId)?.networkBaselineCapturedAt != null
+    suspend fun hasNetworkBaseline(sessionId: Long): Boolean = sessionDao.byId(sessionId)?.networkBaselineCapturedAt != null
 
     suspend fun saveNetworkBaseline(
         sessionId: Long,
         capturedAt: Long,
-        entries: List<NetworkTrafficEntry>
+        entries: List<NetworkTrafficEntry>,
     ) {
         writer.transaction {
             val session = sessionDao.byId(sessionId) ?: return@transaction
@@ -94,9 +86,9 @@ class SessionRepository(
                             rxBytes = it.rxBytes.coerceAtLeast(0L),
                             txBytes = it.txBytes.coerceAtLeast(0L),
                             rxPackets = it.rxPackets,
-                            txPackets = it.txPackets
+                            txPackets = it.txPackets,
                         )
-                    }
+                    },
             )
 
             sessionDao.update(session.copy(networkBaselineCapturedAt = capturedAt))
@@ -110,13 +102,7 @@ class SessionRepository(
 
             sessionDao.update(session.copy(stopRequestedAt = at))
 
-            eventDao.insert(
-                EventEntity(
-                    sessionId = session.id,
-                    occurredAt = at,
-                    type = EventType.MONITOR_STOP
-                )
-            )
+            eventDao.insert(EventEntity(sessionId = session.id, occurredAt = at, type = EventType.MONITOR_STOP))
 
             session.id
         }
@@ -128,58 +114,52 @@ class SessionRepository(
     suspend fun finishNetworkMeasurement(
         sessionId: Long,
         end: NetworkStatsDiagnostic?,
-        at: Long
+        at: Long,
     ) {
-        val usagePackages =
-            writer.transaction {
-                val session = sessionDao.byId(sessionId) ?: return@transaction emptyList()
-                val baseline = networkDao.baseline(sessionId)
+        val usagePackages = writer.transaction {
+            val session = sessionDao.byId(sessionId) ?: return@transaction emptyList()
+            val baseline = networkDao.baseline(sessionId)
 
-                val status: NetworkMeasurementStatus
-                val usage: List<NetworkAppUsageEntity>
+            val status: NetworkMeasurementStatus
+            val usage: List<NetworkAppUsageEntity>
 
-                when {
-                    session.networkBaselineCapturedAt == null || baseline.isEmpty() -> {
-                        status = NetworkMeasurementStatus.NO_BASELINE
-                        usage = emptyList()
-                    }
-
-                    end == null || end.error != null -> {
-                        status = NetworkMeasurementStatus.END_FAILED
-                        usage = emptyList()
-                    }
-
-                    else -> {
-                        status = NetworkMeasurementStatus.OK
-                        usage = trafficDeltas(sessionId, baseline, end.entries)
-                    }
+            when {
+                session.networkBaselineCapturedAt == null || baseline.isEmpty() -> {
+                    status = NetworkMeasurementStatus.NO_BASELINE
+                    usage = emptyList()
                 }
 
-                val eventId =
-                    eventDao.insert(
-                        EventEntity(
-                            sessionId = sessionId,
-                            occurredAt = at,
-                            type = EventType.NETWORK_SESSION
-                        )
-                    )
+                end == null || end.error != null -> {
+                    status = NetworkMeasurementStatus.END_FAILED
+                    usage = emptyList()
+                }
 
-                networkDao.insertMeasurement(
-                    NetworkMeasurementEntity(
-                        sessionId = sessionId,
-                        eventId = eventId,
-                        status = status,
-                        measuredAt = at.takeIf { status == NetworkMeasurementStatus.OK },
-                        errorCode = end?.errorCode.takeIf { status == NetworkMeasurementStatus.END_FAILED },
-                        errorDetail = end?.errorDetail.takeIf { status == NetworkMeasurementStatus.END_FAILED }
-                    )
-                )
-
-                networkDao.insertUsage(usage)
-                networkDao.deleteBaseline(sessionId)
-
-                usage.map { it.packageName }
+                else -> {
+                    status = NetworkMeasurementStatus.OK
+                    usage = trafficDeltas(sessionId, baseline, end.entries)
+                }
             }
+
+            val eventId = eventDao.insert(
+                EventEntity(sessionId = sessionId, occurredAt = at, type = EventType.NETWORK_SESSION),
+            )
+
+            networkDao.insertMeasurement(
+                NetworkMeasurementEntity(
+                    sessionId = sessionId,
+                    eventId = eventId,
+                    status = status,
+                    measuredAt = at.takeIf { status == NetworkMeasurementStatus.OK },
+                    errorCode = end?.errorCode.takeIf { status == NetworkMeasurementStatus.END_FAILED },
+                    errorDetail = end?.errorDetail.takeIf { status == NetworkMeasurementStatus.END_FAILED },
+                ),
+            )
+
+            networkDao.insertUsage(usage)
+            networkDao.deleteBaseline(sessionId)
+
+            usage.map { it.packageName }
+        }
 
         labels.remember(usagePackages)
     }
@@ -192,7 +172,7 @@ class SessionRepository(
         sessionId: Long,
         at: Long,
         endReason: SessionEndReason,
-        finalPollCompleted: Boolean?
+        finalPollCompleted: Boolean?,
     ) {
         writer.transaction {
             val session = sessionDao.byId(sessionId) ?: return@transaction
@@ -201,24 +181,20 @@ class SessionRepository(
                 return@transaction
             }
 
-            val events =
-                eventDao
-                    .sessionEventsInInsertOrder(sessionId)
-                    .map(EventMapper::toDomain)
+            val events = eventDao.sessionEventsInInsertOrder(sessionId).map(EventMapper::toDomain)
 
-            val stats =
-                SessionSources.aggregate(events).map {
-                    SessionSourceStatEntity(
-                        sessionId = sessionId,
-                        sourceKind = it.source.kind,
-                        packageName = it.source.packageName.orEmpty(),
-                        rawSource = it.source.rawSource.orEmpty(),
-                        cpuCount = it.cpuCount,
-                        displayCount = it.displayCount,
-                        companionCount = it.companionCount,
-                        longestCpuAwakeMs = it.longestCpuAwakeMs
-                    )
-                }
+            val stats = SessionSources.aggregate(events).map {
+                SessionSourceStatEntity(
+                    sessionId = sessionId,
+                    sourceKind = it.source.kind,
+                    packageName = it.source.packageName.orEmpty(),
+                    rawSource = it.source.rawSource.orEmpty(),
+                    cpuCount = it.cpuCount,
+                    displayCount = it.displayCount,
+                    companionCount = it.companionCount,
+                    longestCpuAwakeMs = it.longestCpuAwakeMs,
+                )
+            }
 
             sessionDao.deleteSourceStats(sessionId)
             sessionDao.insertSourceStats(stats)
@@ -226,10 +202,9 @@ class SessionRepository(
 
             // An interrupted session never saw a stop; it ends with its
             // last recorded event.
-            val end =
-                session.stopRequestedAt
-                    ?: eventDao.lastOccurredAt(sessionId)
-                    ?: session.startedAt
+            val end = session.stopRequestedAt
+                ?: eventDao.lastOccurredAt(sessionId)
+                ?: session.startedAt
 
             sessionDao.update(
                 session.copy(
@@ -238,8 +213,8 @@ class SessionRepository(
                     endReason = endReason,
                     finalPollCompleted = finalPollCompleted,
                     displayWakeups = events.count { it.type == EventType.SCREEN_ON },
-                    cpuWakeups = events.count { it.type == EventType.CPU_WAKEUP }
-                )
+                    cpuWakeups = events.count { it.type == EventType.CPU_WAKEUP },
+                ),
             )
 
             sessionDao.applyRetention(MAX_SESSIONS)
@@ -256,23 +231,22 @@ class SessionRepository(
             finalize(
                 sessionId = session.id,
                 at = now,
-                endReason =
-                    if (session.stopRequestedAt == null) {
-                        SessionEndReason.INTERRUPTED
-                    } else {
-                        SessionEndReason.USER_STOP
-                    },
-                finalPollCompleted = null
+                endReason = if (session.stopRequestedAt == null) {
+                    SessionEndReason.INTERRUPTED
+                } else {
+                    SessionEndReason.USER_STOP
+                },
+                finalPollCompleted = null,
             )
         }
     }
 
-    suspend fun updateNote(sessionId: Long, note: String?): Boolean =
+    suspend fun updateNote(
+        sessionId: Long,
+        note: String?,
+    ): Boolean =
         writer.transaction {
-            sessionDao.updateNote(
-                id = sessionId,
-                note = note?.trim()?.take(MAX_NOTE_LENGTH)?.ifBlank { null }
-            ) > 0
+            sessionDao.updateNote(id = sessionId, note = note?.trim()?.take(MAX_NOTE_LENGTH)?.ifBlank { null }) > 0
         }
 
     suspend fun deleteSession(sessionId: Long): Boolean =
@@ -281,15 +255,13 @@ class SessionRepository(
         }
 
     suspend fun clearArchive() {
-        writer.transaction {
-            sessionDao.deleteAllFinalized()
-        }
+        writer.transaction { sessionDao.deleteAllFinalized() }
     }
 
     private fun trafficDeltas(
         sessionId: Long,
         baseline: List<NetworkBaselineEntryEntity>,
-        end: List<NetworkTrafficEntry>
+        end: List<NetworkTrafficEntry>,
     ): List<NetworkAppUsageEntity> {
         val baselineByUid = baseline.associateBy { it.uid }
 
@@ -311,7 +283,7 @@ class SessionRepository(
                     rxBytes = rx,
                     txBytes = tx,
                     rxPackets = packetDelta(entry.rxPackets, start, start?.rxPackets),
-                    txPackets = packetDelta(entry.txPackets, start, start?.txPackets)
+                    txPackets = packetDelta(entry.txPackets, start, start?.txPackets),
                 )
             }
     }
@@ -320,7 +292,7 @@ class SessionRepository(
     private fun packetDelta(
         end: Long?,
         baselineRow: NetworkBaselineEntryEntity?,
-        start: Long?
+        start: Long?,
     ): Long? =
         when {
             end == null -> null

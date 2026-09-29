@@ -20,11 +20,14 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -47,12 +50,17 @@ import de.sanniki.wakesleuth.ui.render.EventTextRenderer
 import de.sanniki.wakesleuth.ui.render.SourceLabelResolver
 import de.sanniki.wakesleuth.ui.render.rememberEventTextRenderer
 import de.sanniki.wakesleuth.ui.render.rememberSourceLabelResolver
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.roundToInt
+
+private const val ANALYSIS_TICK_MILLIS = 60_000L
+
+internal fun isSessionRunning(session: MonitoringSessionEntity?): Boolean = session != null && session.stopRequestedAt == null && session.finalizedAt == null
 
 private data class SleepAnalysisWindow(
     val startMillis: Long,
@@ -72,7 +80,7 @@ private data class QuietPhase(
         get() = (endMillis - startMillis).coerceAtLeast(0L)
 }
 
-private data class HourActivity(
+internal data class HourActivity(
     val hour: Int,
     val displayWakeups: Int,
     val cpuWakeups: Int,
@@ -151,12 +159,38 @@ fun SleepReportCard(
 
     val labels = rememberSourceLabelResolver()
 
+    val running = isSessionRunning(session)
+
+    // A running session's window ends "now", so the analysis has to be
+    // recomputed as time passes instead of being frozen by remember.
+    val now by produceState(initialValue = System.currentTimeMillis(), running, session?.id) {
+        value = System.currentTimeMillis()
+
+        while (running) {
+            delay(ANALYSIS_TICK_MILLIS)
+
+            value = System.currentTimeMillis()
+        }
+    }
+
+    val nowKey = if (running) now else 0L
+
     val analysis = remember(
         events,
         session,
         renderer,
+        labels,
+        context,
+        nowKey,
     ) {
-        buildSleepAnalysis(context = context, renderer = renderer, labels = labels, events = events, session = session)
+        buildSleepAnalysis(
+            context = context,
+            renderer = renderer,
+            labels = labels,
+            events = events,
+            session = session,
+            now = now,
+        )
     }
 
     val expandedDetailSection = androidx.compose.runtime.remember {
@@ -1317,17 +1351,19 @@ private fun buildSleepAnalysis(
     labels: SourceLabelResolver,
     events: List<RecordedEvent>,
     session: MonitoringSessionEntity?,
+    now: Long,
 ): SleepAnalysisData {
-    val window = sleepAnalysisWindow(context = context, session = session)
+    val window = sleepAnalysisWindow(context = context, session = session, now = now)
 
     // The final network measurement is written just after the stop
     // request, so it belongs to the session even outside its bounds.
-    val networkSession = events
-        .filterIsInstance<NetworkSessionEvent>()
-        .maxByOrNull { it.occurredAt }
-        ?.let {
-            networkSessionSummary(context = context, renderer = renderer, labels = labels, measurement = it.measurement)
-        }
+    val networkSession = latestNetworkSessionEvent(
+        events = events,
+        sessionId = session?.id,
+        windowStartMillis = window.startMillis,
+    )?.let {
+        networkSessionSummary(context = context, renderer = renderer, labels = labels, measurement = it.measurement)
+    }
 
     val relevantEvents = events
         .asSequence()
@@ -1383,16 +1419,7 @@ private fun buildSleepAnalysis(
 
     val hourlyActivity = buildHourlyActivity(window = window, displayEvents = displayEvents, cpuEvents = cpuEvents)
 
-    val busiestHour = hourlyActivity
-        .filter {
-            it.total > 0
-        }.maxWithOrNull(
-            compareBy<HourActivity> {
-                it.total
-            }.thenByDescending {
-                it.hour
-            },
-        )
+    val busiestHour = busiestHourActivity(hourlyActivity)
 
     val durationHours = window.durationMillis.toDouble().div(3_600_000.0)
 
@@ -1627,9 +1654,8 @@ private fun networkSessionSummary(
 private fun sleepAnalysisWindow(
     context: Context,
     session: MonitoringSessionEntity?,
+    now: Long,
 ): SleepAnalysisWindow {
-    val now = System.currentTimeMillis()
-
     val window = AnalysisWindow.of(session = session, now = now)
         ?: return SleepAnalysisWindow(
             startMillis = now,
@@ -1689,17 +1715,32 @@ private fun buildHourlyActivity(
     window: SleepAnalysisWindow,
     displayEvents: List<RecordedEvent>,
     cpuEvents: List<RecordedEvent>,
+): List<HourActivity> =
+    buildHourlyBuckets(
+        startMillis = window.startMillis,
+        endMillis = window.endMillis,
+        displayTimes = displayEvents.map { it.occurredAt },
+        cpuTimes = cpuEvents.map { it.occurredAt },
+    )
+
+/**
+ * One bucket per clock hour touching [startMillis, endMillis), in
+ * chronological order. All buckets are built; callers cut the tail.
+ */
+internal fun buildHourlyBuckets(
+    startMillis: Long,
+    endMillis: Long,
+    displayTimes: List<Long>,
+    cpuTimes: List<Long>,
 ): List<HourActivity> {
-    if (
-        window.endMillis <= window.startMillis
-    ) {
+    if (endMillis <= startMillis) {
         return emptyList()
     }
 
     val result = mutableListOf<HourActivity>()
 
     val cursor = Calendar.getInstance().apply {
-        timeInMillis = window.startMillis
+        timeInMillis = startMillis
 
         set(Calendar.MINUTE, 0)
 
@@ -1708,38 +1749,50 @@ private fun buildHourlyActivity(
         set(Calendar.MILLISECOND, 0)
     }
 
-    var hourStart = cursor.timeInMillis
+    while (cursor.timeInMillis < endMillis) {
+        val hourStart = cursor.timeInMillis
 
-    while (
-        hourStart <= window.endMillis && result.size < 24
-    ) {
-        val hourEnd = hourStart + 3_600_000L
+        val hour = cursor.get(Calendar.HOUR_OF_DAY)
 
-        val hour = Calendar
-            .getInstance()
-            .apply {
-                timeInMillis = hourStart
-            }.get(
-                Calendar.HOUR_OF_DAY,
-            )
+        // Calendar arithmetic keeps buckets aligned across DST changes.
+        cursor.add(Calendar.HOUR_OF_DAY, 1)
 
-        val displayCount = displayEvents.count {
-            it.occurredAt >= hourStart && it.occurredAt <
-                hourEnd
-        }
+        val hourEnd = cursor.timeInMillis
 
-        val cpuCount = cpuEvents.count {
-            it.occurredAt >= hourStart && it.occurredAt <
-                hourEnd
-        }
-
-        result.add(HourActivity(hour = hour, displayWakeups = displayCount, cpuWakeups = cpuCount))
-
-        hourStart = hourEnd
+        result.add(
+            HourActivity(
+                hour = hour,
+                displayWakeups = displayTimes.count { it >= hourStart && it < hourEnd },
+                cpuWakeups = cpuTimes.count { it >= hourStart && it < hourEnd },
+            ),
+        )
     }
 
     return result
 }
+
+/** Busiest bucket; ties go to the chronologically earliest one. */
+internal fun busiestHourActivity(hourlyActivity: List<HourActivity>): HourActivity? =
+    hourlyActivity
+        .withIndex()
+        .filter { it.value.total > 0 }
+        .maxWithOrNull(
+            compareBy<IndexedValue<HourActivity>> { it.value.total }.thenByDescending { it.index },
+        )?.value
+
+/**
+ * Newest network measurement of the analysed session. It may be written
+ * just after the stop request, so no upper time bound is applied.
+ */
+internal fun latestNetworkSessionEvent(
+    events: List<RecordedEvent>,
+    sessionId: Long?,
+    windowStartMillis: Long,
+): NetworkSessionEvent? =
+    events
+        .filterIsInstance<NetworkSessionEvent>()
+        .filter { (sessionId == null || it.sessionId == sessionId) && it.occurredAt >= windowStartMillis }
+        .maxByOrNull { it.occurredAt }
 
 private fun calculateTechnicalSleepScore(
     window: SleepAnalysisWindow,
@@ -1957,7 +2010,8 @@ private fun buildSleepHints(
 
 @Composable
 private fun formatSleepWindow(window: SleepAnalysisWindow): String {
-    val formatter = SimpleDateFormat("dd.MM. · HH:mm", Locale.getDefault())
+    val locale = LocalLocale.current.platformLocale
+    val formatter = SimpleDateFormat("dd.MM. · HH:mm", locale)
 
     val range = buildString {
         append(formatter.format(Date(window.startMillis)))

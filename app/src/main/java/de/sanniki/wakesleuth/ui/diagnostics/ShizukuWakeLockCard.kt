@@ -312,7 +312,7 @@ internal fun ShizukuWakeLockCard(
                                     val source =
                                         resolveWakeLockSource(context = context, packageName = entry.packageName)
 
-                                    val hasFinishedEntry = group.any { !it.stillActive }
+                                    val hasFinishedEntry = group.any { !it.stillActive && !it.endUnknown }
 
                                     val longestDuration = group
                                         .mapNotNull {

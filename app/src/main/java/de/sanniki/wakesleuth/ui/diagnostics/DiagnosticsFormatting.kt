@@ -7,10 +7,10 @@ import de.sanniki.wakesleuth.R
 import de.sanniki.wakesleuth.WakeReasonDiagnostic
 import de.sanniki.wakesleuth.domain.WakeLockTags
 import de.sanniki.wakesleuth.domain.WakeReasons
+import de.sanniki.wakesleuth.parseLogTimestampMillis
 import de.sanniki.wakesleuth.ui.render.EventTextRenderer
 import de.sanniki.wakesleuth.ui.render.SourceLabelResolver
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Locale
 
 internal fun readableWakeReason(
@@ -131,21 +131,21 @@ internal fun formatWakeLockTimestamp(
         return context.getString(R.string.main_unknown)
     }
 
-    return runCatching {
-        val currentYear = java.util.Calendar
-            .getInstance()
-            .get(java.util.Calendar.YEAR)
+    return formatWakeLockTimestampOrRaw(raw = raw, now = System.currentTimeMillis())
+}
 
-        val parser = SimpleDateFormat(
-            "yyyy-MM-dd HH:mm:ss.SSS",
-            Locale.US,
-        ).apply {
-            isLenient = false
-        }
+/**
+ * Formats a year-less log timestamp using the year the shared parser
+ * infers (year rollover and Feb 29 included). Falls back to [raw] when
+ * it cannot be parsed.
+ */
+internal fun formatWakeLockTimestampOrRaw(
+    raw: String,
+    now: Long,
+    locale: Locale = Locale.getDefault(),
+): String {
+    val millis = parseLogTimestampMillis(raw, now)
+        ?: return raw
 
-        val parsedDate =
-            parser.parse("$currentYear-$raw") ?: error(context.getString(R.string.main_error_timestamp_unreadable))
-
-        SimpleDateFormat("dd.MM.yyyy · HH:mm:ss", Locale.getDefault()).format(parsedDate)
-    }.getOrDefault(raw)
+    return SimpleDateFormat("dd.MM.yyyy · HH:mm:ss", locale).format(millis)
 }
